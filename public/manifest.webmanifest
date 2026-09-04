@@ -1,0 +1,14 @@
+{
+  "name": "ChromaFlask",
+  "short_name": "ChromaFlask",
+  "description": "A liquid sort puzzle. Pour, sort, solve.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070a1f",
+  "theme_color": "#0a0e2a",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

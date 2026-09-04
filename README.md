@@ -1,0 +1,113 @@
+# ChromaFlask
+
+A mobile-first liquid-sort puzzle for the web. PixiJS renders the board, GSAP
+choreographs the pours, and the HUD is plain DOM so text stays crisp and
+accessible.
+
+## Running it
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+```
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Vite dev server with HMR |
+| `npm run build` | Typecheck, then production build to `dist/` |
+| `npm run preview` | Serve the built output |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm run test:core` | Rules/solver/generator suite (no browser needed) |
+| `npm run test:e2e` | Drives the real game in Edge, plays a level to a win |
+
+`dist/` is fully static — any CDN or static host will serve it. Paths are
+relative (`base: './'`), so it also works from a subdirectory.
+
+## Architecture
+
+```
+src/
+  core/        Pure TS. No engine imports, no DOM. Portable and unit-testable.
+    board.ts        pour rules, win + deadlock detection, canonical hashing
+    solver.ts       A* with an admissible heuristic -> optimal move counts
+    generator.ts    seeded deal, validated solvable, computes par
+    levels.ts       the 10-level difficulty curve
+    progression.ts  stars and coin economy
+  services/    Driver-based seams. Swap a driver, not the call sites.
+    SaveService     LocalStorage | in-memory fallback | (later) cloud
+    AuthService     guest profile | (later) OAuth
+    Analytics       console | (later) GA4/Amplitude
+    RemoteConfig    static defaults | (later) fetched live tuning
+  render/      PixiJS layer.
+    GameStage       renderer, layer stack, frame loop, resize
+    BottleView      glass silhouette, liquid, wobble, colourblind glyphs
+    BoardView       layout, input, GSAP pour choreography, powerups
+    effects.ts      pour stream, particles, starfield
+    theme.ts        palette and bottle proportions
+  ui/          DOM overlay: screens, modals, toasts, tutorial
+  audio/       Fully synthesised SFX and music (no audio assets at all)
+```
+
+The `core/` boundary is deliberate. The puzzle logic, solver and progression have
+zero knowledge of Pixi or the DOM, so a future native port or renderer swap
+touches only `render/`.
+
+### Notable implementation details
+
+**Every level is provably solvable.** `generateLevel` deals a seeded random
+board and then actually solves it before accepting it. Generation is
+deterministic per level id, so all players get identical boards. Worst case is
+~25 ms, fast enough to build at level start with no loading screen.
+
+**Par is genuinely optimal.** The solver is A* over states canonicalised by
+sorting tube contents (tubes are interchangeable, which collapses a huge amount
+of the search space). Its heuristic — total colour runs minus colour count — is
+admissible, because a single pour merges at most one pair of runs. The core test
+suite audits the result against an independent BFS, so a 3-star target is a real
+mathematical claim, not a guess.
+
+**The liquid surface stays level while the bottle tilts.** Bands are emitted in
+bottle-local space as quads between two parallel lines whose normal is
+`(sin θ, cos θ)`, so a world-horizontal strip stays horizontal at any tilt while
+the clip mask still carves it to the glass. This is what makes a pour read as
+liquid rather than a rotating sticker.
+
+**Game state never lives in an animation callback.** A GSAP timeline can render
+a zero-duration `.call()` twice, which originally double-fired the win and paid
+the reward out twice. The pour is now sequenced with `await` across four phases,
+so the landing logic runs exactly once. `test:e2e` asserts this.
+
+**No audio assets.** Every sound is built at runtime from oscillators and
+filtered noise, including the ambient music (scheduled with lookahead against
+the audio clock). Nothing to download or decode.
+
+## Accessibility
+
+- Colourblind aid draws a distinct shape per colour; the palette is also ordered
+  so the earliest levels use maximally separated hues
+- Reduced motion honours `prefers-reduced-motion` and has its own toggle
+- Touch targets are padded to at least 44 px regardless of bottle size
+- Modals set `role="dialog"`/`aria-modal` and move focus; Escape closes
+- Desktop keyboard: number keys select a bottle, Escape deselects
+- Safe-area insets respected via `viewport-fit=cover` + `env()`
+
+## What is stubbed
+
+Local-only by design. There is no backend: saves go to `localStorage` (falling
+back to memory in private browsing, with the player warned), the profile is a
+local guest identity, and analytics logs to the console in dev. Each of these
+sits behind a driver interface, so adding real auth, cloud save or an analytics
+vendor means writing one driver rather than editing gameplay code.
+
+## Toolchain notes
+
+- **TypeScript is pinned to 6.0.3, not 7.x.** TS 7 (the Go-native compiler) is
+  production-ready as a CLI, but `typescript-eslint` still peer-caps at
+  `<6.1.0` because it consumes the programmatic API. Revisit at TS 7.1.
+- **Vite 8 uses Rolldown**, which requires the *function* form of
+  `manualChunks`; the object form throws.
+- `baseUrl` is deprecated in TS 6, so `paths` are declared relative (`./src/*`).
+- Custom Pixi v8 filters need both a `glProgram` and a `gpuProgram` to survive a
+  WebGPU fallback. All effects here are geometry-based instead, so they render
+  identically on WebGL and WebGPU with no shader maintenance.
