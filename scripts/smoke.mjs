@@ -119,6 +119,8 @@ async function runViewport(browser, label, width, height, isMobile) {
   const lockedCount = await page.locator('.node--locked').count();
   console.log(`  map screen      OK (${nodeCount} levels, ${lockedCount} locked)`);
   if (nodeCount !== LEVEL_COUNT) problems.push(`[${label}] expected ${LEVEL_COUNT} level nodes, got ${nodeCount}`);
+  const chapterCount = await page.locator('.chapter').count();
+  if (chapterCount !== LEVEL_COUNT / 20) problems.push(`[${label}] expected ${LEVEL_COUNT / 20} chapter headers, got ${chapterCount}`);
   if (lockedCount !== LEVEL_COUNT - 1) problems.push(`[${label}] expected ${LEVEL_COUNT - 1} locked levels, got ${lockedCount}`);
   await page.screenshot({ path: `${SHOTS}/${label}-2-map.png` });
 

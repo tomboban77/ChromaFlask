@@ -11,6 +11,8 @@ export interface EconomyConfig {
   readonly rewardPerStar: number;
   readonly baseReward: number;
   readonly firstClearBonus: number;
+  /** Paid once, on the first clear of a chapter's last level. */
+  readonly chapterBonus: number;
   /** Extra empty tubes the Add Bottle powerup may add per attempt. */
   readonly maxExtraTubes: number;
 }
@@ -38,6 +40,9 @@ export const DEFAULT_ECONOMY: EconomyConfig = {
   rewardPerStar: 15,
   baseReward: 50,
   firstClearBonus: 0,
+  // Roughly one level's worth of coins every twenty levels: a moment, not a
+  // second income stream.
+  chapterBonus: 100,
   maxExtraTubes: 2,
 };
 

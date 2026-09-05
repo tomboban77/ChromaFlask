@@ -88,7 +88,15 @@ _Last updated: 2026-09-05_
   the home screen in well under a second.
 - **Home** — full-bleed scene art, avatar → profile card, coins/hearts pills,
   big play button, purple/gold bottom nav (Shop · Home · Levels).
-- **Level map** — 500 nodes, stars per level, auto-scrolls to current level.
+- **Level map** — 500 nodes in **25 named chapters of 20**
+  (`src/core/chapters.ts`: an alchemist's journey from "First Pour" to "The
+  Grand Elixir"), each with a header in the chapter's accent colour showing
+  stars earned of 60 and a progress bar; locked chapters dim, finished ones
+  tick. Auto-scrolls to the current level. Home shows the current chapter
+  under the progress pill; the win screen's eyebrow reads "Chapter n · Name".
+- **Chapter complete** — the first clear of a chapter's last level pays a
+  one-time bonus (`chapterBonus`, 100 coins), shows a gold ribbon with the
+  next chapter's name, gets the big confetti, and logs `chapter_complete`.
 - **Gameplay** — candy-styled HUD, powerbar, coach + hand-pointer tutorial on
   level 1 (points at the solver's actual next move).
 - **No-win detection** — after each move on small boards, the solver *proves*

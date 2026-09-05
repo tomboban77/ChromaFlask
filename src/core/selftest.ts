@@ -9,6 +9,7 @@ import {
   usefulMoves,
 } from './board';
 import { getCampaignLevel, isStoredOptimal, storedLevelCount } from './campaign';
+import { CHAPTERS, CHAPTER_SIZE, chapterFor, isChapterEnd } from './chapters';
 import { generateLevel } from './generator';
 import { ENDLESS_START, LEVELS, endlessSpec, getLevelSpec, isEndless } from './levels';
 import { DEFAULT_ECONOMY, coinsFor, starsFor } from './progression';
@@ -304,6 +305,25 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
     `\n  ${LEVELS.length} levels verified - total ${(totalMs / 1000).toFixed(1)}s, ` +
     `worst L${worstId} at ${worstMs.toFixed(0)}ms`,
   );
+}
+
+// ------------------------------------------------------------- chapters --
+{
+  check('chapters: cover the campaign exactly', CHAPTERS.length * CHAPTER_SIZE === LEVELS.length);
+  let contiguous = true;
+  for (let i = 0; i < CHAPTERS.length; i++) {
+    const c = CHAPTERS[i]!;
+    if (c.index !== i + 1 || c.first !== i * CHAPTER_SIZE + 1 || c.last !== c.first + CHAPTER_SIZE - 1) {
+      contiguous = false;
+    }
+  }
+  check('chapters: contiguous, 1-based, twenty levels each', contiguous);
+  check('chapters: names are unique', new Set(CHAPTERS.map((c) => c.name)).size === CHAPTERS.length);
+  check('chapters: every level maps to its chapter',
+    LEVELS.every((s) => { const c = chapterFor(s.id); return c !== null && s.id >= c.first && s.id <= c.last; }));
+  check('chapters: endless ids have no chapter', chapterFor(LEVELS.length + 1) === null);
+  check('chapters: last level of each chapter is a chapter end',
+    CHAPTERS.every((c) => isChapterEnd(c.last) && !isChapterEnd(c.first)));
 }
 
 // -------------------------------------------------------------- endless --

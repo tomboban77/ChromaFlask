@@ -1,6 +1,7 @@
 import './styles/main.css';
 
 import { LEVELS, LEVEL_COUNT, endlessIndex, getLevelSpec, isEndless } from '@/core/levels';
+import { CHAPTER_SIZE, chapterFor, isChapterEnd, type Chapter } from '@/core/chapters';
 import { getCampaignLevel } from '@/core/campaign';
 import { TUBE_CAPACITY } from '@/core/board';
 import { solverClient } from '@/services/SolverClient';
@@ -611,11 +612,15 @@ class App {
 
     const done = this.save.campaignCleared(LEVEL_COUNT);
     const endless = this.save.endlessCleared(LEVEL_COUNT);
-    $('#home-progress').textContent =
+    const next = this.save.highestUnlocked(LEVEL_COUNT);
+    const chapter = done >= LEVEL_COUNT ? null : chapterFor(next);
+    const progress = $('#home-progress');
+    progress.textContent =
       `★ ${this.save.campaignStars(LEVEL_COUNT)}/${LEVEL_COUNT * 3} · ${done} of ${LEVEL_COUNT} levels cleared` +
       (endless > 0 ? ` · ${endless} endless` : '');
-
-    const next = this.save.highestUnlocked(LEVEL_COUNT);
+    if (chapter) {
+      progress.appendChild(el('small', '', `Chapter ${chapter.index} · ${chapter.name}`));
+    }
     const resume = this.save.inProgress;
     $('#btn-play').textContent = resume
       ? `Continue ${this.levelLabel(resume.levelId).toLowerCase()}`
@@ -659,6 +664,12 @@ class App {
       const record = this.save.levelRecord(spec.id);
       const locked = spec.id > unlocked;
       const isNext = spec.id === unlocked && !record;
+
+      // A chapter header opens each block of twenty.
+      if ((spec.id - 1) % CHAPTER_SIZE === 0) {
+        const chapter = chapterFor(spec.id);
+        if (chapter) grid.appendChild(this.buildChapterHeader(chapter, unlocked));
+      }
 
       const node = el('button', 'node');
       if (locked) node.classList.add('node--locked');
@@ -720,6 +731,43 @@ class App {
         : `${done} of ${LEVEL_COUNT} levels cleared`;
 
     $('#btn-settings-map').onclick = () => this.openSettings();
+  }
+
+  /** Chapter number, name, stars earned of the chapter's 60, and a progress bar. */
+  private buildChapterHeader(chapter: Chapter, unlocked: number): HTMLElement {
+    let stars = 0;
+    let cleared = 0;
+    for (let id = chapter.first; id <= chapter.last; id++) {
+      const r = this.save.levelRecord(id);
+      if (r) {
+        cleared += 1;
+        stars += r.stars;
+      }
+    }
+    const size = chapter.last - chapter.first + 1;
+    const locked = chapter.first > unlocked;
+
+    const head = el('div', 'chapter');
+    head.style.setProperty('--chapter-accent', chapter.accent);
+    if (locked) head.classList.add('chapter--locked');
+    if (cleared === size) head.classList.add('chapter--done');
+    head.setAttribute(
+      'aria-label',
+      `Chapter ${chapter.index}, ${chapter.name}, ${locked ? 'locked' : `${stars} of ${size * 3} stars`}`,
+    );
+
+    const row = el('div', 'chapter__head');
+    row.appendChild(el('span', 'chapter__num', `Chapter ${chapter.index}`));
+    row.appendChild(el('h3', 'chapter__name', chapter.name));
+    row.appendChild(el('span', 'chapter__stars', locked ? '🔒' : `★ ${stars}/${size * 3}`));
+    head.appendChild(row);
+
+    const bar = el('div', 'chapter__bar');
+    const fill = el('i');
+    fill.style.width = `${Math.round((cleared / size) * 100)}%`;
+    bar.appendChild(fill);
+    head.appendChild(bar);
+    return head;
   }
 
   // ----------------------------------------------------------------- shop
@@ -1388,10 +1436,15 @@ class App {
     const before = this.save.levelRecord(this.levelId);
     // Support unlocks store a sentinel; treat those as "no real best yet".
     const prevBest = before && before.bestMoves < 100_000 ? before.bestMoves : null;
-    const { prevStars } = this.save.recordClear(this.levelId, stars, moves);
+    const { prevStars, isFirstClear } = this.save.recordClear(this.levelId, stars, moves);
     // Replays only pay for newly earned stars - see coinsFor.
-    const reward = coinsFor(stars, prevStars, this.remote.current.economy);
+    let reward = coinsFor(stars, prevStars, this.remote.current.economy);
+    // First clear of a chapter's last level: the chapter is complete.
+    const chapterDone = isFirstClear && isChapterEnd(this.levelId) ? chapterFor(this.levelId) : null;
+    const chapterBonus = chapterDone ? this.remote.current.economy.chapterBonus : 0;
+    reward += chapterBonus;
     this.save.addCoins(reward);
+    if (chapterDone) this.analytics.track({ type: 'chapter_complete', chapter: chapterDone.index });
     this.save.bumpStat('wins');
     if (stars === 3) this.save.bumpStat('perfects');
     this.save.recordWinForStreak();
@@ -1414,10 +1467,14 @@ class App {
 
     // Finishing the last campaign level is the finale; the door to endless opens.
     const isLast = this.levelId === LEVEL_COUNT;
+    const chapter = chapterFor(this.levelId);
+    const eyebrow = chapter
+      ? `Chapter ${chapter.index} · ${chapter.name}`
+      : `Endless · ${level.spec.name}`;
     window.setTimeout(
       () => this.showWinModal({
         stars, moves, seconds, reward, isLast, prevStars, prevBest, streak,
-        par: level.par, levelName: level.spec.name,
+        par: level.par, eyebrow, chapterDone, chapterBonus,
       }),
       620,
     );
@@ -1433,7 +1490,7 @@ class App {
   private showWinModal(w: {
     stars: number; moves: number; seconds: number; reward: number; isLast: boolean;
     prevStars: number | null; prevBest: number | null; streak: number;
-    par: number; levelName: string;
+    par: number; eyebrow: string; chapterDone: Chapter | null; chapterBonus: number;
   }): void {
     const eco = this.remote.current.economy;
     const reduced =
@@ -1441,7 +1498,17 @@ class App {
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const content = el('div', 'win');
 
-    content.appendChild(el('div', 'win__name', w.levelName));
+    content.appendChild(el('div', 'win__name', w.eyebrow));
+
+    // Chapter complete: a gold ribbon, and a peek at where the story goes next.
+    if (w.chapterDone) {
+      const ribbon = el('div', 'win__chapter', `Chapter ${w.chapterDone.index} complete!`);
+      const next = chapterFor(w.chapterDone.last + 1);
+      ribbon.appendChild(
+        el('small', '', next ? `Next: ${next.name}` : 'The Grand Elixir is yours'),
+      );
+      content.appendChild(ribbon);
+    }
 
     // Stars in an arc; unearned ones stay as dim outlines so 2/3 reads at a glance.
     const starRow = el('div', 'stars stars--arc');
@@ -1477,8 +1544,9 @@ class App {
         if (eco.firstClearBonus > 0) parts.push(`First clear +${eco.firstClearBonus}`);
       } else {
         const gained = Math.max(0, w.stars - w.prevStars);
-        parts.push(`${gained} new star${gained === 1 ? '' : 's'} +${w.reward}`);
+        parts.push(`${gained} new star${gained === 1 ? '' : 's'} +${w.reward - w.chapterBonus}`);
       }
+      if (w.chapterBonus > 0) parts.push(`Chapter complete +${w.chapterBonus}`);
       card.appendChild(el('div', 'win__breakdown', parts.join(' · ')));
       content.appendChild(card);
       const counter = big.querySelector('b') as HTMLElement;
@@ -1548,8 +1616,9 @@ class App {
       dismissable: false,
     });
 
-    // Confetti rains over the dialog itself; a perfect run gets the big burst.
-    this.confetti.burst(w.stars === 3 ? 2 : 1);
+    // Confetti rains over the dialog itself; a perfect run or a finished
+    // chapter gets the big burst.
+    this.confetti.burst(w.stars === 3 || w.chapterDone ? 2 : 1);
 
     // Ring the stars in one at a time so the score lands as a moment.
     starEls.forEach((node, i) => {

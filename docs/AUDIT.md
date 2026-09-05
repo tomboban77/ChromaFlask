@@ -35,9 +35,12 @@ were benchmarked separately on this machine (Node 22, desktop).
 > chunk already downloads in parallel via modulepreload.
 >
 > **P2 progress:** L5 endless mode shipped (levels past the campaign,
-> generated in the worker). Campaign extended from 200 to 500 levels in five
-> gentle tiers, all pars proven optimal offline (132 KB / 28 KB gz); L4 (new
-> mechanics) is planned to land inside those tiers before launch.
+> generated in the worker). Campaign extended from 200 to 500 levels with a
+> par floor that climbs through the whole deal distribution (full-board ideal
+> rises monotonically to 27), all pars proven optimal offline (134 KB /
+> 28 KB gz). U6 chapters shipped: 25 named chapters with map headers,
+> progress and a completion bonus. L4 (new mechanics) is planned to land
+> inside the late tiers before launch.
 >
 > **Decisions taken with the owner's go-ahead (same day):** E2 economy
 > rebalanced (200 start, free 3 undo / 1 hint / 0 bottle, 50 + 15/star);

@@ -581,6 +581,68 @@ body {
   margin: 0 auto;
 }
 
+/* Chapter header: spans the grid, carries the chapter's accent colour. */
+.chapter {
+  grid-column: 1 / -1;
+  margin-top: 14px;
+  padding: 10px 14px 12px;
+  border-radius: 16px;
+  border: 1.5px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(60, 72, 160, 0.45), rgba(28, 34, 88, 0.6));
+  border-left: 5px solid var(--chapter-accent, var(--accent));
+}
+
+.chapter:first-child { margin-top: 0; }
+
+.chapter__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.chapter__num {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chapter-accent, var(--accent));
+}
+
+.chapter__name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  flex: 1 1 auto;
+}
+
+.chapter__stars {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--accent-warm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chapter__bar {
+  margin-top: 8px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(10, 8, 40, 0.55);
+  overflow: hidden;
+}
+
+.chapter__bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--chapter-accent, var(--accent));
+  transition: width 0.5s ease;
+}
+
+.chapter--locked { opacity: 0.5; }
+.chapter--locked .chapter__stars { color: var(--ink-faint); }
+.chapter--done .chapter__name::after { content: ' ✓'; color: var(--success); }
+
 .node {
   position: relative;
   aspect-ratio: 1;
@@ -1075,7 +1137,27 @@ body {
 /* ------------------------------------------------------------ win screen -- */
 .win { display: flex; flex-direction: column; align-items: stretch; }
 
-/* Level name as an eyebrow under the title. */
+/* Chapter completed: a gold ribbon above the stars. */
+.win__chapter {
+  margin: 0 auto 10px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+  color: var(--brown);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  box-shadow: 0 3px 0 rgba(96, 56, 0, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.6);
+  animation: perfectin 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.win__chapter small {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--brown-soft);
+}
+
+/* Chapter and level as an eyebrow under the title. */
 .win__name {
   margin: -8px 0 6px;
   font-size: 12.5px;
@@ -1309,10 +1391,21 @@ body {
   font-size: 13.5px;
   font-weight: 900;
   padding: 8px 20px;
-  border-radius: var(--r-pill);
+  border-radius: 18px;
+  text-align: center;
   background: linear-gradient(180deg, var(--ivory-0), var(--ivory-1));
   border: 2px solid var(--gold-line);
   box-shadow: 0 3px 0 rgba(96, 56, 0, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.75);
+}
+
+/* Second line: where the player is in the story. */
+.home__progress small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--brown-soft);
+  letter-spacing: 0.02em;
 }
 
 .btn--play {

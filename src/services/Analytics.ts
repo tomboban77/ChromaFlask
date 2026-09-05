@@ -7,6 +7,7 @@ export type AnalyticsEvent =
   | { type: 'profile_created'; avatar: string }
   | { type: 'level_start'; level: number; attempt: number }
   | { type: 'level_complete'; level: number; moves: number; par: number; stars: number; seconds: number }
+  | { type: 'chapter_complete'; chapter: number }
   | { type: 'level_quit'; level: number; moves: number; seconds: number }
   | { type: 'level_stuck'; level: number; moves: number }
   | { type: 'level_no_win'; level: number; moves: number }
