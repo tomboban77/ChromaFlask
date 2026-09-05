@@ -34,6 +34,7 @@ import gsap from 'gsap';
 import { audio } from '@/audio/AudioEngine';
 import { GameStage } from '@/render/GameStage';
 import { BoardView } from '@/render/BoardView';
+import { PALETTE, SKINS, cssHex, skinById, type GlassSkin } from '@/render/theme';
 
 import { $, ModalHost, ToastHost, el, escapeHtml, haptic, setHapticsEnabled } from '@/ui/dom';
 import { Tutorial } from '@/ui/Tutorial';
@@ -64,6 +65,32 @@ const POWERUP_ICON: Record<PowerupId, string> = {
 
 const HEART_ICON = `<svg viewBox="0 0 24 24" class="heart"><use href="#cf-heart"/></svg>`;
 const COIN_ICON = `<span class="chip__icon chip__icon--coin"></span>`;
+
+/**
+ * Shop preview of a bottle look: the same silhouette proportions as the board
+ * (collar, neck, shoulder, body), two liquid bands, and the skin's own glass
+ * tint, rim and cork. All values come from the skin, so the preview cannot
+ * drift from what the board draws.
+ */
+function skinPreviewSvg(skin: GlassSkin): string {
+  const rim = cssHex(skin.rim);
+  const body = cssHex(skin.body);
+  const c0 = (PALETTE[0] as { css: string }).css;
+  const c1 = (PALETTE[1] as { css: string }).css;
+  return `<svg viewBox="0 0 40 92" aria-hidden="true">
+    <path d="M14 14 h12 v6 q9 4 9 14 v46 a5 5 0 0 1 -5 5 h-20 a5 5 0 0 1 -5 -5 v-46 q0 -10 9 -14 z"
+      fill="${cssHex(skin.cavity)}" fill-opacity="${Math.min(1, skin.cavityAlpha + 0.25)}" />
+    <rect x="5" y="58" width="30" height="22" fill="${c1}" />
+    <path d="M5 80 v0 a5 5 0 0 0 5 5 h20 a5 5 0 0 0 5 -5 v-0 z" fill="${c1}" />
+    <rect x="5" y="40" width="30" height="18" fill="${c0}" />
+    <path d="M14 14 h12 v6 q9 4 9 14 v46 a5 5 0 0 1 -5 5 h-20 a5 5 0 0 1 -5 -5 v-46 q0 -10 9 -14 z"
+      fill="${body}" fill-opacity="${Math.min(1, skin.bodyAlpha + 0.1)}"
+      stroke="${rim}" stroke-opacity="${skin.rimAlpha}" stroke-width="2.4" />
+    <rect x="12" y="10" width="16" height="6" rx="1.5" fill="${cssHex(skin.collar)}" fill-opacity="${skin.collarAlpha + 0.2}" />
+    <rect x="11" y="3" width="18" height="10" rx="2.5" fill="${cssHex(skin.cork)}" stroke="${cssHex(skin.corkEdge)}" stroke-width="1.2" />
+    <rect x="9" y="30" width="3" height="34" rx="1.5" fill="#fff" fill-opacity="0.18" />
+  </svg>`;
+}
 
 /**
  * A saved attempt is only trusted if it is plausibly this level: same colour
@@ -363,6 +390,7 @@ class App {
           $(`#screen-${n}`).classList.contains('screen--active'),
         ),
         level: this.levelId,
+        skin: this.save.snapshot.cosmetics.skin,
         moves: this.board.moveCount,
         tubes: this.board.tubeCount,
         selected: this.board.selectedIndex,
@@ -934,6 +962,7 @@ class App {
     const list = $('#shop-coin-items');
     list.replaceChildren();
     for (const item of COIN_SHOP) list.appendChild(this.buildCoinItem(item));
+    this.renderSkins();
   }
 
   private buildBundleCard(product: IapProduct): HTMLElement {
@@ -985,6 +1014,64 @@ class App {
     bottom.appendChild(buy);
     pack.appendChild(bottom);
     return pack;
+  }
+
+  // ------------------------------------------------------------- cosmetics
+  /** Bottle looks: one card per skin; tap buys (once) then equips. */
+  private renderSkins(): void {
+    const host = $('#shop-skins');
+    host.replaceChildren();
+    for (const skin of SKINS) host.appendChild(this.buildSkinCard(skin));
+  }
+
+  private buildSkinCard(skin: GlassSkin): HTMLElement {
+    const name = t(`skin.${skin.id}` as MessageKey);
+    const owned = this.save.ownsSkin(skin.id);
+    const equipped = this.save.snapshot.cosmetics.skin === skin.id;
+
+    const card = el('button', 'skin');
+    if (equipped) card.classList.add('skin--equipped');
+    else if (owned) card.classList.add('skin--owned');
+    card.setAttribute('aria-pressed', String(equipped));
+    const status = equipped
+      ? t('skin.status.equipped')
+      : owned
+        ? t('skin.status.owned')
+        : t('skin.status.price', { n: skin.price });
+    card.setAttribute('aria-label', t('skin.aria', { name, status }));
+
+    const preview = el('span', 'skin__preview');
+    preview.innerHTML = skinPreviewSvg(skin);
+    card.appendChild(preview);
+    card.appendChild(el('span', 'skin__name', name));
+
+    const action = el('span', `skin__action${owned ? '' : ' skin__action--price'}`);
+    if (equipped) action.textContent = t('skin.equipped');
+    else if (owned) action.textContent = t('skin.equip');
+    else action.innerHTML = `${COIN_ICON} ${skin.price}`;
+    card.appendChild(action);
+
+    card.addEventListener('click', () => this.onSkinTap(skin));
+    return card;
+  }
+
+  private onSkinTap(skin: GlassSkin): void {
+    if (this.save.snapshot.cosmetics.skin === skin.id) return;
+    if (!this.save.ownsSkin(skin.id)) {
+      if (!this.save.buySkin(skin.id, skin.price)) {
+        audio.play('invalid');
+        this.toast.show(t('shop.notEnough', { n: skin.price }), 'warn');
+        return;
+      }
+      this.analytics.track({ type: 'shop_coin_spend', item: `skin.${skin.id}`, price: skin.price });
+    }
+    this.save.equipSkin(skin.id);
+    this.analytics.track({ type: 'skin_equip', skin: skin.id });
+    // Bottles on a mounted board change at once; future boards pick it up at mount.
+    this.board.setSkin(skin);
+    audio.play('button');
+    this.toast.show(t('skin.equippedToast', { name: t(`skin.${skin.id}` as MessageKey) }));
+    this.renderShop();
   }
 
   private buildCoinItem(item: CoinShopItem): HTMLElement {
@@ -1219,6 +1306,9 @@ class App {
     this.extraTubes = restore?.extraTubes ?? 0;
 
     this.applySettings();
+    // The equipped look is read from the save at every mount, so a skin bought
+    // between levels (or restored from an old save) is never missed.
+    this.board.setSkin(skinById(this.save.snapshot.cosmetics.skin));
     this.board.mount(
       this.level,
       this.save.snapshot.settings.colorblind,

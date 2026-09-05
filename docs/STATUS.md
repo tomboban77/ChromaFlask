@@ -194,6 +194,16 @@ _Last updated: 2026-09-05_
   shop-bought stock → **shop opens** (never silently charged to coins; empty
   badge becomes a green "+"). Bottles are deliberately never free: a free
   extra tube erases the difficulty curve.
+- **Bottle looks** (`SKINS` in `render/theme.ts`, shop section "Bottle
+  looks") — six glass skins as a long-term coin sink: Classic (free), Frosted
+  300, Rose quartz 400, Amber 500, Emerald 600, Obsidian 800. A skin tints
+  the rim, body, collar, cavity and cork of *plain* bottles only; the cauldron
+  and one-way flask keep their own colours so they stay recognisable. Tap a
+  card to buy (once) and equip; owned cards re-equip free. A mounted board
+  recolours at once (`BoardView.setSkin`), and every mount re-reads the save,
+  so old saves and unknown ids fall back to Classic. Shop previews are drawn
+  from the same skin values. Save v15 (`cosmetics`); `skin_equip` analytics
+  plus `shop_coin_spend` with item `skin.<id>`. Smoke test buys and re-equips.
 - **Skip level** (150 coins, `economy.skipPrice`) — offered in the Restart
   dialog and the No-moves-left dialog on campaign and endless levels (never
   the daily, never inside the tutorial). Paying unlocks the next level and
@@ -221,7 +231,7 @@ _Last updated: 2026-09-05_
 - Haptics on pours/errors/wins/buttons (Android; toggle in settings).
 - Accessibility: colourblind glyphs, reduced motion, focus management, 44 px
   touch targets, safe-area insets.
-- **Persistence** — save schema v14 with forward-compatible migrations
+- **Persistence** — save schema v15 with forward-compatible migrations
   (profile, level records, coins, inventory, lives, lifetime stats, mechanic
   intros, support ID, redeemed codes, granted purchase tokens, in-progress
   attempt). LocalStorage with in-memory fallback.

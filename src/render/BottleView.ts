@@ -3,8 +3,8 @@ import gsap from 'gsap';
 import { TUBE_CAPACITY } from '@/core/board';
 import type { ColorId } from '@/core/types';
 import {
-  GLASS, colorOf, vesselHeight, vesselSpec,
-  type GlyphKind, type VesselVariant,
+  GLASS, SKINS, colorOf, vesselHeight, vesselSpec,
+  type GlassSkin, type GlyphKind, type VesselVariant,
 } from './theme';
 
 /** A contiguous run of one colour. `amount` may be fractional mid-pour. */
@@ -104,13 +104,19 @@ export class BottleView extends Container {
   private dirty = true;
   private colorblind = false;
   private lastRotation = 0;
+  /** Glass look for plain bottles (and the cork of any corkable vessel). */
+  private skin: GlassSkin = SKINS[0] as GlassSkin;
 
   readonly variant: VesselVariant;
 
-  constructor(index: number, bodyWidth: number, variant: VesselVariant = 'bottle') {
+  constructor(
+    index: number, bodyWidth: number, variant: VesselVariant = 'bottle',
+    skin: GlassSkin = SKINS[0] as GlassSkin,
+  ) {
     super();
     this.index = index;
     this.variant = variant;
+    this.skin = skin;
     this.geo = computeGeometry(bodyWidth, variant);
 
     this.liquidLayer.addChild(this.liquid);
@@ -453,15 +459,28 @@ export class BottleView extends Container {
       .closePath();
   }
 
+  /** Swap the glass look; redraws the static parts only when it changed. */
+  setSkin(skin: GlassSkin): void {
+    if (skin.id === this.skin.id) return;
+    this.skin = skin;
+    this.redrawChrome();
+  }
+
   /** Static parts: cavity, glass, outline, highlights, hit area, glow. */
   private redrawChrome(): void {
     const g = this.geo;
     const t = GLASS.thickness;
+    const skin = this.skin;
+    const isBottle = this.variant === 'bottle';
 
     // --- dark cavity behind the liquid, so empty glass still reads as glass
     this.cavity.clear();
     this.outline(this.cavity, t * 0.6);
-    this.cavity.fill({ color: GLASS.cavity, alpha: GLASS.cavityAlpha });
+    this.cavity.fill(
+      isBottle
+        ? { color: skin.cavity, alpha: skin.cavityAlpha }
+        : { color: GLASS.cavity, alpha: GLASS.cavityAlpha },
+    );
 
     // --- liquid clip region: the straight body, square top, rounded bottom
     this.liquidMask.clear();
@@ -495,13 +514,13 @@ export class BottleView extends Container {
         ? { color: 0x352a5e, alpha: 0.45 }
         : isOneWay
           ? { color: 0x0f4c45, alpha: 0.3 }
-          : { color: 0x9ec7e8, alpha: 0.06 },
+          : { color: skin.body, alpha: skin.bodyAlpha },
     );
     this.outline(gl, 0);
     gl.stroke({
       width: isCauldron ? 3.4 : isOneWay ? 3 : 2.4,
-      color: isCauldron ? 0xf0b43c : isOneWay ? 0x5eead4 : GLASS.rim,
-      alpha: isCauldron || isOneWay ? 0.95 : GLASS.rimAlpha,
+      color: isCauldron ? 0xf0b43c : isOneWay ? 0x5eead4 : skin.rim,
+      alpha: isCauldron || isOneWay ? 0.95 : skin.rimAlpha,
       alignment: 0.5,
     });
 
@@ -515,7 +534,7 @@ export class BottleView extends Container {
         ? { color: 0xffc531, alpha: 0.9 }
         : isOneWay
           ? { color: 0x5eead4, alpha: 0.55 }
-          : { color: 0xbcdcf5, alpha: 0.2 },
+          : { color: skin.collar, alpha: skin.collarAlpha },
     );
 
     // one-way mark: a gold arrow pointing down into the body, sitting in the
@@ -565,14 +584,14 @@ export class BottleView extends Container {
     const cr = Math.min(5, cw * 0.2);
     const c = this.cap;
     c.clear();
-    c.roundRect(-cw / 2, -ch / 2, cw, ch, cr).fill({ color: 0xd9a066 });
+    c.roundRect(-cw / 2, -ch / 2, cw, ch, cr).fill({ color: skin.cork });
     // darker band where it enters the glass
-    c.rect(-cw / 2 + 1, ch * 0.1, cw - 2, ch * 0.4).fill({ color: 0xa8703c, alpha: 0.8 });
+    c.rect(-cw / 2 + 1, ch * 0.1, cw - 2, ch * 0.4).fill({ color: skin.corkDark, alpha: 0.8 });
     // domed top highlight
     c.roundRect(-cw / 2 + cw * 0.14, -ch / 2 + ch * 0.12, cw * 0.3, ch * 0.3, 2)
       .fill({ color: 0xffffff, alpha: 0.38 });
     c.roundRect(-cw / 2, -ch / 2, cw, ch, cr)
-      .stroke({ width: 1.6, color: 0x6b4420, alpha: 0.8 });
+      .stroke({ width: 1.6, color: skin.corkEdge, alpha: 0.8 });
     if (this.capped) c.y = this.capRestY;
 
     // --- padlock plate (geometry-dependent, so redrawn with the chrome)

@@ -133,6 +133,8 @@ async function runViewport(browser, label, width, height, isMobile) {
   console.log(`  shop screen     OK (${bundleCount} bundles, ${coinItemCount} coin items)`);
   if (bundleCount !== 2) problems.push(`[${label}] expected 2 IAP bundles in dev, got ${bundleCount}`);
   if (coinItemCount !== 4) problems.push(`[${label}] expected 4 coin items, got ${coinItemCount}`);
+  const freshEquipped = (await page.locator('.skin--equipped .skin__name').textContent())?.trim();
+  if (freshEquipped !== 'Classic glass') problems.push(`[${label}] a fresh profile should have Classic glass equipped, got "${freshEquipped}"`);
   await page.screenshot({ path: `${SHOTS}/${label}-1c-shop.png` });
   await page.click('#btn-shop-close');
   await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
@@ -305,6 +307,25 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (afterPack.coins !== coinsAfterEmpty - 200) {
     problems.push(`[${label}] hint pack should cost 200 coins`);
   }
+  // ---- bottle looks: buying a skin charges once and equips it; the board picks it up
+  const skinCards = await page.locator('.skin').count();
+  const coinsBeforeSkin = afterPack.coins;
+  await page.locator('.skin').nth(1).click(); // Frosted glass, 300 coins
+  await sleep(400);
+  const afterSkin = await page.evaluate(() => window.__cf.state());
+  const equippedName = (await page.locator('.skin--equipped .skin__name').textContent())?.trim();
+  console.log(`  bottle look     ${skinCards} skins, bought+equipped "${equippedName}" (coins ${coinsBeforeSkin} -> ${afterSkin.coins}), save skin=${afterSkin.skin}`);
+  if (skinCards !== 6) problems.push(`[${label}] expected 6 bottle looks in the shop, got ${skinCards}`);
+  if (afterSkin.coins !== coinsBeforeSkin - 300) problems.push(`[${label}] Frosted glass should cost 300 coins (${coinsBeforeSkin} -> ${afterSkin.coins})`);
+  if (afterSkin.skin !== 'frost' || equippedName !== 'Frosted glass') problems.push(`[${label}] buying a skin should equip it (skin=${afterSkin.skin}, card="${equippedName}")`);
+  // tapping an owned look again is free and re-equips: back to classic, then frost
+  await page.locator('.skin').nth(0).click();
+  await sleep(250);
+  await page.locator('.skin').nth(1).click();
+  await sleep(250);
+  const afterReequip = await page.evaluate(() => window.__cf.state());
+  if (afterReequip.coins !== afterSkin.coins) problems.push(`[${label}] re-equipping owned looks must not charge coins`);
+  if (afterReequip.skin !== 'frost') problems.push(`[${label}] re-equip should land on frost, got ${afterReequip.skin}`);
   await page.click('#btn-shop-close');
   await page.waitForSelector('#screen-game.screen--active', { timeout: 8000 });
   await page.click('#btn-hint'); // consumes owned stock

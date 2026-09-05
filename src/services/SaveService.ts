@@ -117,6 +117,8 @@ export interface SaveData {
   skipped: number[];
   /** Welcome-back reward: consecutive days claimed, and the last claimed day. */
   login: { streak: number; lastDay: number };
+  /** Bottle looks: the one in use and the ones bought (classic is implicit). */
+  cosmetics: { skin: string; owned: string[] };
 }
 
 /** Mutable save-side shape of the core's read-only DailyStreak, plus history. */
@@ -131,7 +133,7 @@ export interface DailyState {
 const _dailyStateIsStreak: (s: DailyState) => DailyStreak = (s) => s;
 void _dailyStateIsStreak;
 
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 15;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -180,6 +182,7 @@ export function defaultSave(startingCoins: number): SaveData {
     achievements: [],
     login: { streak: 0, lastDay: -1 },
     skipped: [],
+    cosmetics: { skin: 'classic', owned: [] },
   };
 }
 
@@ -295,7 +298,39 @@ export class SaveService {
       skipped: Array.isArray(parsed.skipped)
         ? parsed.skipped.filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
         : [],
+      // v14 saves predate bottle looks.
+      cosmetics: {
+        skin: typeof parsed.cosmetics?.skin === 'string' ? parsed.cosmetics.skin : 'classic',
+        owned: Array.isArray(parsed.cosmetics?.owned)
+          ? parsed.cosmetics.owned.filter((s): s is string => typeof s === 'string')
+          : [],
+      },
     };
+  }
+
+  // ------------------------------------------------------------- cosmetics
+  /** Classic is always owned; everything else must have been bought. */
+  ownsSkin(id: string): boolean {
+    return id === 'classic' || this.data.cosmetics.owned.includes(id);
+  }
+
+  /** Charges `price` and records ownership; false (nothing charged) if short of coins or already owned. */
+  buySkin(id: string, price: number): boolean {
+    if (this.ownsSkin(id)) return false;
+    if (!this.trySpend(price)) return false;
+    this.update((d) => {
+      d.cosmetics.owned.push(id);
+    });
+    return true;
+  }
+
+  /** Equip an owned skin; ignored for skins not owned. */
+  equipSkin(id: string): boolean {
+    if (!this.ownsSkin(id)) return false;
+    this.update((d) => {
+      d.cosmetics.skin = id;
+    });
+    return true;
   }
 
   // ----------------------------------------------------------- achievements

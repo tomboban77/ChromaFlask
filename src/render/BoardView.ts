@@ -10,7 +10,7 @@ import { solverClient } from '@/services/SolverClient';
 import { audio } from '@/audio/AudioEngine';
 import { BottleView, type Band } from './BottleView';
 import type { ParticleField, StreamView } from './effects';
-import { bottleHeight } from './theme';
+import { SKINS, bottleHeight, type GlassSkin } from './theme';
 
 const POUR_ANGLE = 0.92; // radians, about 53 degrees
 const LIFT = 26;
@@ -98,6 +98,8 @@ export class BoardView {
   private resolved = false;
   private motionScale = 1;
   private particlesEnabled = true;
+  /** Glass look applied to every bottle mounted now or later. */
+  private skin: GlassSkin = SKINS[0] as GlassSkin;
 
   constructor(
     private readonly stream: StreamView,
@@ -156,6 +158,7 @@ export class BoardView {
     const view = new BottleView(
       index, this.bodyW,
       this.isCauldron(index) ? 'cauldron' : this.isOneWay(index) ? 'oneway' : 'bottle',
+      this.skin,
     );
     view.setColorblind(colorblind);
     view.on('pointertap', () => this.handleTap(index));
@@ -221,6 +224,12 @@ export class BoardView {
 
   setColorblind(on: boolean): void {
     for (const b of this.bottles) b.setColorblind(on);
+  }
+
+  /** Applies to mounted bottles at once and to every bottle mounted later. */
+  setSkin(skin: GlassSkin): void {
+    this.skin = skin;
+    for (const b of this.bottles) b.setSkin(skin);
   }
 
   // ----------------------------------------------------------------- state

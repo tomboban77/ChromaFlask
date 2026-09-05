@@ -21,6 +21,7 @@ export type AnalyticsEvent =
   | { type: 'tutorial_done' }
   | { type: 'shop_open'; source: string }
   | { type: 'shop_coin_spend'; item: string; price: number }
+  | { type: 'skin_equip'; skin: string }
   | { type: 'iap_start'; product: string }
   | { type: 'iap_result'; product: string; ok: boolean; reason?: string }
   | { type: 'iap_restored'; count: number }

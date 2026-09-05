@@ -129,3 +129,80 @@ export function vesselHeight(bodyWidth: number, variant: VesselVariant): number 
 export function bottleHeight(bodyWidth: number): number {
   return vesselHeight(bodyWidth, 'bottle');
 }
+
+// --------------------------------------------------------------- skins
+/**
+ * A bottle look: the glass tints and the cork of *plain* bottles. The
+ * cauldron and the one-way flask keep their own colours in every skin so
+ * they stay recognisable as different vessels. `classic` reproduces the
+ * original constants exactly and is always owned.
+ */
+export interface GlassSkin {
+  readonly id: string;
+  /** Coins; 0 means free and always owned. */
+  readonly price: number;
+  readonly rim: number;
+  readonly rimAlpha: number;
+  /** Faint fill over the whole silhouette. */
+  readonly body: number;
+  readonly bodyAlpha: number;
+  readonly collar: number;
+  readonly collarAlpha: number;
+  /** Dark interior seen through empty glass. */
+  readonly cavity: number;
+  readonly cavityAlpha: number;
+  readonly cork: number;
+  readonly corkDark: number;
+  readonly corkEdge: number;
+}
+
+export const SKINS: readonly GlassSkin[] = [
+  {
+    id: 'classic', price: 0,
+    rim: GLASS.rim, rimAlpha: GLASS.rimAlpha, body: 0x9ec7e8, bodyAlpha: 0.06,
+    collar: 0xbcdcf5, collarAlpha: 0.2, cavity: GLASS.cavity, cavityAlpha: GLASS.cavityAlpha,
+    cork: 0xd9a066, corkDark: 0xa8703c, corkEdge: 0x6b4420,
+  },
+  {
+    id: 'frost', price: 300,
+    rim: 0xdff4ff, rimAlpha: 0.8, body: 0xcfeeff, bodyAlpha: 0.14,
+    collar: 0xffffff, collarAlpha: 0.35, cavity: 0x16223f, cavityAlpha: 0.5,
+    cork: 0x9fb8c9, corkDark: 0x6b86a0, corkEdge: 0x3f5568,
+  },
+  {
+    id: 'rose', price: 400,
+    rim: 0xffa3cf, rimAlpha: 0.7, body: 0xff8ec4, bodyAlpha: 0.1,
+    collar: 0xffc4e0, collarAlpha: 0.3, cavity: 0x2a0f24, cavityAlpha: 0.55,
+    cork: 0xe8b86d, corkDark: 0xb88a3c, corkEdge: 0x6e4d18,
+  },
+  {
+    id: 'amber', price: 500,
+    rim: 0xffcf6a, rimAlpha: 0.75, body: 0xffb84a, bodyAlpha: 0.1,
+    collar: 0xffe2a0, collarAlpha: 0.3, cavity: 0x2b1a05, cavityAlpha: 0.55,
+    cork: 0x7a4b2a, corkDark: 0x4e2e17, corkEdge: 0x2b1708,
+  },
+  {
+    id: 'emerald', price: 600,
+    rim: 0x6fe89a, rimAlpha: 0.7, body: 0x3fd97a, bodyAlpha: 0.1,
+    collar: 0xb5ffd0, collarAlpha: 0.3, cavity: 0x07261c, cavityAlpha: 0.55,
+    cork: 0xd9a066, corkDark: 0xa8703c, corkEdge: 0x6b4420,
+  },
+  {
+    id: 'obsidian', price: 800,
+    rim: 0xb39dff, rimAlpha: 0.75, body: 0x1a1030, bodyAlpha: 0.35,
+    collar: 0xd6c6ff, collarAlpha: 0.3, cavity: 0x050311, cavityAlpha: 0.8,
+    cork: 0xffc531, corkDark: 0xb88a1c, corkEdge: 0x6e4d0a,
+  },
+];
+
+export const DEFAULT_SKIN_ID = 'classic';
+
+/** Unknown ids (an old save, a removed skin) fall back to classic. */
+export function skinById(id: string): GlassSkin {
+  return SKINS.find((s) => s.id === id) ?? (SKINS[0] as GlassSkin);
+}
+
+/** CSS hex for a Pixi colour number, for DOM previews. */
+export function cssHex(color: number): string {
+  return `#${color.toString(16).padStart(6, '0')}`;
+}
