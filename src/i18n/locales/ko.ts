@@ -18,6 +18,7 @@ const table: Record<string, string> = {
   'profile.consent': 'ChromaFlask 개선을 위해 익명 사용 데이터(플레이한 레벨, 오류)를 공유합니다. 이름이나 이메일은 절대 포함되지 않습니다. 설정에서 언제든 변경할 수 있어요.',
   'profile.privacy': '개인정보 처리방침',
   'profile.start': '게임 시작',
+  'profile.save': '변경 사항 저장',
   'profile.guest': '건너뛰고 게스트로 플레이',
 
   'home.profileAria': '프로필 및 설정',
@@ -301,6 +302,8 @@ const table: Record<string, string> = {
   'support.privacy': '개인정보 처리방침',
   'support.privacyDesc': '게임이 저장하고 전송하는 것',
   'support.view': '보기',
+  'support.openBrowser': '브라우저에서 열기',
+  'support.privacyUnavailable': '여기서는 정책을 불러올 수 없어요. 브라우저에서 열어 주세요.',
   'support.reset': '진행 상황 초기화',
   'support.resetDesc': '레벨, 코인, 통계를 지워요',
   'support.resetBtn': '초기화',

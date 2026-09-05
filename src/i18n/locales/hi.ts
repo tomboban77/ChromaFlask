@@ -18,6 +18,7 @@ const table: Record<string, string> = {
   'profile.consent': 'ChromaFlask को बेहतर बनाने के लिए अनाम उपयोग डेटा (कौन से लेवल खेले गए, क्रैश) साझा करें। आपका नाम या ईमेल कभी नहीं। सेटिंग्स में कभी भी बदलें।',
   'profile.privacy': 'गोपनीयता नीति',
   'profile.start': 'खेलना शुरू करें',
+  'profile.save': 'बदलाव सेव करें',
   'profile.guest': 'छोड़ें, अतिथि के रूप में खेलें',
 
   'home.profileAria': 'प्रोफ़ाइल और सेटिंग्स',
@@ -310,6 +311,8 @@ const table: Record<string, string> = {
   'support.privacy': 'गोपनीयता नीति',
   'support.privacyDesc': 'गेम क्या सेव करता और भेजता है',
   'support.view': 'देखें',
+  'support.openBrowser': 'ब्राउज़र में खोलें',
+  'support.privacyUnavailable': 'नीति यहाँ लोड नहीं हो सकी। इसे अपने ब्राउज़र में खोलें।',
   'support.reset': 'प्रगति रीसेट करें',
   'support.resetDesc': 'लेवल, सिक्के और आँकड़े मिटाएँ',
   'support.resetBtn': 'रीसेट',

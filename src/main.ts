@@ -506,7 +506,10 @@ class App {
         break;
       case 'profile':
         // Editing an existing look: back returns home. First-run setup is the root.
-        if (this.save.snapshot.profile) this.goHome();
+        if (this.save.snapshot.profile) {
+          this.leaveProfileEditor();
+          this.goHome();
+        }
         break;
       case 'home':
       case 'boot':
@@ -590,6 +593,12 @@ class App {
     $('#btn-guest').addEventListener('click', () => {
       void this.createProfile('');
     });
+    // Read the policy in place; the href stays as the fallback for a new tab.
+    $('.consent__link').addEventListener('click', (ev) => {
+      ev.preventDefault();
+      audio.play('button');
+      void this.showPrivacyPolicy();
+    });
     input.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter') void this.createProfile(input.value);
     });
@@ -598,15 +607,34 @@ class App {
   private async createProfile(name: string): Promise<void> {
     audio.unlock();
     audio.play('button');
-    const profile = await this.auth.signIn(name, this.chosenAvatar);
     const consent = $<HTMLInputElement>('#analytics-consent').checked;
-    this.save.update((d) => {
-      d.profile = profile;
-      d.settings.analytics = consent;
-    });
-    this.analytics.track({ type: 'profile_created', avatar: profile.avatar });
+    const existing = this.save.snapshot.profile;
+    if (this.editingProfile && existing) {
+      // A change of look keeps the identity: same createdAt, no "created" event,
+      // and an emptied name field keeps the old name rather than becoming "Player".
+      const trimmed = name.trim().slice(0, 16);
+      this.save.update((d) => {
+        d.profile = { ...existing, name: trimmed || existing.name, avatar: this.chosenAvatar };
+        d.settings.analytics = consent;
+      });
+    } else {
+      const profile = await this.auth.signIn(name, this.chosenAvatar);
+      this.save.update((d) => {
+        d.profile = profile;
+        d.settings.analytics = consent;
+      });
+      this.analytics.track({ type: 'profile_created', avatar: profile.avatar });
+    }
+    this.leaveProfileEditor();
     this.renderHome();
     this.show('home');
+  }
+
+  /** Restore the look-picker to its first-run form for whoever opens it next. */
+  private leaveProfileEditor(): void {
+    this.editingProfile = false;
+    $<HTMLButtonElement>('#btn-guest').hidden = false;
+    $('#btn-start-profile').textContent = t('profile.start');
   }
 
   // ----------------------------------------------------------------- home
@@ -2341,6 +2369,14 @@ class App {
       el('div', 'profdlg__level', t('level.n', { n: this.save.highestUnlocked(LEVEL_COUNT) })),
     );
     head.appendChild(who);
+    // Edit lives on the card, next to what it edits, instead of as a big button below.
+    const edit = el('button', 'btn btn--ghost btn--compact', t('prof.changeLook'));
+    edit.addEventListener('click', () => {
+      audio.play('button');
+      this.modal.close();
+      this.editProfile();
+    });
+    head.appendChild(edit);
     content.appendChild(head);
 
     const grid = el('div', 'profdlg__grid');
@@ -2362,15 +2398,15 @@ class App {
     }
     content.appendChild(grid);
 
+    // Two quiet actions side by side; Settings has its own gear on every screen.
     this.modal.open({
       title: t('prof.title'),
       content,
       closeButton: true,
+      inlineButtons: true,
       buttons: [
-        { label: t('prof.changeLook'), kind: 'primary', onClick: () => this.editProfile() },
         { label: t('prof.achievements'), kind: 'ghost', onClick: () => this.showAchievementsDialog() },
         { label: t('prof.howto'), kind: 'ghost', onClick: () => this.showHowTo() },
-        { label: t('common.settings'), kind: 'ghost', onClick: () => this.openSettings() },
       ],
     });
   }
@@ -2385,8 +2421,16 @@ class App {
     for (const child of Array.from($('#avatar-grid').children)) {
       child.setAttribute('aria-checked', String(child.textContent === this.chosenAvatar));
     }
+    // Editing an existing look: "play as guest" belongs to first run only, and
+    // the primary action saves rather than starts.
+    this.editingProfile = true;
+    $<HTMLButtonElement>('#btn-guest').hidden = true;
+    $('#btn-start-profile').textContent = t('profile.save');
     this.show('profile');
   }
+
+  /** True while the look-picker is open to change an existing profile. */
+  private editingProfile = false;
 
   /**
    * Settings, in the order a player scans them: who they are, the things
@@ -2459,9 +2503,9 @@ class App {
     content.appendChild(el('div', 'modal__subhead', t('settings.privacy')));
     content.appendChild(toggleRow('analytics', t('settings.analytics'), t('settings.analyticsDesc')));
     content.appendChild(
-      this.actionRow(t('support.privacy'), t('support.privacyDesc'), t('support.view'), 'ghost', () => {
-        window.open('./privacy.html', '_blank', 'noopener');
-      }),
+      this.actionRow(t('support.privacy'), t('support.privacyDesc'), t('support.view'), 'ghost', () =>
+        void this.showPrivacyPolicy(() => this.openSettings()),
+      ),
     );
 
     content.appendChild(el('div', 'modal__subhead', t('support.head')));
@@ -2518,6 +2562,50 @@ class App {
   }
 
   // ------------------------------------------------------------- support
+  /**
+   * The privacy policy, read inside the game. The same `privacy.html` the
+   * store listings link to is fetched (the service worker precaches it, so
+   * this works offline) and its article is shown in a scrollable dialog;
+   * "Open in browser" remains for anyone who wants the standalone page.
+   * `onBack` reopens whatever dialog the player came from.
+   */
+  private async showPrivacyPolicy(onBack?: () => void): Promise<void> {
+    let article: HTMLElement | null = null;
+    try {
+      const res = await fetch('./privacy.html', { cache: 'no-cache' });
+      if (res.ok) {
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        const main = doc.querySelector('main');
+        if (main) {
+          // The dialog supplies the title; the page's own back link is meaningless here.
+          main.querySelector('h1')?.remove();
+          main.querySelector('a.back')?.remove();
+          article = el('div', 'policy');
+          // App-authored, same-origin HTML - never player input.
+          article.innerHTML = main.innerHTML;
+        }
+      }
+    } catch {
+      article = null;
+    }
+    const content = article ?? el('p', 'panel__hint', t('support.privacyUnavailable'));
+    this.modal.open({
+      title: t('support.privacy'),
+      content,
+      buttons: [
+        {
+          label: t('support.openBrowser'),
+          kind: 'ghost',
+          onClick: () => {
+            window.open('./privacy.html', '_blank', 'noopener');
+            return false;
+          },
+        },
+        { label: onBack ? t('common.back') : t('common.gotIt'), kind: 'primary', onClick: onBack },
+      ],
+    });
+  }
+
   /** A settings row whose control is a compact button rather than a switch. */
   private actionRow(
     label: string,

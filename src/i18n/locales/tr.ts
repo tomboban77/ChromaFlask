@@ -18,6 +18,7 @@ const table: Record<string, string> = {
   'profile.consent': "ChromaFlask'ı geliştirmek için anonim kullanım verilerini paylaş (oynanan seviyeler, çökmeler). Adın veya e-postan asla. Ayarlar'dan istediğin zaman değiştirebilirsin.",
   'profile.privacy': 'Gizlilik politikası',
   'profile.start': 'Oynamaya başla',
+  'profile.save': 'Değişiklikleri kaydet',
   'profile.guest': 'Geç, misafir olarak oyna',
 
   'home.profileAria': 'Profil ve ayarlar',
@@ -301,6 +302,8 @@ const table: Record<string, string> = {
   'support.privacy': 'Gizlilik politikası',
   'support.privacyDesc': 'Oyunun ne sakladığı ve ne gönderdiği',
   'support.view': 'Görüntüle',
+  'support.openBrowser': 'Tarayıcıda aç',
+  'support.privacyUnavailable': 'Politika burada yüklenemedi. Tarayıcında aç.',
   'support.reset': 'İlerlemeyi sıfırla',
   'support.resetDesc': 'Seviyeleri, altınları ve istatistikleri siler',
   'support.resetBtn': 'Sıfırla',

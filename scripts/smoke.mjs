@@ -462,6 +462,30 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.locator('.modal button', { hasText: 'Got it' }).click();
   await sleep(200);
 
+  // ---- change look: the editor hides "play as guest", saves, and keeps the identity
+  await page.click('#home-profile');
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  await page.locator('.modal .profdlg__head button', { hasText: 'Change look' }).click();
+  await page.waitForSelector('#screen-profile.screen--active', { timeout: 5000 });
+  const guestHidden = await page.locator('#btn-guest').isHidden();
+  const saveLabel = (await page.locator('#btn-start-profile').textContent())?.trim();
+  await page.locator('.avatar').nth(4).click();
+  await page.fill('#name-input', '');
+  await page.click('#btn-start-profile');
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 5000 });
+  const editedAvatar = (await page.locator('#home-avatar').textContent())?.trim();
+  const fifthAvatar = (await page.locator('.avatar').nth(4).textContent())?.trim();
+  await page.click('#home-profile');
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  const nameAfterEdit = (await page.locator('.modal .profdlg__name').textContent())?.trim();
+  await page.locator('.modal__x').click();
+  await sleep(200);
+  console.log(`  change look     guest hidden=${guestHidden}, button "${saveLabel}", avatar ${editedAvatar}, name "${nameAfterEdit}"`);
+  if (!guestHidden) problems.push(`[${label}] editing a look must hide "Skip, play as guest"`);
+  if (saveLabel !== 'Save changes') problems.push(`[${label}] editing a look should offer "Save changes", got "${saveLabel}"`);
+  if (editedAvatar !== fifthAvatar) problems.push(`[${label}] the new avatar should show on home (${editedAvatar} vs ${fifthAvatar})`);
+  if (nameAfterEdit !== 'Tester') problems.push(`[${label}] an emptied name field must keep the old name, got "${nameAfterEdit}"`);
+
   // ---- one-way flask (level 267): the flask is the last tube and never a source
   await page.evaluate(() => window.__cf.start(267));
   await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });

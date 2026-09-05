@@ -17,6 +17,7 @@ const table: Record<string, string> = {
   'profile.consent': 'Compartir datos de uso anónimos (qué niveles se juegan, fallos) para mejorar ChromaFlask. Nunca tu nombre ni tu correo. Puedes cambiarlo en Ajustes.',
   'profile.privacy': 'Política de privacidad',
   'profile.start': 'Empezar a jugar',
+  'profile.save': 'Guardar cambios',
   'profile.guest': 'Saltar, jugar como invitado',
 
   'home.profileAria': 'Perfil y ajustes',
@@ -309,6 +310,8 @@ const table: Record<string, string> = {
   'support.privacy': 'Política de privacidad',
   'support.privacyDesc': 'Qué guarda y envía el juego',
   'support.view': 'Ver',
+  'support.openBrowser': 'Abrir en el navegador',
+  'support.privacyUnavailable': 'No se pudo cargar la política aquí. Ábrela en tu navegador.',
   'support.reset': 'Reiniciar progreso',
   'support.resetDesc': 'Borra niveles, monedas y estadísticas',
   'support.resetBtn': 'Reiniciar',

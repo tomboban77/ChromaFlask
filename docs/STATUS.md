@@ -249,6 +249,18 @@ _Last updated: 2026-09-05_
 - **Error reporting** — uncaught errors and rejections (and boot failures) are
   sent as `client_error` analytics events, de-duplicated and capped at five
   per session. A failed boot shows a Reload control instead of a stuck splash.
+- **Profile card** — identity card with "Change look" on the card itself,
+  lifetime stats as one hairline-divided panel (not eight tiles), and two
+  inline actions (Achievements, How to play); Settings has its own gear.
+  Opening the look-picker from a card is an *edit*: "Skip, play as guest" is
+  hidden, the primary button reads "Save changes", the identity keeps its
+  createdAt, no `profile_created` event fires, and an emptied name keeps the
+  old name. Back from the editor returns home and restores first-run form.
+- **Privacy policy in-app** — Settings → Privacy → View and the consent link
+  on the look-picker open `privacy.html` inside a scrollable dialog (fetched
+  from the same precached file the store listings link to, so it reads
+  offline), with "Open in browser" as the secondary action. The hosted page
+  stays: Google Play and the App Store require a public URL.
 - **Settings layout** — identity card first (avatar, name, current level,
   "Change look"), then Sound effects / Music / Vibration / Language, then
   grouped subheads: Accessibility (colourblind aid, reduced motion), Privacy

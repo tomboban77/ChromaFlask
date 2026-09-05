@@ -27,6 +27,7 @@ export const en = {
   'profile.consent': 'Share anonymous usage data (which levels are played, crashes) to help improve ChromaFlask. Never your name or email. Change any time in Settings.',
   'profile.privacy': 'Privacy policy',
   'profile.start': 'Start playing',
+  'profile.save': 'Save changes',
   'profile.guest': 'Skip, play as guest',
 
   // home
@@ -335,6 +336,8 @@ export const en = {
   'support.privacy': 'Privacy policy',
   'support.privacyDesc': 'What the game stores and sends',
   'support.view': 'View',
+  'support.openBrowser': 'Open in browser',
+  'support.privacyUnavailable': 'The policy could not be loaded here. Open it in your browser instead.',
   'support.reset': 'Reset progress',
   'support.resetDesc': 'Erase levels, coins and stats',
   'support.resetBtn': 'Reset',

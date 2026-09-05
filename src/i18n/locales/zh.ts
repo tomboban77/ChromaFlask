@@ -18,6 +18,7 @@ const table: Record<string, string> = {
   'profile.consent': '分享匿名使用数据（玩过的关卡、崩溃情况），帮助改进 ChromaFlask。绝不包含你的名字或邮箱。可随时在设置中更改。',
   'profile.privacy': '隐私政策',
   'profile.start': '开始游戏',
+  'profile.save': '保存更改',
   'profile.guest': '跳过，以游客身份游玩',
 
   'home.profileAria': '个人资料与设置',
@@ -301,6 +302,8 @@ const table: Record<string, string> = {
   'support.privacy': '隐私政策',
   'support.privacyDesc': '游戏存储和发送的内容',
   'support.view': '查看',
+  'support.openBrowser': '在浏览器中打开',
+  'support.privacyUnavailable': '此处无法加载隐私政策，请在浏览器中打开。',
   'support.reset': '重置进度',
   'support.resetDesc': '清除关卡、金币和统计',
   'support.resetBtn': '重置',

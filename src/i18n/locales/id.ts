@@ -18,6 +18,7 @@ const table: Record<string, string> = {
   'profile.consent': 'Bagikan data penggunaan anonim (level yang dimainkan, crash) untuk membantu menyempurnakan ChromaFlask. Tidak pernah nama atau emailmu. Bisa diubah kapan saja di Pengaturan.',
   'profile.privacy': 'Kebijakan privasi',
   'profile.start': 'Mulai bermain',
+  'profile.save': 'Simpan perubahan',
   'profile.guest': 'Lewati, main sebagai tamu',
 
   'home.profileAria': 'Profil dan pengaturan',
@@ -301,6 +302,8 @@ const table: Record<string, string> = {
   'support.privacy': 'Kebijakan privasi',
   'support.privacyDesc': 'Apa yang disimpan dan dikirim game ini',
   'support.view': 'Lihat',
+  'support.openBrowser': 'Buka di browser',
+  'support.privacyUnavailable': 'Kebijakan tidak dapat dimuat di sini. Buka di browser Anda.',
   'support.reset': 'Atur ulang progres',
   'support.resetDesc': 'Hapus level, koin, dan statistik',
   'support.resetBtn': 'Atur ulang',
