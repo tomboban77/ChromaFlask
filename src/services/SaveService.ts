@@ -29,6 +29,8 @@ export interface GameSettings {
   reducedMotion: boolean;
   /** Consent to send anonymous usage events (level funnel, errors) off-device. */
   analytics: boolean;
+  /** 'auto' follows the device; otherwise a shipped locale code. */
+  language: string;
 }
 
 /** Owned powerup uses bought in the shop, spent after the per-level free uses. */
@@ -122,7 +124,7 @@ export interface DailyState {
 const _dailyStateIsStreak: (s: DailyState) => DailyStreak = (s) => s;
 void _dailyStateIsStreak;
 
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -152,6 +154,7 @@ export function defaultSave(startingCoins: number): SaveData {
       colorblind: false,
       reducedMotion: false,
       analytics: true,
+      language: 'auto',
     },
     tutorialDone: false,
     inventory: { undo: 0, hint: 0, bottle: 0 },

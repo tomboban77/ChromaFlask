@@ -135,17 +135,11 @@ export async function verifySupportCode(
   return { ok: true, code: { action, param, normalized } };
 }
 
-export const SUPPORT_CODE_ERROR_TEXT: Record<SupportCodeError, string> = {
-  malformed: 'That does not look like a support code. Check for typos?',
-  invalid: 'This code is not valid for this device.',
-  expired: 'This code has expired. Reply to the support email for a fresh one.',
-  used: 'This code was already redeemed.',
-  unsupported: 'Support codes need a secure (https) connection.',
-};
-
 export interface AppliedSupportCode {
-  /** Player-facing confirmation toast. */
-  message: string;
+  /** What was applied; the UI phrases it in the player's language. */
+  action: SupportAction;
+  /** The effective parameter (clamped level, coins, hours). */
+  param: number;
   /** Full reset wants a reload so every screen restarts from the new save. */
   reload: boolean;
 }
@@ -160,21 +154,21 @@ export function applySupportCode(
   switch (code.action) {
     case 'reset':
       save.resetProgress();
-      return { message: 'Progress reset. Enjoy the fresh start!', reload: true };
+      return { action: 'reset', param: 0, reload: true };
     case 'level': {
       const target = Math.min(Math.max(code.param, 1), levelCount);
       save.unlockThroughLevel(target);
-      return { message: `Level ${target} unlocked. Good luck!`, reload: false };
+      return { action: 'level', param: target, reload: false };
     }
     case 'coins':
       save.addCoins(code.param);
-      return { message: `${code.param} coins added to your pouch.`, reload: false };
+      return { action: 'coins', param: code.param, reload: false };
     case 'lives':
       save.refillLives();
-      return { message: 'Hearts refilled!', reload: false };
+      return { action: 'lives', param: 0, reload: false };
     case 'infinite':
       save.addInfiniteLives(code.param);
-      return { message: `Unlimited hearts for ${code.param}h. Have fun!`, reload: false };
+      return { action: 'infinite', param: code.param, reload: false };
   }
 }
 

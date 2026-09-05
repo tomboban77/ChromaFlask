@@ -119,23 +119,23 @@
           <span class="splash__logo-text"><b>Chroma</b><b>Flask</b></span>
         </div>
         <div class="splash">
-          <div class="splash__bar" role="progressbar" aria-label="Loading">
+          <div class="splash__bar" role="progressbar" aria-label="Loading" data-i18n-aria="splash.loading">
             <i id="boot-bar"></i>
           </div>
-          <p class="splash__pct" id="boot-pct">Mixing colours… 0%</p>
+          <p class="splash__pct" id="boot-pct">Mixing colours…</p>
         </div>
       </section>
 
       <!-- ========================================================= PROFILE -->
       <section class="screen" id="screen-profile">
         <div class="panel panel--center">
-          <h2 class="panel__title">Choose your look</h2>
-          <p class="panel__hint">Saved on this device. No account needed.</p>
+          <h2 class="panel__title" data-i18n="profile.title">Choose your look</h2>
+          <p class="panel__hint" data-i18n="profile.hint">Saved on this device. No account needed.</p>
 
-          <div class="avatars" id="avatar-grid" role="radiogroup" aria-label="Avatar"></div>
+          <div class="avatars" id="avatar-grid" role="radiogroup" aria-label="Avatar" data-i18n-aria="profile.avatarGroup"></div>
 
           <label class="field">
-            <span class="field__label">Name</span>
+            <span class="field__label" data-i18n="profile.name">Name</span>
             <input
               id="name-input"
               class="field__input"
@@ -145,6 +145,7 @@
               autocapitalize="words"
               spellcheck="false"
               placeholder="Player"
+              data-i18n-placeholder="profile.namePlaceholder"
             />
           </label>
 
@@ -153,32 +154,29 @@
           <label class="consent">
             <input type="checkbox" id="analytics-consent" checked />
             <span>
-              Share anonymous usage data (which levels are played, crashes) to help
-              improve ChromaFlask. Never your name or email. Change any time in Settings.
-              <a href="./privacy.html" target="_blank" rel="noopener" class="consent__link">Privacy policy</a>
+              <span data-i18n="profile.consent">Share anonymous usage data (which levels are played, crashes) to help improve ChromaFlask. Never your name or email. Change any time in Settings.</span>
+              <a href="./privacy.html" target="_blank" rel="noopener" class="consent__link" data-i18n="profile.privacy">Privacy policy</a>
             </span>
           </label>
 
-          <button class="btn btn--primary btn--wide" id="btn-start-profile">
-            Start playing
-          </button>
-          <button class="btn btn--ghost btn--wide" id="btn-guest">Skip, play as guest</button>
+          <button class="btn btn--primary btn--wide" id="btn-start-profile" data-i18n="profile.start">Start playing</button>
+          <button class="btn btn--ghost btn--wide" id="btn-guest" data-i18n="profile.guest">Skip, play as guest</button>
         </div>
       </section>
 
       <!-- ============================================================ HOME -->
       <section class="screen screen--nav" id="screen-home">
         <header class="topbar">
-          <button class="avatarframe" id="home-profile" aria-label="Profile and settings">
+          <button class="avatarframe" id="home-profile" aria-label="Profile and settings" data-i18n-aria="home.profileAria">
             <span id="home-avatar">🐱</span>
           </button>
           <div class="topbar__spacer"></div>
-          <button class="chip chip--btn" id="home-coins-chip" aria-label="Coins - open shop">
+          <button class="chip chip--btn" id="home-coins-chip" aria-label="Coins - open shop" data-i18n-aria="home.coinsAria">
             <span class="chip__icon chip__icon--coin chip__icon--lead"></span>
             <span id="home-coins">0</span>
             <span class="chip__plus">+</span>
           </button>
-          <button class="chip chip--btn" id="home-lives-chip" aria-label="Hearts - open shop">
+          <button class="chip chip--btn" id="home-lives-chip" aria-label="Hearts - open shop" data-i18n-aria="home.heartsAria">
             <span class="heartbadge">
               <svg viewBox="0 0 24 24"><use href="#cf-heart" /></svg>
               <b id="home-lives">5</b>
@@ -186,7 +184,7 @@
             <span class="chip__sub" id="home-lives-sub">Full</span>
             <span class="chip__plus">+</span>
           </button>
-          <button class="iconbtn" id="btn-settings-home" aria-label="Settings">
+          <button class="iconbtn" id="btn-settings-home" aria-label="Settings" data-i18n-aria="common.settings">
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-gear" /></svg>
           </button>
         </header>
@@ -196,10 +194,10 @@
 
           <button class="btn btn--success btn--play" id="btn-play">Level 1</button>
 
-          <button class="btn btn--daily" id="btn-daily" aria-label="Daily challenge">
+          <button class="btn btn--daily" id="btn-daily" aria-label="Daily challenge" data-i18n-aria="level.daily">
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-calendar" /></svg>
             <span class="btn--daily__text">
-              <b>Daily challenge</b>
+              <b data-i18n="level.daily">Daily challenge</b>
               <small id="daily-sub">A new potion every day</small>
             </span>
           </button>
@@ -222,13 +220,13 @@
             <span class="chip__icon chip__icon--coin chip__icon--lead"></span>
             <span id="map-coins">0</span>
           </div>
-          <button class="iconbtn" id="btn-settings-map" aria-label="Settings">
+          <button class="iconbtn" id="btn-settings-map" aria-label="Settings" data-i18n-aria="common.settings">
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-gear" /></svg>
           </button>
         </header>
 
         <div class="map">
-          <h2 class="map__title">Select a level</h2>
+          <h2 class="map__title" data-i18n="map.title">Select a level</h2>
           <div class="map__grid" id="level-grid"></div>
           <p class="map__footnote" id="map-footnote"></p>
         </div>
@@ -242,9 +240,9 @@
             <span id="shop-coins">0</span>
           </div>
           <div class="topbar__spacer"></div>
-          <h2 class="shop__title">Shop</h2>
+          <h2 class="shop__title" data-i18n="shop.title">Shop</h2>
           <div class="topbar__spacer"></div>
-          <button class="iconbtn iconbtn--danger" id="btn-shop-close" aria-label="Close shop">
+          <button class="iconbtn iconbtn--danger" id="btn-shop-close" aria-label="Close shop" data-i18n-aria="shop.closeAria">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.6"
                 stroke-linecap="round" />
@@ -254,25 +252,22 @@
 
         <div class="shop" id="shop-scroll">
           <div id="shop-iap"></div>
-          <h3 class="shop__section">Use your coins</h3>
+          <h3 class="shop__section" data-i18n="shop.useCoins">Use your coins</h3>
           <div id="shop-coin-items"></div>
-          <p class="shop__legal">
-            Purchases are processed by your app store. Coins and boosters have no cash value
-            and can only be used inside ChromaFlask.
-          </p>
+          <p class="shop__legal" data-i18n="shop.legal">Purchases are processed by your app store. Coins and boosters have no cash value and can only be used inside ChromaFlask.</p>
         </div>
       </section>
 
       <!-- ============================================================ GAME -->
       <section class="screen" id="screen-game">
         <header class="topbar topbar--game">
-          <button class="iconbtn" id="btn-back" aria-label="Back to home">
+          <button class="iconbtn" id="btn-back" aria-label="Back to home" data-i18n-aria="game.backAria">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M15.5 4 7 12l8.5 8" fill="none" stroke="currentColor" stroke-width="2.4"
                 stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </button>
-          <button class="chip chip--stat chip--btn" id="game-coins-chip" aria-label="Coins - open shop">
+          <button class="chip chip--stat chip--btn" id="game-coins-chip" aria-label="Coins - open shop" data-i18n-aria="home.coinsAria">
             <span class="chip__icon chip__icon--coin chip__icon--lead"></span>
             <span id="game-coins">0</span>
             <span class="chip__plus">+</span>
@@ -283,13 +278,13 @@
             <small id="game-move-label">0 moves</small>
           </div>
           <div class="topbar__spacer"></div>
-          <button class="iconbtn" id="btn-restart" aria-label="Restart level">
+          <button class="iconbtn" id="btn-restart" aria-label="Restart level" data-i18n-aria="game.restartAria">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M19 12a7 7 0 1 1-2.6-5.4M19 4v4h-4" fill="none" stroke="currentColor"
                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </button>
-          <button class="iconbtn" id="btn-settings-game" aria-label="Settings">
+          <button class="iconbtn" id="btn-settings-game" aria-label="Settings" data-i18n-aria="common.settings">
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-gear" /></svg>
           </button>
         </header>
@@ -309,30 +304,30 @@
 
         <div class="coach" id="coach" hidden>
           <p class="coach__text" id="coach-text"></p>
-          <button class="coach__skip" id="coach-skip">Skip tutorial</button>
+          <button class="coach__skip" id="coach-skip" data-i18n="game.skipTutorial">Skip tutorial</button>
         </div>
 
         <footer class="powerbar" id="powerbar">
-          <button class="power" id="btn-undo" aria-label="Undo last pour">
+          <button class="power" id="btn-undo" aria-label="Undo last pour" data-i18n-aria="powerup.undoAria">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 12a7 7 0 1 0 2.6-5.4M5 4v4h4" fill="none" stroke="currentColor"
                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             <span class="power__badge" id="badge-undo">3</span>
-            <span class="power__label">Undo</span>
+            <span class="power__label" data-i18n="powerup.undo">Undo</span>
           </button>
 
-          <button class="power" id="btn-hint" aria-label="Show a hint">
+          <button class="power" id="btn-hint" aria-label="Show a hint" data-i18n-aria="powerup.hintAria">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 3v2m6.4 1.6-1.4 1.4M21 12h-2M5 12H3m3.6-5.4L8 8m4 11a5 5 0 0 1-2-9.6
                        A5 5 0 0 1 14 18.4V19a2 2 0 0 1-4 0Z" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             <span class="power__badge" id="badge-hint">3</span>
-            <span class="power__label">Hint</span>
+            <span class="power__label" data-i18n="powerup.hint">Hint</span>
           </button>
 
-          <button class="power" id="btn-bottle" aria-label="Add an empty bottle">
+          <button class="power" id="btn-bottle" aria-label="Add an empty bottle" data-i18n-aria="powerup.bottleAria">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M14 3h4v2.5l-1 1.2V20a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V6.7l-1-1.2V3h2Z"
                 fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" />
@@ -340,24 +335,24 @@
                 stroke-linecap="round" />
             </svg>
             <span class="power__badge" id="badge-bottle">3</span>
-            <span class="power__label">Bottle</span>
+            <span class="power__label" data-i18n="powerup.bottle">Bottle</span>
           </button>
         </footer>
       </section>
 
       <!-- ======================================================= BOTTOM NAV -->
       <nav class="bottomnav" id="bottomnav" hidden>
-        <button class="bottomnav__tab" data-nav="shop" aria-label="Shop">
+        <button class="bottomnav__tab" data-nav="shop" aria-label="Shop" data-i18n-aria="nav.shop">
           <svg viewBox="0 0 24 24"><use href="#cf-bag" /></svg>
-          <span>Shop</span>
+          <span data-i18n="nav.shop">Shop</span>
         </button>
-        <button class="bottomnav__tab bottomnav__tab--active" data-nav="home" aria-label="Home">
+        <button class="bottomnav__tab bottomnav__tab--active" data-nav="home" aria-label="Home" data-i18n-aria="nav.home">
           <svg viewBox="0 0 24 24"><use href="#cf-house" /></svg>
-          <span>Home</span>
+          <span data-i18n="nav.home">Home</span>
         </button>
-        <button class="bottomnav__tab" data-nav="map" aria-label="Levels">
+        <button class="bottomnav__tab" data-nav="map" aria-label="Levels" data-i18n-aria="nav.levels">
           <svg viewBox="0 0 24 24"><use href="#cf-grid" /></svg>
-          <span>Levels</span>
+          <span data-i18n="nav.levels">Levels</span>
         </button>
       </nav>
 

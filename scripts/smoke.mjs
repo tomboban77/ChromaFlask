@@ -349,7 +349,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.waitForSelector('#screen-home.screen--active', { timeout: 15_000 });
   const resumeLabel = (await page.locator('#btn-play').textContent())?.trim();
   console.log(`  resume          play button reads "${resumeLabel}"`);
-  if (resumeLabel !== 'Continue level 2') {
+  if (resumeLabel !== 'Continue Level 2') {
     problems.push(`[${label}] play button should offer to continue level 2, got "${resumeLabel}"`);
   }
   await page.click('#btn-play');

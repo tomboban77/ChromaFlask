@@ -57,6 +57,7 @@ src/
     effects.ts      pour stream, particles, starfield
     theme.ts        palette and vessel proportions
   ui/          DOM overlay: screens, modals, toasts, tutorial, confetti
+  i18n/        Message tables: en.ts is the typed source of truth, 12 lazy locales
   audio/       Fully synthesised SFX and music (no audio assets at all)
 ```
 
@@ -108,6 +109,31 @@ the audio clock). Nothing to download or decode.
 - Modals set `role="dialog"`/`aria-modal` and move focus; Escape closes
 - Desktop keyboard: number keys select a bottle, Escape deselects
 - Safe-area insets respected via `viewport-fit=cover` + `env()`
+
+## Localisation
+
+Every player-facing string goes through `t()` / `tp()` from `src/i18n`. English
+(`src/i18n/en.ts`) is the typed source of truth: its keys form the `MessageKey`
+union, so a typo in a key is a compile error, and any string a locale lacks
+falls back to English rather than to a blank or a raw key. Interpolation uses
+`{name}` placeholders; plurals are separate keys (`hud.moves.one` /
+`hud.moves.other`, plus `.few` / `.many` where the language needs them) chosen
+through `Intl.PluralRules`. Static markup in `index.html` carries `data-i18n`
+attributes and is filled in once at boot by `applyStaticText()`.
+
+Thirteen languages ship: English, Spanish, Portuguese, French, German, Italian,
+Turkish, Indonesian, Russian, Hindi, Japanese, Korean and Simplified Chinese.
+Each non-English table is a dynamically imported chunk of roughly 6 KB gzipped,
+so a player only downloads the language they use. The game follows the device
+language by default and offers an override in Settings → Language (changing it
+reloads the game, which is the honest way to redraw every rendered screen).
+
+Two deliberate boundaries: level and chapter names stay English in every
+language, as proper nouns of the game world, and the twelve translations were
+authored in-house without a native speaker's review (tracked in
+`docs/STATUS.md`). After touching any table run `npm run i18n:check`: it
+fails on a key missing from a locale, a key English no longer has, a plural
+without its `.other` form, or a placeholder that differs from English.
 
 ## What is stubbed
 

@@ -205,7 +205,7 @@ _Last updated: 2026-09-05_
 - Haptics on pours/errors/wins/buttons (Android; toggle in settings).
 - Accessibility: colourblind glyphs, reduced motion, focus management, 44 px
   touch targets, safe-area insets.
-- **Persistence** — save schema v7 with forward-compatible migrations
+- **Persistence** — save schema v13 with forward-compatible migrations
   (profile, level records, coins, inventory, lives, lifetime stats, mechanic
   intros, support ID, redeemed codes, granted purchase tokens, in-progress
   attempt). LocalStorage with in-memory fallback.
@@ -253,6 +253,14 @@ _Last updated: 2026-09-05_
   service worker (`public/sw.js`: network-first navigations, cache-first
   hashed assets; registered in production builds only). Android wrap guide:
   [WRAP-ANDROID.md](WRAP-ANDROID.md).
+- **Localisation** (`src/i18n/`) — every player-facing string (about 290
+  keys: HUD, dialogs, shop, achievements, settings, support, How to play)
+  goes through `t()` / `tp()`; `en.ts` is the typed source of truth and any
+  missing translation falls back to English. Plurals use `Intl.PluralRules`
+  with per-language forms (Russian carries one/few/many/other). Twelve locales
+  beyond English ship as lazy chunks (~6 KB gzipped each): es, pt, fr, de, it,
+  tr, id, ru, hi, ja, ko, zh. Device language by default; Settings → Language
+  overrides and reloads. Level and chapter names deliberately stay English.
 - **Tests** — `test:core` (rules/solver/generator, no browser) and `test:e2e`
   (drives the real game in Edge: full flows, economy assertions, tutorial,
   persistence across reload).
@@ -265,6 +273,7 @@ _Last updated: 2026-09-05_
 | --- | --- |
 | Entry art misspelled | `art/Entry.png` bakes in "CHROME FLASK" (wrong name, and "Chrome" is a Google mark). Regenerate — ideally with **no text** so a code logotype can be overlaid. |
 | Trademark search | Run "ChromaFlask" through USPTO/EUIPO + both app stores before launch. |
+| Translations need native review | All 12 non-English tables in `src/i18n/locales/` were authored in-house, not by native speakers. Before a store listing in each market, have a native speaker read the table (especially `howto.body`, the shop legal text and the consent sentence). English fallback means a deleted line is never a blank, so trimming a doubtful string is always safe. |
 | iOS haptics | Web vibration is unsupported on iOS; the Capacitor wrapper needs a native haptics bridge. |
 | Receipt validation | Client-side purchase grants are fine for launch but spoofable; add a server verification endpoint before revenue scales. |
 | Full audit | [AUDIT.md](AUDIT.md) (2026-09-05) — findings by area with a P0/P1/P2 roadmap. P0 and P1 complete (lazy Pixi deferred). P2 in progress: L5 endless mode done; next daily challenge, chapters, achievements. |

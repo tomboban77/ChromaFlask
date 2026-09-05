@@ -6,10 +6,13 @@
  * which is what makes it teach instead of narrate.
  */
 
+import { t } from '@/i18n';
+
 export type TutorialTrigger = 'select' | 'pour' | 'complete';
 
 interface Step {
-  text: string;
+  /** Message key; resolved when the step shows, so a language change applies. */
+  text: 'tutorial.1' | 'tutorial.2' | 'tutorial.3' | 'tutorial.4';
   /** Event that advances this step, or null to auto-advance after `hold`. */
   advanceOn: TutorialTrigger | null;
   hold?: number;
@@ -18,10 +21,10 @@ interface Step {
 }
 
 const STEPS: readonly Step[] = [
-  { text: 'Tap the bottle to pick it up', advanceOn: 'select', pointer: 'from' },
-  { text: 'Now tap the other bottle to pour', advanceOn: 'pour', pointer: 'to' },
-  { text: 'Liquid only pours onto the same colour, or into an empty bottle', advanceOn: null, hold: 3200 },
-  { text: 'Fill every bottle with a single colour to win', advanceOn: null, hold: 3000 },
+  { text: 'tutorial.1', advanceOn: 'select', pointer: 'from' },
+  { text: 'tutorial.2', advanceOn: 'pour', pointer: 'to' },
+  { text: 'tutorial.3', advanceOn: null, hold: 3200 },
+  { text: 'tutorial.4', advanceOn: null, hold: 3000 },
 ];
 
 export class Tutorial {
@@ -78,7 +81,7 @@ export class Tutorial {
     this.textEl.style.animation = 'none';
     void this.textEl.offsetWidth;
     this.textEl.style.animation = '';
-    this.textEl.textContent = step.text;
+    this.textEl.textContent = t(step.text);
     this.onStep(this.index);
 
     if (step.advanceOn === null) {

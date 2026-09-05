@@ -23,8 +23,12 @@ import {
   IAP_CATALOG, Payments, getProduct, type IapProduct, type ProductId,
 } from '@/services/Payments';
 import {
-  SUPPORT_CODE_ERROR_TEXT, applySupportCode, formatSupportId, supportMailto, verifySupportCode,
+  applySupportCode, formatSupportId, supportMailto, verifySupportCode,
 } from '@/services/Support';
+import {
+  SUPPORTED_LOCALES, applyStaticText, formatLongDate, formatNumber, resolveLocale, setLocale, t, tp,
+  type MessageKey,
+} from '@/i18n';
 
 import gsap from 'gsap';
 import { audio } from '@/audio/AudioEngine';
@@ -41,7 +45,10 @@ const SCREENS: readonly ScreenId[] = ['boot', 'profile', 'home', 'map', 'shop', 
 
 const AVATARS = ['🐱', '🦊', '🐼', '🐸', '🦉', '🐙', '🦄', '🐧'];
 
-const POWERUP_LABEL: Record<PowerupId, string> = { undo: 'Undo', hint: 'Hint', bottle: 'Bottle' };
+const powerupLabel = (id: PowerupId): string => t(`powerup.${id}`);
+/** Catalog titles live in the string table so the shop reads in the player's language. */
+const productTitle = (p: IapProduct): string => t(`product.${p.id}`);
+const itemTitle = (item: CoinShopItem): string => t(`item.${item.id}.title` as MessageKey);
 
 const POWERUP_ICON: Record<PowerupId, string> = {
   undo: `<svg viewBox="0 0 24 24"><path d="M5 12a7 7 0 1 0 2.6-5.4M5 4v4h4" fill="none"
@@ -131,11 +138,15 @@ class App {
   private ignoreNextPop = false;
 
   async boot(): Promise<void> {
-    this.setSplash(6, 'Mixing colours…');
+    this.setSplash(6, t('splash.mixing'));
 
     await this.remote.refresh();
-    this.setSplash(20, 'Mixing colours…');
+    this.setSplash(20, t('splash.mixing'));
     this.save = new SaveService(this.remote.current.economy.startingCoins);
+    // Language: the player's choice, else the device's. Static HTML text is
+    // stamped once here; everything dynamic goes through t() as it renders.
+    await setLocale(resolveLocale(this.save.snapshot.settings.language, navigator.languages));
+    applyStaticText();
     // Off the boot path. Once the store is reachable, settle anything that was
     // paid for but never delivered (see Payments.ts lifecycle notes).
     void this.payments.init().then(() => this.restorePurchases());
@@ -160,10 +171,10 @@ class App {
     );
 
     this.applySettings();
-    this.setSplash(35, 'Warming the flasks…');
+    this.setSplash(35, t('splash.warming'));
 
     await this.stage.init($('#board-host'));
-    this.setSplash(80, 'Almost ready…');
+    this.setSplash(80, t('splash.almost'));
     this.analytics.track({ type: 'app_start', renderer: this.stage.rendererType });
 
     this.board = new BoardView(this.stage.stream, this.stage.particles, {
@@ -182,7 +193,7 @@ class App {
       onUnlocked: () => {
         audio.play('unlock');
         haptic([10, 30, 20]);
-        this.toast.show('Padlock open!', 'info', 1400);
+        this.toast.show(t('toast.padlockOpen'), 'info', 1400);
       },
     });
     this.stage.boardLayer.addChild(this.board.layer);
@@ -213,7 +224,7 @@ class App {
     this.wireGame();
 
     if (!this.save.persistent) {
-      this.toast.show('Private browsing: progress will not be saved', 'warn', 3800);
+      this.toast.show(t('toast.private'), 'warn', 3800);
     }
 
     this.installDevHooks();
@@ -258,7 +269,7 @@ class App {
   private async finishSplash(minMs = 450): Promise<void> {
     const remaining = minMs - (performance.now() - this.splashStartedAt);
     if (remaining > 0) await new Promise((r) => window.setTimeout(r, remaining));
-    this.setSplash(100, 'Ready');
+    this.setSplash(100, t('splash.ready'));
     await new Promise((r) => window.setTimeout(r, 120));
   }
 
@@ -312,9 +323,9 @@ class App {
     }
     const pct = document.querySelector<HTMLElement>('#boot-pct');
     const bar = document.querySelector<HTMLElement>('.splash');
-    if (pct) pct.textContent = 'Something went wrong while loading.';
+    if (pct) pct.textContent = t('boot.failed');
     if (bar) {
-      const retry = el('button', 'btn btn--primary', 'Reload');
+      const retry = el('button', 'btn btn--primary', t('boot.reload'));
       retry.style.marginTop = '14px';
       retry.addEventListener('click', () => window.location.reload());
       bar.appendChild(retry);
@@ -530,7 +541,7 @@ class App {
       const node = el('button', 'avatar', emoji);
       node.setAttribute('role', 'radio');
       node.setAttribute('aria-checked', String(i === 0));
-      node.setAttribute('aria-label', `Avatar ${i + 1}`);
+      node.setAttribute('aria-label', t('profile.avatarN', { n: i + 1 }));
       node.addEventListener('click', () => {
         this.chosenAvatar = emoji;
         for (const child of Array.from(grid.children)) {
@@ -643,24 +654,25 @@ class App {
     const chapter = done >= LEVEL_COUNT ? null : chapterFor(next);
     const progress = $('#home-progress');
     progress.textContent =
-      `★ ${this.save.campaignStars(LEVEL_COUNT)}/${LEVEL_COUNT * 3} · ${done} of ${LEVEL_COUNT} levels cleared` +
-      (endless > 0 ? ` · ${endless} endless` : '');
+      t('home.progress', {
+        stars: this.save.campaignStars(LEVEL_COUNT), max: LEVEL_COUNT * 3, done, total: LEVEL_COUNT,
+      }) + (endless > 0 ? t('home.endlessSuffix', { n: endless }) : '');
     if (chapter) {
-      progress.appendChild(el('small', '', `Chapter ${chapter.index} · ${chapter.name}`));
+      progress.appendChild(el('small', '', t('home.chapter', { n: chapter.index, name: chapter.name })));
     }
     this.renderDailyButton();
     const resume = this.save.inProgress;
     $('#btn-play').textContent = resume
-      ? `Continue ${this.levelLabel(resume.levelId).toLowerCase()}`
+      ? t('home.continue', { label: this.levelLabel(resume.levelId) })
       : done >= LEVEL_COUNT
         ? this.levelLabel(this.save.nextEndlessId(LEVEL_COUNT))
-        : `Level ${next}`;
+        : t('level.n', { n: next });
   }
 
   /** "Level 12" inside the campaign, "Endless #7" beyond it, or the daily. */
   private levelLabel(id: number): string {
-    if (isDaily(id)) return 'Daily challenge';
-    return isEndless(id) ? `Endless #${endlessIndex(id)}` : `Level ${id}`;
+    if (isDaily(id)) return t('level.daily');
+    return isEndless(id) ? t('level.endless', { n: endlessIndex(id) }) : t('level.n', { n: id });
   }
 
   /**
@@ -673,28 +685,28 @@ class App {
     content.appendChild(
       el('div', 'dailydone__stars', `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`),
     );
-    content.appendChild(el('div', 'dailydone__best', `Best today: ${bestMoves} moves`));
+    content.appendChild(el('div', 'dailydone__best', tp('daily.done.best', bestMoves)));
     const streak = this.save.dailyStreak(today);
-    if (streak > 1) content.appendChild(el('div', 'win__streak', `🔥 ${streak}-day streak`));
+    if (streak > 1) content.appendChild(el('div', 'win__streak', t('daily.streak', { n: streak })));
     const next = el('div', 'dailydone__next');
     content.appendChild(next);
 
     const refresh = () => {
       const now = new Date();
       const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      next.textContent = `Next potion in ${formatCountdown(midnight.getTime() - now.getTime())}`;
+      next.textContent = t('daily.done.next', { time: formatCountdown(midnight.getTime() - now.getTime()) });
     };
     refresh();
     const timer = window.setInterval(refresh, 1000);
 
     this.modal.open({
-      title: 'Done for today',
+      title: t('daily.done.title'),
       content,
       closeButton: true,
       buttons: [
-        { label: 'Back home', kind: 'primary' },
+        { label: t('daily.done.home'), kind: 'primary' },
         {
-          label: 'Replay for fun (no reward)',
+          label: t('daily.done.replay'),
           kind: 'ghost',
           onClick: () => {
             void this.startLevel(dailyId(today));
@@ -713,12 +725,12 @@ class App {
     const sub = $('#daily-sub');
     if (record) {
       sub.textContent =
-        `Done today ${'★'.repeat(record.stars)}${'☆'.repeat(3 - record.stars)}` +
-        (streak > 1 ? ` · 🔥 ${streak}-day streak` : ' · back tomorrow');
+        t('daily.sub.done', { stars: `${'★'.repeat(record.stars)}${'☆'.repeat(3 - record.stars)}` }) +
+        (streak > 1 ? t('daily.sub.streakSuffix', { n: streak }) : t('daily.sub.tomorrow'));
     } else if (streak > 0) {
-      sub.textContent = `🔥 ${streak}-day streak · play today to keep it`;
+      sub.textContent = t('daily.sub.keep', { n: streak });
     } else {
-      sub.textContent = 'A new potion every day';
+      sub.textContent = t('daily.sub.fresh');
     }
   }
 
@@ -732,7 +744,7 @@ class App {
     } else {
       count.textContent = String(lives.count);
       sub.textContent =
-        lives.count >= LIVES_MAX ? 'Full' : formatCountdown(lives.nextRegenAt - Date.now());
+        lives.count >= LIVES_MAX ? t('home.full') : formatCountdown(lives.nextRegenAt - Date.now());
     }
   }
 
@@ -767,8 +779,8 @@ class App {
       node.setAttribute(
         'aria-label',
         locked
-          ? `Level ${spec.id}, locked`
-          : `Level ${spec.id}, ${spec.name}, ${record?.stars ?? 0} of 3 stars`,
+          ? t('map.nodeLocked', { n: spec.id })
+          : t('map.nodeAria', { n: spec.id, name: spec.name, stars: record?.stars ?? 0 }),
       );
 
       node.appendChild(el('span', 'node__num', locked ? '🔒' : String(spec.id)));
@@ -795,7 +807,7 @@ class App {
     if (done >= LEVEL_COUNT) {
       const nextEndless = this.save.nextEndlessId(LEVEL_COUNT);
       const node = el('button', 'node node--endless node--next');
-      node.setAttribute('aria-label', `Endless mode, next is ${this.levelLabel(nextEndless)}`);
+      node.setAttribute('aria-label', t('map.endlessAria', { label: this.levelLabel(nextEndless) }));
       node.appendChild(el('span', 'node__num', '∞'));
       node.appendChild(el('span', 'node__name', this.levelLabel(nextEndless)));
       node.appendChild(el('span', 'node__stars', ''));
@@ -815,8 +827,8 @@ class App {
     const endless = this.save.endlessCleared(LEVEL_COUNT);
     $('#map-footnote').textContent =
       done >= LEVEL_COUNT
-        ? `All ${LEVEL_COUNT} levels cleared · ${endless} endless ${endless === 1 ? 'level' : 'levels'} cleared`
-        : `${done} of ${LEVEL_COUNT} levels cleared`;
+        ? tp('map.footAll', endless, { total: LEVEL_COUNT })
+        : t('map.foot', { done, total: LEVEL_COUNT });
 
     $('#btn-settings-map').onclick = () => this.openSettings();
   }
@@ -841,11 +853,14 @@ class App {
     if (cleared === size) head.classList.add('chapter--done');
     head.setAttribute(
       'aria-label',
-      `Chapter ${chapter.index}, ${chapter.name}, ${locked ? 'locked' : `${stars} of ${size * 3} stars`}`,
+      t('chapter.aria', {
+        n: chapter.index, name: chapter.name,
+        status: locked ? t('chapter.locked') : t('chapter.starsOf', { stars, max: size * 3 }),
+      }),
     );
 
     const row = el('div', 'chapter__head');
-    row.appendChild(el('span', 'chapter__num', `Chapter ${chapter.index}`));
+    row.appendChild(el('span', 'chapter__num', t('chapter.num', { n: chapter.index })));
     row.appendChild(el('h3', 'chapter__name', chapter.name));
     row.appendChild(el('span', 'chapter__stars', locked ? '🔒' : `★ ${stars}/${size * 3}`));
     head.appendChild(row);
@@ -904,18 +919,10 @@ class App {
       }
       iap.appendChild(packs);
       if (this.payments.driverName === 'simulated') {
-        iap.appendChild(
-          el('p', 'shop__legal', 'Development build - purchases are simulated, nothing is charged.'),
-        );
+        iap.appendChild(el('p', 'shop__legal', t('shop.dev')));
       }
     } else {
-      iap.appendChild(
-        el(
-          'div',
-          'shop__unavailable',
-          'Real-money purchases are only available in the ChromaFlask app from Google Play or the App Store. Everything below can be bought with coins you earn by playing.',
-        ),
-      );
+      iap.appendChild(el('div', 'shop__unavailable', t('shop.unavailable')));
     }
 
     const list = $('#shop-coin-items');
@@ -926,7 +933,11 @@ class App {
   private buildBundleCard(product: IapProduct): HTMLElement {
     const card = el('div', 'bundle');
     if (product.badge === 'Best value') card.classList.add('bundle--best');
-    if (product.badge) card.appendChild(el('span', 'bundle__badge', product.badge));
+    if (product.badge) {
+      card.appendChild(
+        el('span', 'bundle__badge', t(product.badge === 'Best value' ? 'shop.badge.best' : 'shop.badge.popular')),
+      );
+    }
 
     const coins = el('div', 'bundle__coins');
     coins.innerHTML = `${COIN_ICON} ${product.coins.toLocaleString()}`;
@@ -935,18 +946,20 @@ class App {
     const items = el('div', 'bundle__items');
     if (product.infiniteLivesHours) {
       const chip = el('span', 'bundle__item');
-      chip.innerHTML = `<svg viewBox="0 0 24 24"><use href="#cf-heart"/></svg> ∞ hearts ${product.infiniteLivesHours}h`;
+      chip.innerHTML =
+        `<svg viewBox="0 0 24 24"><use href="#cf-heart"/></svg> ` +
+        t('shop.infiniteHearts', { n: product.infiniteLivesHours });
       items.appendChild(chip);
     }
     for (const [pid, n] of Object.entries(product.powerups ?? {})) {
       items.appendChild(
-        el('span', 'bundle__item', `${POWERUP_LABEL[pid as PowerupId]} ×${n}`),
+        el('span', 'bundle__item', `${powerupLabel(pid as PowerupId)} ×${n}`),
       );
     }
     card.appendChild(items);
 
     const foot = el('div', 'bundle__foot');
-    foot.appendChild(el('span', 'bundle__name', product.title));
+    foot.appendChild(el('span', 'bundle__name', productTitle(product)));
     const buy = el('button', 'pricebtn', this.payments.displayPrice(product.id));
     buy.addEventListener('click', () => void this.purchaseIap(product, buy));
     foot.appendChild(buy);
@@ -977,8 +990,8 @@ class App {
     row.appendChild(icon);
 
     const body = el('div', 'shopitem__body');
-    body.appendChild(el('div', 'shopitem__title', item.title));
-    body.appendChild(el('div', 'shopitem__desc', item.desc));
+    body.appendChild(el('div', 'shopitem__title', itemTitle(item)));
+    body.appendChild(el('div', 'shopitem__desc', t(`item.${item.id}.desc` as MessageKey)));
     row.appendChild(body);
 
     const buy = el('button', 'pricebtn');
@@ -1005,15 +1018,15 @@ class App {
         resolve(value);
       };
       this.modal.open({
-        title: 'Test purchase',
-        bodyHtml:
-          `This development build <b>simulates</b> the app store - in the released app, ` +
-          `Google Play or the App Store shows its own payment sheet here.<br><br>` +
-          `Buy <b>${product.title}</b> for <b>${this.payments.displayPrice(product.id)}</b>?`,
+        title: t('shop.testTitle'),
+        bodyHtml: t('shop.testBody', {
+          title: escapeHtml(productTitle(product)),
+          price: escapeHtml(this.payments.displayPrice(product.id)),
+        }),
         inlineButtons: true,
         buttons: [
-          { label: 'Cancel', kind: 'ghost', onClick: () => decide(false) },
-          { label: 'Buy', kind: 'success', onClick: () => decide(true) },
+          { label: t('common.cancel'), kind: 'ghost', onClick: () => decide(false) },
+          { label: t('shop.buy'), kind: 'success', onClick: () => decide(true) },
         ],
         onClose: () => decide(false),
       });
@@ -1038,9 +1051,9 @@ class App {
 
     if (!result.ok) {
       if (result.reason === 'failed') {
-        this.toast.show('Purchase did not go through - you were not charged', 'error', 3200);
+        this.toast.show(t('shop.failed'), 'error', 3200);
       } else if (result.reason === 'unavailable') {
-        this.toast.show('Purchases are not available here', 'warn');
+        this.toast.show(t('shop.notAvailable'), 'warn');
       }
       return; // cancelled: stay quiet, the player changed their mind
     }
@@ -1050,7 +1063,7 @@ class App {
     audio.play('unlock');
     haptic([15, 40, 25]);
     this.confetti.burst(1);
-    this.toast.show(`${product.title} added - enjoy!`, 'info', 2600);
+    this.toast.show(t('shop.addedEnjoy', { title: productTitle(product) }), 'info', 2600);
     this.renderShop();
   }
 
@@ -1101,10 +1114,7 @@ class App {
     }
     if (restored > 0) {
       this.analytics.track({ type: 'iap_restored', count: restored });
-      this.toast.show(
-        restored === 1 ? 'Your purchase has been restored' : `${restored} purchases restored`,
-        'info', 3200,
-      );
+      this.toast.show(tp('shop.restored', restored), 'info', 3200);
       if (this.current === 'shop') this.renderShop();
       else if (this.current === 'home') this.renderHome();
       else if (this.current === 'game') this.updateHud();
@@ -1114,7 +1124,7 @@ class App {
   private buyCoinItem(item: CoinShopItem): void {
     if (!this.save.trySpend(item.price)) {
       audio.play('invalid');
-      this.toast.show(`Not enough coins - ${item.price} needed`, 'warn');
+      this.toast.show(t('shop.notEnough', { n: item.price }), 'warn');
       return;
     }
     if (item.grant.kind === 'refillLives') {
@@ -1125,7 +1135,7 @@ class App {
     this.analytics.track({ type: 'shop_coin_spend', item: item.id, price: item.price });
     audio.play('powerup');
     haptic(14);
-    this.toast.show(`${item.title} added`, 'info', 1800);
+    this.toast.show(t('shop.added', { title: itemTitle(item) }), 'info', 1800);
     this.renderShop();
   }
 
@@ -1176,7 +1186,7 @@ class App {
         // cauldron deal on a slow phone can take a few, so say so.
         this.starting = true;
         const brewing = window.setTimeout(
-          () => this.toast.show('Brewing a fresh potion…', 'info', 2600), 300,
+          () => this.toast.show(t('toast.brewing'), 'info', 2600), 300,
         );
         try {
           this.level = await solverClient.generate(getLevelSpec(id));
@@ -1190,7 +1200,7 @@ class App {
       }
     } catch (err) {
       console.error(err);
-      this.toast.show('Could not build that level. Please try another.', 'error');
+      this.toast.show(t('toast.buildFailed'), 'error');
       return;
     }
 
@@ -1212,7 +1222,7 @@ class App {
     this.show('game');
 
     if (restore) {
-      this.toast.show(`Continuing ${this.levelLabel(id).toLowerCase()}`, 'info', 1600);
+      this.toast.show(t('toast.continuing', { label: this.levelLabel(id) }), 'info', 1600);
     } else {
       this.save.bumpStat('plays');
       this.analytics.track({ type: 'level_start', level: id, attempt: this.attempt });
@@ -1222,28 +1232,21 @@ class App {
       this.save.update((d) => {
         d.lockSeen = true;
       });
-      const n = this.level.spec.lock.seals;
-      this.toast.show(
-        `A locked bottle! Seal ${n === 1 ? 'another bottle' : `${n} other bottles`} to open its padlock.`,
-        'info', 4600,
-      );
+      this.toast.show(tp('intro.lock', this.level.spec.lock.seals), 'info', 4600);
     }
 
     if (this.level.spec.oneWay && !this.save.snapshot.oneWaySeen) {
       this.save.update((d) => {
         d.oneWaySeen = true;
       });
-      this.toast.show(
-        'The One-Way Flask: pour in, never out. Pick one colour for it - it must be full to win.',
-        'info', 4800,
-      );
+      this.toast.show(t('intro.oneWay'), 'info', 4800);
     }
 
     if (isEndless(id) && !this.save.snapshot.endlessSeen) {
       this.save.update((d) => {
         d.endlessSeen = true;
       });
-      this.toast.show('Endless mode: fresh potions forever, and they keep getting harder', 'info', 4200);
+      this.toast.show(t('intro.endless'), 'info', 4200);
     }
 
     if (id === 1 && !this.save.snapshot.tutorialDone) {
@@ -1255,12 +1258,12 @@ class App {
       this.save.update((d) => {
         d.cauldronSeen = true;
       });
-      this.toast.show('The Cauldron takes any colour - but it must be empty to win!', 'info', 4200);
+      this.toast.show(t('intro.cauldron'), 'info', 4200);
     } else if (this.level.spec.murky && !this.save.snapshot.murkySeen) {
       this.save.update((d) => {
         d.murkySeen = true;
       });
-      this.toast.show('Murky potion! Colours reveal as they reach the top', 'info', 3800);
+      this.toast.show(t('intro.murky'), 'info', 3800);
     }
   }
 
@@ -1289,12 +1292,10 @@ class App {
     content.appendChild(card);
 
     const refillBtn = el('button', 'btn btn--success btn--wide livesdlg__btn');
-    refillBtn.innerHTML = `Refill ${COIN_ICON} ${refill.price}`;
+    refillBtn.innerHTML = `${escapeHtml(t('lives.refill'))} ${COIN_ICON} ${formatNumber(refill.price)}`;
     content.appendChild(refillBtn);
 
-    const shopBtn = el(
-      'button', 'btn btn--primary btn--wide livesdlg__btn', 'Heart bundles in the Shop',
-    );
+    const shopBtn = el('button', 'btn btn--primary btn--wide livesdlg__btn', t('lives.shop'));
     content.appendChild(shopBtn);
 
     const refresh = () => {
@@ -1303,14 +1304,14 @@ class App {
       const full = infinite || lives.count >= LIVES_MAX;
       heartCount.textContent = infinite ? '∞' : String(lives.count);
       if (infinite) {
-        label.textContent = 'Unlimited hearts active!';
+        label.textContent = t('lives.infinite');
         timerRow.hidden = false;
         timeText.textContent = formatCountdown(lives.infiniteUntil - Date.now());
       } else if (full) {
-        label.textContent = 'Your hearts are full!';
+        label.textContent = t('lives.full');
         timerRow.hidden = true;
       } else {
-        label.textContent = 'Time to next life';
+        label.textContent = t('lives.next');
         timerRow.hidden = false;
         timeText.textContent = formatCountdown(lives.nextRegenAt - Date.now());
       }
@@ -1342,7 +1343,7 @@ class App {
     refresh();
 
     this.modal.open({
-      title: 'More Lives',
+      title: t('lives.title'),
       content,
       closeButton: true,
       onClose: () => {
@@ -1397,10 +1398,7 @@ class App {
     const now = performance.now();
     if (now - this.lockToastAt < 2500) return;
     this.lockToastAt = now;
-    this.toast.show(
-      sealsLeft === 1 ? 'Locked - seal one more bottle to open it' : `Locked - seal ${sealsLeft} more bottles to open it`,
-      'warn', 2200,
-    );
+    this.toast.show(tp('toast.locked', sealsLeft), 'warn', 2200);
   }
 
   private oneWayToastAt = 0;
@@ -1408,7 +1406,7 @@ class App {
     const now = performance.now();
     if (now - this.oneWayToastAt < 2500) return;
     this.oneWayToastAt = now;
-    this.toast.show('One-way flask: pours go in, never out - and it must be full to win', 'warn', 2600);
+    this.toast.show(t('toast.oneWay'), 'warn', 2600);
   }
 
   private onMove(count: number): void {
@@ -1423,7 +1421,7 @@ class App {
     const par = this.level?.par ?? 0;
     if (!this.nudged && count > par + this.remote.current.strugglingThreshold) {
       this.nudged = true;
-      this.toast.show('Stuck? Try a hint.', 'info', 2600);
+      this.toast.show(t('toast.stuckHint'), 'info', 2600);
     }
     void count;
   }
@@ -1435,7 +1433,7 @@ class App {
     // "Ideal" is the proven minimum pours for this level (par, in golf terms -
     // but most players do not know the golf term).
     $('#game-move-label').textContent =
-      `${moves} ${moves === 1 ? 'move' : 'moves'} · ideal ${this.level?.par ?? '-'}`;
+      t('hud.line', { moves: tp('hud.moves', moves), ideal: this.level?.par ?? '-' });
 
     for (const id of ['undo', 'hint', 'bottle'] as PowerupId[]) {
       const stock = this.remainingUses(id) + this.save.inventoryCount(id);
@@ -1474,7 +1472,7 @@ class App {
       source = 'owned';
     } else {
       audio.play('invalid');
-      this.toast.show(`Out of ${POWERUP_LABEL[id]} - grab more in the shop`, 'warn', 2400);
+      this.toast.show(t('powerup.out', { name: powerupLabel(id) }), 'warn', 2400);
       this.openShop('powerup');
       return;
     }
@@ -1483,14 +1481,14 @@ class App {
     switch (id) {
       case 'undo':
         applied = this.board.undo();
-        if (!applied) this.toast.show('Nothing to undo', 'info', 1400);
+        if (!applied) this.toast.show(t('powerup.nothingToUndo'), 'info', 1400);
         break;
       case 'hint':
         // Solved in the worker; the board may move on meanwhile, in which
         // case showHint resolves false and the use is refunded below.
         applied = await this.board.showHint();
         if (applied) this.save.bumpStat('hintsUsed');
-        else this.toast.show('No winning move from here - try undo or restart', 'warn', 3000);
+        else this.toast.show(t('powerup.noHint'), 'warn', 3000);
         break;
       case 'bottle':
         applied = this.board.addTube(this.save.snapshot.settings.colorblind);
@@ -1612,11 +1610,10 @@ class App {
     const chapter = chapterFor(this.levelId);
     const mode: WinMode = daily ? 'daily' : chapter ? 'campaign' : 'endless';
     const eyebrow = daily
-      ? new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
-          .format(dateFromDay(day))
+      ? formatLongDate(dateFromDay(day))
       : chapter
-        ? `Chapter ${chapter.index} · ${chapter.name}`
-        : `Endless · ${level.spec.name}`;
+        ? t('win.eyebrow.chapter', { n: chapter.index, name: chapter.name })
+        : t('win.eyebrow.endless', { name: level.spec.name });
     window.setTimeout(
       () => this.showWinModal({
         stars, moves, seconds, reward, isLast, prevStars, prevBest, streak,
@@ -1663,7 +1660,7 @@ class App {
       this.analytics.track({ type: 'achievement', id });
       // Staggered so several landing on one win read as a list, not a pile.
       window.setTimeout(() => {
-        this.toast.show(`🏅 ${a.name} · +${a.coins} coins`, 'info', 2600);
+        this.toast.show(t('achv.toast', { name: t(`achv.${a.id}.name` as MessageKey), n: a.coins }), 'info', 2600);
         audio.play('coin');
       }, 900 + i * 700);
     });
@@ -1673,24 +1670,24 @@ class App {
     const view = this.achievementView();
     const content = el('div', 'achv');
     const done = ACHIEVEMENTS.filter((a) => this.save.hasAchievement(a.id)).length;
-    content.appendChild(el('div', 'achv__count', `${done} of ${ACHIEVEMENTS.length} earned`));
+    content.appendChild(el('div', 'achv__count', t('achv.count', { n: done, total: ACHIEVEMENTS.length })));
     for (const a of ACHIEVEMENTS) {
       const earned = this.save.hasAchievement(a.id);
       const row = el('div', `achv__row${earned ? ' achv__row--done' : ''}`);
       row.appendChild(el('span', 'achv__badge', earned ? '🏅' : '🔒'));
       const text = el('div', 'achv__text');
-      text.appendChild(el('div', 'achv__name', a.name));
-      text.appendChild(el('div', 'achv__desc', a.desc));
+      text.appendChild(el('div', 'achv__name', t(`achv.${a.id}.name` as MessageKey)));
+      text.appendChild(el('div', 'achv__desc', t(`achv.${a.id}.desc` as MessageKey)));
       row.appendChild(text);
-      row.appendChild(el('span', 'achv__coins', earned ? 'Earned' : `+${a.coins}`));
+      row.appendChild(el('span', 'achv__coins', earned ? t('achv.earned') : `+${formatNumber(a.coins)}`));
       content.appendChild(row);
     }
     void view;
     this.modal.open({
-      title: 'Achievements',
+      title: t('achv.title'),
       content,
       closeButton: true,
-      buttons: [{ label: 'Back', kind: 'ghost', onClick: () => this.showProfileDialog() }],
+      buttons: [{ label: t('common.back'), kind: 'ghost', onClick: () => this.showProfileDialog() }],
     });
   }
 
@@ -1717,15 +1714,15 @@ class App {
 
     const content = el('div', 'login');
     content.appendChild(
-      el('div', 'login__lead', streak > 1 ? `Day ${streak} in a row!` : 'Welcome back!'),
+      el('div', 'login__lead', streak > 1 ? t('login.dayN', { n: streak }) : t('login.welcome')),
     );
     const tiles = el('div', 'login__tiles');
     for (let d = 1; d <= LOGIN_CYCLE; d++) {
       const tile = el('div', 'login__tile');
       if (d < day) tile.classList.add('login__tile--done');
       if (d === day) tile.classList.add('login__tile--today');
-      tile.appendChild(el('small', '', `Day ${d}`));
-      tile.appendChild(el('b', '', `+${LOGIN_REWARDS[d - 1]}`));
+      tile.appendChild(el('small', '', t('login.day', { n: d })));
+      tile.appendChild(el('b', '', `+${formatNumber(LOGIN_REWARDS[d - 1] as number)}`));
       if (d === LOGIN_CYCLE) {
         const heart = el('span', 'login__heart');
         heart.innerHTML = `<svg viewBox="0 0 24 24"><use href="#cf-heart"/></svg>`;
@@ -1734,17 +1731,15 @@ class App {
       tiles.appendChild(tile);
     }
     content.appendChild(tiles);
-    content.appendChild(
-      el('div', 'login__hint', 'Come back every day to move along the track. Miss a day and it starts over.'),
-    );
+    content.appendChild(el('div', 'login__hint', t('login.hint')));
 
     this.modal.open({
-      title: 'Daily reward',
+      title: t('login.title'),
       content,
       dismissable: false,
       buttons: [
         {
-          label: `Claim +${reward.coins} coins${reward.refillLives ? ' & full hearts' : ''}`,
+          label: t(reward.refillLives ? 'login.claimHearts' : 'login.claim', { n: reward.coins }),
           kind: 'success',
           onClick: () => {
             this.save.claimLogin(today);
@@ -1784,10 +1779,10 @@ class App {
 
     // Chapter complete: a gold ribbon, and a peek at where the story goes next.
     if (w.chapterDone) {
-      const ribbon = el('div', 'win__chapter', `Chapter ${w.chapterDone.index} complete!`);
+      const ribbon = el('div', 'win__chapter', t('win.chapterDone', { n: w.chapterDone.index }));
       const next = chapterFor(w.chapterDone.last + 1);
       ribbon.appendChild(
-        el('small', '', next ? `Next: ${next.name}` : 'The Grand Elixir is yours'),
+        el('small', '', next ? t('win.nextChapter', { name: next.name }) : t('win.grandElixir')),
       );
       content.appendChild(ribbon);
     }
@@ -1804,13 +1799,11 @@ class App {
 
     // Verdict: celebrate a perfect, otherwise say exactly what the next star needs.
     if (w.stars === 3) {
-      content.appendChild(el('div', 'perfect', 'Perfect!'));
+      content.appendChild(el('div', 'perfect', t('win.perfect')));
     } else {
-      const t = starThresholds(w.par);
-      const need = w.stars === 2 ? t.three : t.two;
-      content.appendChild(
-        el('div', 'win__verdict', `Finish in ${need} moves or fewer for ${w.stars + 1} stars`),
-      );
+      const th = starThresholds(w.par);
+      const need = w.stars === 2 ? th.three : th.two;
+      content.appendChild(el('div', 'win__verdict', t('win.verdict', { n: need, stars: w.stars + 1 })));
     }
 
     // Reward, with how it was earned. Replays that add no stars say so plainly.
@@ -1821,24 +1814,22 @@ class App {
       card.appendChild(big);
       const parts: string[] = [];
       if (w.prevStars === null) {
-        parts.push(`Cleared +${eco.baseReward}`);
-        parts.push(`${w.stars} star${w.stars === 1 ? '' : 's'} +${w.stars * eco.rewardPerStar}`);
-        if (eco.firstClearBonus > 0) parts.push(`First clear +${eco.firstClearBonus}`);
+        parts.push(t('win.cleared', { n: eco.baseReward }));
+        parts.push(tp('win.stars', w.stars, { coins: w.stars * eco.rewardPerStar }));
+        if (eco.firstClearBonus > 0) parts.push(t('win.firstClear', { n: eco.firstClearBonus }));
       } else {
         const gained = Math.max(0, w.stars - w.prevStars);
-        parts.push(
-          `${gained} new star${gained === 1 ? '' : 's'} +${w.reward - w.chapterBonus - w.dailyBonus}`,
-        );
+        parts.push(tp('win.newStars', gained, { coins: w.reward - w.chapterBonus - w.dailyBonus }));
       }
-      if (w.chapterBonus > 0) parts.push(`Chapter complete +${w.chapterBonus}`);
-      if (w.dailyBonus > 0) parts.push(`Daily bonus +${w.dailyBonus}`);
+      if (w.chapterBonus > 0) parts.push(t('win.chapterBonus', { n: w.chapterBonus }));
+      if (w.dailyBonus > 0) parts.push(t('win.dailyBonus', { n: w.dailyBonus }));
       card.appendChild(el('div', 'win__breakdown', parts.join(' · ')));
       content.appendChild(card);
       const counter = big.querySelector('b') as HTMLElement;
       const startAt = reduced ? 0 : 180 + 3 * 260;
       window.setTimeout(() => this.countUp(counter, w.reward, reduced ? 0 : 700), startAt);
     } else {
-      content.appendChild(el('div', 'win__note', 'All stars already earned on this level'));
+      content.appendChild(el('div', 'win__note', t('win.allStars')));
     }
 
     // Stats, with a "New best" tag when the move count improved.
@@ -1849,10 +1840,10 @@ class App {
     const isNewBest = w.prevBest !== null && w.moves < w.prevBest;
     const bestShown = w.prevBest === null ? w.moves : Math.min(w.prevBest, w.moves);
     stats.innerHTML = `
-      <div><b>${w.moves}</b><span>Moves</span></div>
-      <div><b>${w.par}</b><span>Ideal</span></div>
-      <div><b>${time}</b><span>Time</span></div>
-      <div class="${isNewBest ? 'statgrid__best' : ''}"><b>${bestShown}</b><span>${isNewBest ? 'New best!' : 'Best'}</span></div>`;
+      <div><b>${w.moves}</b><span>${escapeHtml(t('win.moves'))}</span></div>
+      <div><b>${w.par}</b><span>${escapeHtml(t('win.ideal'))}</span></div>
+      <div><b>${time}</b><span>${escapeHtml(t('win.time'))}</span></div>
+      <div class="${isNewBest ? 'statgrid__best' : ''}"><b>${bestShown}</b><span>${escapeHtml(t(isNewBest ? 'win.newBest' : 'win.best'))}</span></div>`;
     content.appendChild(stats);
 
     // Progress through the campaign (or the endless tally), plus the streak
@@ -1861,7 +1852,8 @@ class App {
     if (w.mode === 'daily') {
       // The daily's progress *is* the streak.
       meta.appendChild(
-        el('span', 'win__streak', w.dailyStreak > 1 ? `🔥 ${w.dailyStreak}-day streak` : '🔥 Streak started'),
+        el('span', 'win__streak',
+          w.dailyStreak > 1 ? t('daily.streak', { n: w.dailyStreak }) : t('daily.streakStarted')),
       );
     } else {
       const endless = w.mode === 'endless';
@@ -1870,11 +1862,11 @@ class App {
         : this.save.campaignCleared(LEVEL_COUNT);
       const progress = el('div', 'win__progress');
       progress.innerHTML = endless
-        ? `<span class="win__progress-label">${cleared} endless ${cleared === 1 ? 'level' : 'levels'} cleared</span>`
+        ? `<span class="win__progress-label">${escapeHtml(tp('win.endlessCleared', cleared))}</span>`
         : `<span class="win__progress-track"><i style="width:${Math.round((cleared / LEVEL_COUNT) * 100)}%"></i></span>` +
-          `<span class="win__progress-label">${cleared} / ${LEVEL_COUNT} levels</span>`;
+          `<span class="win__progress-label">${escapeHtml(t('win.progress', { n: cleared, total: LEVEL_COUNT }))}</span>`;
       meta.appendChild(progress);
-      if (w.streak >= 2) meta.appendChild(el('span', 'win__streak', `🔥 ${w.streak} in a row`));
+      if (w.streak >= 2) meta.appendChild(el('span', 'win__streak', t('win.inARow', { n: w.streak })));
     }
     content.appendChild(meta);
 
@@ -1891,27 +1883,29 @@ class App {
     };
     if (w.mode === 'daily') {
       // There is no "next" daily until tomorrow: home is the way on.
-      actions.appendChild(act('Home', 'btn btn--success btn--wide win__next', () => this.quitToHome()));
+      actions.appendChild(act(t('common.home'), 'btn btn--success btn--wide win__next', () => this.quitToHome()));
       const row = el('div', 'modal__row');
-      row.appendChild(act('Replay', 'btn btn--ghost', () => this.restartLevel()));
+      row.appendChild(act(t('common.replay'), 'btn btn--ghost', () => this.restartLevel()));
       actions.appendChild(row);
     } else {
       // The campaign finale leads into endless mode; everything else leads to the next level.
-      const nextLabel = w.isLast ? 'Start endless mode' : 'Next level';
+      const nextLabel = w.isLast ? t('win.startEndless') : t('win.nextLevel');
       actions.appendChild(
         act(nextLabel, 'btn btn--success btn--wide win__next', () => {
           void this.startLevel(this.levelId + 1);
         }),
       );
       const row = el('div', 'modal__row');
-      row.appendChild(act('Replay', 'btn btn--ghost', () => this.restartLevel()));
-      row.appendChild(act('Home', 'btn btn--ghost', () => this.quitToHome()));
+      row.appendChild(act(t('common.replay'), 'btn btn--ghost', () => this.restartLevel()));
+      row.appendChild(act(t('common.home'), 'btn btn--ghost', () => this.quitToHome()));
       actions.appendChild(row);
     }
     content.appendChild(actions);
 
     this.modal.open({
-      title: w.isLast ? `All ${LEVEL_COUNT} levels cleared!` : `${this.levelLabel(this.levelId)} complete!`,
+      title: w.isLast
+        ? t('win.titleAll', { n: LEVEL_COUNT })
+        : t('win.title', { label: this.levelLabel(this.levelId) }),
       content,
       dismissable: false,
     });
@@ -1967,7 +1961,7 @@ class App {
     this.analytics.track({
       type: 'level_no_win', level: this.levelId, moves: this.board.moveCount,
     });
-    this.toast.show('No way to win from here - use Undo or Restart', 'warn', 3400);
+    this.toast.show(t('toast.noWin'), 'warn', 3400);
   }
 
   private onStuck(): void {
@@ -1979,26 +1973,26 @@ class App {
 
   private showStuckDialog(): void {
     this.modal.open({
-      title: 'No moves left',
-      bodyHtml: 'Every bottle is blocked. Undo a pour, add an empty bottle, or start over.',
+      title: t('stuck.title'),
+      bodyHtml: escapeHtml(t('stuck.body')),
       inlineButtons: false,
       buttons: [
         {
-          label: 'Undo last pour',
+          label: t('stuck.undo'),
           kind: 'primary',
           onClick: () => {
             void this.usePowerup('undo');
           },
         },
         {
-          label: 'Add an empty bottle',
+          label: t('stuck.bottle'),
           kind: 'ghost',
           onClick: () => {
             void this.usePowerup('bottle');
           },
         },
         {
-          label: this.heartCostLabel('Restart level'),
+          label: this.heartCostLabel(t('stuck.restart')),
           kind: 'ghost',
           onClick: () => {
             // Restarting out of a dead end is a failed attempt.
@@ -2017,7 +2011,7 @@ class App {
   }
 
   private heartCostLabel(label: string): string {
-    return this.heartAtStake ? `${label} (costs a heart)` : label;
+    return this.heartAtStake ? t('heart.cost', { label }) : label;
   }
 
   /**
@@ -2041,17 +2035,15 @@ class App {
       this.quitToHome();
       return;
     }
-    const body = this.heartAtStake
-      ? 'This level cannot be won from here. Leaving now costs a heart.'
-      : 'Your progress on this attempt will be lost.';
+    const body = this.heartAtStake ? t('quit.bodyLost') : t('quit.body');
     this.modal.open({
-      title: 'Leave this level?',
-      bodyHtml: body,
+      title: t('quit.title'),
+      bodyHtml: escapeHtml(body),
       inlineButtons: true,
       buttons: [
-        { label: 'Stay', kind: 'ghost' },
+        { label: t('quit.stay'), kind: 'ghost' },
         {
-          label: 'Leave',
+          label: t('quit.leave'),
           kind: 'primary',
           onClick: () => {
             this.loseLife('quit');
@@ -2086,17 +2078,15 @@ class App {
 
   private confirmRestart(): void {
     if (this.board.moveCount === 0) return;
-    const body = this.heartAtStake
-      ? 'This level cannot be won from here. Restarting costs a heart.'
-      : 'The board will be reset to the beginning.';
+    const body = this.heartAtStake ? t('restart.bodyLost') : t('restart.body');
     this.modal.open({
-      title: 'Restart level?',
-      bodyHtml: body,
+      title: t('restart.title'),
+      bodyHtml: escapeHtml(body),
       inlineButtons: true,
       buttons: [
-        { label: 'Cancel', kind: 'ghost' },
+        { label: t('common.cancel'), kind: 'ghost' },
         {
-          label: 'Restart',
+          label: t('restart.restart'),
           kind: 'primary',
           onClick: () => {
             // Same rule as the stuck dialog: only a lost board costs a heart.
@@ -2119,23 +2109,23 @@ class App {
     const face = el('span', 'profdlg__avatar', s.profile?.avatar ?? '🐱');
     head.appendChild(face);
     const who = el('div', 'profdlg__who');
-    who.appendChild(el('div', 'profdlg__name', s.profile?.name || 'Guest'));
+    who.appendChild(el('div', 'profdlg__name', s.profile?.name || t('prof.guest')));
     who.appendChild(
-      el('div', 'profdlg__level', `Level ${this.save.highestUnlocked(LEVEL_COUNT)}`),
+      el('div', 'profdlg__level', t('level.n', { n: this.save.highestUnlocked(LEVEL_COUNT) })),
     );
     head.appendChild(who);
     content.appendChild(head);
 
     const grid = el('div', 'profdlg__grid');
     const rows: Array<[string, string]> = [
-      ['Levels cleared', `${this.save.campaignCleared(LEVEL_COUNT)} / ${LEVEL_COUNT}`],
-      ['Stars', `${this.save.campaignStars(LEVEL_COUNT)} / ${LEVEL_COUNT * 3}`],
-      ['Endless cleared', String(this.save.endlessCleared(LEVEL_COUNT))],
-      ['Daily streak', `${this.save.dailyStreak(todayDayNumber())} (best ${this.save.bestDailyStreak})`],
-      ['Perfect clears', String(stats.perfects)],
-      ['Best win streak', String(stats.bestStreak)],
-      ['Total pours', String(stats.pours)],
-      ['Achievements', `${s.achievements.length} / ${ACHIEVEMENTS.length}`],
+      [t('prof.levels'), `${this.save.campaignCleared(LEVEL_COUNT)} / ${LEVEL_COUNT}`],
+      [t('prof.stars'), `${this.save.campaignStars(LEVEL_COUNT)} / ${LEVEL_COUNT * 3}`],
+      [t('prof.endless'), String(this.save.endlessCleared(LEVEL_COUNT))],
+      [t('prof.daily'), t('prof.dailyValue', { n: this.save.dailyStreak(todayDayNumber()), best: this.save.bestDailyStreak })],
+      [t('prof.perfects'), formatNumber(stats.perfects)],
+      [t('prof.winStreak'), String(stats.bestStreak)],
+      [t('prof.pours'), formatNumber(stats.pours)],
+      [t('prof.achievements'), `${s.achievements.length} / ${ACHIEVEMENTS.length}`],
     ];
     for (const [label, value] of rows) {
       const cell = el('div', 'profdlg__stat');
@@ -2146,14 +2136,14 @@ class App {
     content.appendChild(grid);
 
     this.modal.open({
-      title: 'Profile',
+      title: t('prof.title'),
       content,
       closeButton: true,
       buttons: [
-        { label: 'Change look', kind: 'primary', onClick: () => this.editProfile() },
-        { label: 'Achievements', kind: 'ghost', onClick: () => this.showAchievementsDialog() },
-        { label: 'How to play', kind: 'ghost', onClick: () => this.showHowTo() },
-        { label: 'Settings', kind: 'ghost', onClick: () => this.openSettings() },
+        { label: t('prof.changeLook'), kind: 'primary', onClick: () => this.editProfile() },
+        { label: t('prof.achievements'), kind: 'ghost', onClick: () => this.showAchievementsDialog() },
+        { label: t('prof.howto'), kind: 'ghost', onClick: () => this.showHowTo() },
+        { label: t('common.settings'), kind: 'ghost', onClick: () => this.openSettings() },
       ],
     });
   }
@@ -2175,14 +2165,15 @@ class App {
     const s = this.save.snapshot.settings;
     const content = el('div');
 
-    const rows: Array<[keyof typeof s, string, string]> = [
-      ['sfx', 'Sound effects', 'Pours, taps and celebrations'],
-      ['music', 'Music', 'Ambient background loop'],
-      ['haptics', 'Vibration', 'Where the device supports it'],
-      ['colorblind', 'Colourblind aid', 'Adds a shape marker to each colour'],
-      ['reducedMotion', 'Reduced motion', 'Shorter animations, no particles'],
+    type Toggle = 'sfx' | 'music' | 'haptics' | 'colorblind' | 'reducedMotion' | 'analytics';
+    const rows: Array<[Toggle, string, string]> = [
+      ['sfx', t('settings.sfx'), t('settings.sfxDesc')],
+      ['music', t('settings.music'), t('settings.musicDesc')],
+      ['haptics', t('settings.haptics'), t('settings.hapticsDesc')],
+      ['colorblind', t('settings.colorblind'), t('settings.colorblindDesc')],
+      ['reducedMotion', t('settings.reducedMotion'), t('settings.reducedMotionDesc')],
       // Keep last: the smoke test addresses the switches above by position.
-      ['analytics', 'Share anonymous usage data', 'Which levels are played and where things break. Never your name or email'],
+      ['analytics', t('settings.analytics'), t('settings.analyticsDesc')],
     ];
 
     for (const [key, label, desc] of rows) {
@@ -2197,9 +2188,9 @@ class App {
       toggle.setAttribute('aria-label', label);
       toggle.setAttribute('aria-checked', String(s[key]));
       toggle.addEventListener('click', () => {
-        const next = !(this.save.snapshot.settings[key] as boolean);
+        const next = !this.save.snapshot.settings[key];
         this.save.update((d) => {
-          (d.settings[key] as boolean) = next;
+          d.settings[key] = next;
         });
         toggle.setAttribute('aria-checked', String(next));
         this.applySettings();
@@ -2210,29 +2201,61 @@ class App {
       content.appendChild(row);
     }
 
+    content.appendChild(this.buildLanguageRow());
     content.appendChild(this.buildSupportSection());
 
     const profile = this.save.snapshot.profile;
     const footer = el('p', 'panel__hint');
     footer.innerHTML = profile
-      ? `Playing as <b>${escapeHtml(profile.name)}</b> ${escapeHtml(profile.avatar)}`
-      : 'Playing as guest';
+      ? t('settings.playingAs', { name: escapeHtml(profile.name), avatar: escapeHtml(profile.avatar) })
+      : t('settings.guest');
     content.appendChild(footer);
 
     this.modal.open({
-      title: 'Settings',
+      title: t('common.settings'),
       content,
       buttons: [
-        { label: 'How to play', kind: 'ghost', onClick: () => this.showHowTo() },
-        { label: 'Done', kind: 'primary' },
+        { label: t('prof.howto'), kind: 'ghost', onClick: () => this.showHowTo() },
+        { label: t('common.done'), kind: 'primary' },
       ],
     });
+  }
+
+  /** Language picker: device default or any shipped locale. Applies with a reload. */
+  private buildLanguageRow(): HTMLElement {
+    const row = el('div', 'setting');
+    const text = el('div');
+    text.appendChild(el('div', 'setting__label', t('settings.language')));
+    text.appendChild(el('div', 'setting__desc', t('settings.languageDesc')));
+    row.appendChild(text);
+
+    const select = el('select', 'field__input field__input--select');
+    select.setAttribute('aria-label', t('settings.language'));
+    const auto = el('option', '', t('settings.languageAuto'));
+    auto.value = 'auto';
+    select.appendChild(auto);
+    for (const loc of SUPPORTED_LOCALES) {
+      const opt = el('option', '', loc.name);
+      opt.value = loc.code;
+      select.appendChild(opt);
+    }
+    select.value = this.save.snapshot.settings.language;
+    select.addEventListener('change', () => {
+      this.save.update((d) => {
+        d.settings.language = select.value;
+      });
+      this.save.flush();
+      // Every screen holds rendered text; a reload is the honest way to redraw it all.
+      window.location.reload();
+    });
+    row.appendChild(select);
+    return row;
   }
 
   // ------------------------------------------------------------- support
   private buildSupportSection(): HTMLElement {
     const section = el('div');
-    section.appendChild(el('div', 'modal__subhead', 'Help & support'));
+    section.appendChild(el('div', 'modal__subhead', t('support.head')));
 
     const supportRow = (
       label: string,
@@ -2256,28 +2279,28 @@ class App {
     };
 
     const supportId = formatSupportId(this.save.supportId);
-    supportRow('Support ID', supportId, 'Copy', 'ghost', () => {
+    supportRow(t('support.id'), supportId, t('support.copy'), 'ghost', () => {
       navigator.clipboard?.writeText(supportId).then(
-        () => this.toast.show('Support ID copied'),
-        () => this.toast.show(`Your ID: ${supportId}`),
+        () => this.toast.show(t('support.copied')),
+        () => this.toast.show(t('support.yourId', { id: supportId })),
       );
     });
 
-    supportRow('Contact us', 'Something broken? We answer by email', 'Email', 'ghost', () => {
+    supportRow(t('support.contact'), t('support.contactDesc'), t('support.email'), 'ghost', () => {
       const level = this.save.highestUnlocked(LEVEL_COUNT);
       this.analytics.track({ type: 'support_email_open', level });
       window.location.href = supportMailto(this.save.supportId, level, SAVE_VERSION);
     });
 
-    supportRow('Support code', 'Got a code from us? Redeem it here', 'Enter', 'ghost', () =>
+    supportRow(t('support.code'), t('support.codeDesc'), t('support.enter'), 'ghost', () =>
       this.openSupportCodeEntry(),
     );
 
-    supportRow('Privacy policy', 'What the game stores and sends', 'View', 'ghost', () => {
+    supportRow(t('support.privacy'), t('support.privacyDesc'), t('support.view'), 'ghost', () => {
       window.open('./privacy.html', '_blank', 'noopener');
     });
 
-    supportRow('Reset progress', 'Erase levels, coins and stats', 'Reset', 'danger', () =>
+    supportRow(t('support.reset'), t('support.resetDesc'), t('support.resetBtn'), 'danger', () =>
       this.confirmResetProgress(),
     );
 
@@ -2291,7 +2314,7 @@ class App {
     input.autocapitalize = 'characters';
     input.autocomplete = 'off';
     input.spellcheck = false;
-    input.setAttribute('aria-label', 'Support code');
+    input.setAttribute('aria-label', t('support.code'));
     content.appendChild(input);
     const status = el('p', 'panel__hint support-code__status');
     content.appendChild(status);
@@ -2303,7 +2326,7 @@ class App {
         this.save.snapshot.redeemedCodes,
       );
       if (!result.ok) {
-        status.textContent = SUPPORT_CODE_ERROR_TEXT[result.reason];
+        status.textContent = t(`support.err.${result.reason}`);
         haptic([12, 40, 12]);
         return;
       }
@@ -2313,7 +2336,7 @@ class App {
         this.analytics.track({ type: 'progress_reset', source: 'support_code' });
       }
       this.modal.close();
-      this.toast.show(applied.message);
+      this.toast.show(t(`support.applied.${applied.action}`, { n: applied.param }));
       audio.play('win');
       if (applied.reload) {
         this.save.flush();
@@ -2324,13 +2347,13 @@ class App {
     };
 
     this.modal.open({
-      title: 'Support code',
+      title: t('support.code'),
       content,
       inlineButtons: true,
       buttons: [
-        { label: 'Cancel', kind: 'ghost', onClick: () => this.openSettings() },
+        { label: t('common.cancel'), kind: 'ghost', onClick: () => this.openSettings() },
         {
-          label: 'Redeem',
+          label: t('support.redeem'),
           kind: 'primary',
           onClick: () => {
             void redeem();
@@ -2351,18 +2374,13 @@ class App {
 
   private confirmResetProgress(): void {
     this.modal.open({
-      title: 'Reset progress?',
-      bodyHtml: `
-        <p style="text-align:left;margin:0">
-          This erases your levels, stars, coins and stats on this device and
-          restarts the game from level 1. Your settings are kept.
-          <b>This cannot be undone.</b>
-        </p>`,
+      title: t('reset.title'),
+      bodyHtml: t('reset.body'),
       inlineButtons: true,
       buttons: [
-        { label: 'Keep playing', kind: 'primary', onClick: () => this.openSettings() },
+        { label: t('reset.keep'), kind: 'primary', onClick: () => this.openSettings() },
         {
-          label: 'Reset',
+          label: t('support.resetBtn'),
           kind: 'danger',
           onClick: () => {
             this.analytics.track({ type: 'progress_reset', source: 'settings' });
@@ -2377,41 +2395,9 @@ class App {
   private showHowTo(): void {
     const eco = this.remote.current.economy;
     this.modal.open({
-      title: 'How to play',
-      bodyHtml: `
-        <div class="howto">
-          <h3>Pouring</h3>
-          <p>Tap a bottle to lift its top colour, then tap another bottle to pour.
-             Liquid only pours onto the <b>same colour</b> or into an <b>empty bottle</b>,
-             and the whole matching block moves at once if there is room.</p>
-          <p>Fill a bottle with one colour and a cork seals it - that bottle is done.
-             Seal every colour to win.</p>
-
-          <h3>Stars and the ideal</h3>
-          <p>Every level has an <b>ideal</b>: the fewest pours that can solve it, worked out
-             exactly. Finish close to the ideal for <b>three stars</b>, a bit over for two.
-             The win screen tells you the exact count the next star needs, and replaying a
-             level earns coins for any stars you did not have yet.</p>
-
-          <h3>Hearts</h3>
-          <p>You lose a heart only when a level is truly <b>failed</b> - no pours left, or the
-             game has proven it cannot be won from here - and you restart or leave it.
-             Leaving or restarting a live level is free. Hearts refill one every 30 minutes.</p>
-
-          <h3>Boosters</h3>
-          <p>Each attempt starts with <b>${eco.freeUses.undo} free undos</b> and
-             <b>${eco.freeUses.hint} free hint</b>. Extra bottles and more hints or undos come
-             from the shop, bought with the coins you earn.</p>
-
-          <h3>Twists</h3>
-          <p>The gold-rimmed <b>Cauldron</b> accepts any colour on top but must be empty to win.
-             <b>Murky potions</b> hide their colours until they reach the surface.
-             A <b>locked bottle</b> cannot be poured into or out of until you have sealed
-             the number of other bottles shown by the dots under its padlock.
-             The teal <b>one-way flask</b> takes pours but never gives them back, and the
-             level is only won once it is full - choose its colour with care.</p>
-        </div>`,
-      buttons: [{ label: 'Got it', kind: 'primary' }],
+      title: t('howto.title'),
+      bodyHtml: t('howto.body', { undo: eco.freeUses.undo, hint: eco.freeUses.hint }),
+      buttons: [{ label: t('common.gotIt'), kind: 'primary' }],
     });
   }
 }
