@@ -1027,7 +1027,10 @@ body {
 
 /* Settings header: the same identity card, smaller, with an edit action. */
 .profdlg__head--compact { padding: 10px 12px; gap: 12px; margin-bottom: 6px; }
-/* A ghost button is white-on-dark; on the ivory card it needs its own colours. */
+/* A ghost button is white-on-dark; on the ivory card it needs its own colours.
+   The identity card only ever appears inside a dialog, and `.modal .btn--ghost`
+   (declared later, same specificity) would otherwise win - hence the `.modal`. */
+.modal .profdlg__head .btn--ghost,
 .profdlg__head .btn--ghost {
   background: linear-gradient(180deg, var(--purple-0), var(--purple-1));
   border: 1.5px solid var(--gold);
