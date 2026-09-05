@@ -129,7 +129,9 @@ export class BoardView {
       this.bottles[i]?.setHidden(this.hidden[i] ?? 0);
     }
     this.syncAll();
-    // A resumed board may already have sealed bottles; show them sealed.
+    // A resumed board may already have sealed bottles; show them sealed, and
+    // make sure nothing under a cork is still concealed.
+    this.settleHidden();
     this.syncCaps(false);
     this.syncLock(false);
     // The game screen may still be display:none, in which case the host
@@ -625,10 +627,16 @@ export class BoardView {
     }
   }
 
-  /** Reveal any concealed unit that has surfaced; never re-conceals. */
+  /**
+   * Reveal any concealed unit that has surfaced; never re-conceals. A
+   * completed bottle reveals everything: the game knows it is one colour
+   * (that is what the cork means), so a "?" under the cork would be a lie.
+   */
   private settleHidden(): void {
     for (let i = 0; i < this.board.length; i++) {
-      const cap = Math.max(0, (this.board[i]?.length ?? 0) - 1);
+      const tube = this.board[i];
+      const complete = tube !== undefined && isComplete(tube) && !this.isCauldron(i);
+      const cap = complete ? 0 : Math.max(0, (tube?.length ?? 0) - 1);
       const current = this.hidden[i] ?? 0;
       if (current > cap) {
         this.hidden[i] = cap;
