@@ -60,6 +60,18 @@ async function runViewport(browser, label, width, height, isMobile) {
   });
   const page = await context.newPage();
 
+  // Screenshots are diagnostics, never assertions. Playwright waits for a
+  // composited frame before capturing; under software WebGL on a slow runner
+  // that frame can take longer than any sane timeout, and a hung screenshot
+  // must not fail the gate. Short timeout, log, move on.
+  const shot = async (name) => {
+    try {
+      await page.screenshot({ path: `${SHOTS}/${label}-${name}.png`, timeout: 8000 });
+    } catch (err) {
+      console.log(`  (screenshot ${name} skipped: ${String(err.message).split('\n')[0]})`);
+    }
+  };
+
   page.on('console', (msg) => {
     if (msg.type() === 'error') problems.push(`[${label}] console: ${msg.text()}`);
   });
@@ -86,7 +98,7 @@ async function runViewport(browser, label, width, height, isMobile) {
 
   // ---- boot -> profile
   await page.waitForSelector('#screen-profile.screen--active', { timeout: 15_000 });
-  await page.screenshot({ path: `${SHOTS}/${label}-1-profile.png` });
+  await shot('1-profile');
   console.log('  profile screen  OK');
 
   // pick a non-default avatar, type a name
@@ -110,7 +122,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (playLabel !== 'Level 1') problems.push(`[${label}] play button should read "Level 1", got "${playLabel}"`);
   const livesShown = (await page.locator('#home-lives').textContent())?.trim();
   if (livesShown !== '5') problems.push(`[${label}] fresh profile should have 5 hearts, got "${livesShown}"`);
-  await page.screenshot({ path: `${SHOTS}/${label}-1b-home.png` });
+  await shot('1b-home');
 
   // ---- daily challenge: today's board is generated in the worker
   const dailySub = (await page.locator('#daily-sub').textContent())?.trim();
@@ -136,7 +148,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (coinItemCount !== 4) problems.push(`[${label}] expected 4 coin items, got ${coinItemCount}`);
   const freshEquipped = (await page.locator('.skin--equipped .skin__name').textContent())?.trim();
   if (freshEquipped !== 'Classic glass') problems.push(`[${label}] a fresh profile should have Classic glass equipped, got "${freshEquipped}"`);
-  await page.screenshot({ path: `${SHOTS}/${label}-1c-shop.png` });
+  await shot('1c-shop');
   await page.click('#btn-shop-close');
   await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
 
@@ -150,7 +162,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   const chapterCount = await page.locator('.chapter').count();
   if (chapterCount !== LEVEL_COUNT / 20) problems.push(`[${label}] expected ${LEVEL_COUNT / 20} chapter headers, got ${chapterCount}`);
   if (lockedCount !== LEVEL_COUNT - 1) problems.push(`[${label}] expected ${LEVEL_COUNT - 1} locked levels, got ${lockedCount}`);
-  await page.screenshot({ path: `${SHOTS}/${label}-2-map.png` });
+  await shot('2-map');
 
   // ---- into level 1
   await page.locator('.node').first().click();
@@ -165,7 +177,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   }
 
   await sleep(1400); // let the intro animation settle
-  await page.screenshot({ path: `${SHOTS}/${label}-3-game.png` });
+  await shot('3-game');
 
   const hookPresent = await page.evaluate(() => typeof window.__cf === 'object');
   if (!hookPresent) {
@@ -189,7 +201,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   // ---- a manual pour, to exercise real input and the pour animation
   await page.evaluate(() => window.__cf.tap(0));
   await sleep(260);
-  await page.screenshot({ path: `${SHOTS}/${label}-4-selected.png` });
+  await shot('4-selected');
 
   // ---- play the generated winning line
   const run = await page.evaluate(() => window.__cf.autoplay());
@@ -227,7 +239,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (afterWin.coins <= initial.coins) {
     problems.push(`[${label}] coins did not increase after a win`);
   }
-  await page.screenshot({ path: `${SHOTS}/${label}-5-win.png` });
+  await shot('5-win');
 
   // ---- next level, verify progression carried
   await page.locator('.modal button').first().click();
@@ -236,12 +248,12 @@ async function runViewport(browser, label, width, height, isMobile) {
   const lvl2 = await page.evaluate(() => window.__cf.state());
   console.log(`  level 2         tubes=${lvl2.tubes} par=${lvl2.par}`);
   if (lvl2.tubes !== 5) problems.push(`[${label}] level 2 should have 5 tubes, got ${lvl2.tubes}`);
-  await page.screenshot({ path: `${SHOTS}/${label}-6-level2.png` });
+  await shot('6-level2');
 
   // ---- powerups
   await page.click('#btn-hint');
   await sleep(500);
-  await page.screenshot({ path: `${SHOTS}/${label}-7-hint.png` });
+  await shot('7-hint');
 
   // Play the first move of the real solution so the pour is certain to be legal.
   const first = await page.evaluate(() => window.__cf.move(0));
@@ -286,7 +298,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (afterBottle.tubes !== tubesBefore + 1) {
     problems.push(`[${label}] add-bottle did not add a tube`);
   }
-  await page.screenshot({ path: `${SHOTS}/${label}-8-powerups.png` });
+  await shot('8-powerups');
 
   // ---- out of a powerup -> the shop opens instead of charging coins
   // (the single free hint was spent earlier in this level)
@@ -298,7 +310,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (coinsAfterEmpty !== coinsBeforeEmpty) {
     problems.push(`[${label}] running out of hints must open the shop, not charge coins`);
   }
-  await page.screenshot({ path: `${SHOTS}/${label}-8b-shop-from-game.png` });
+  await shot('8b-shop-from-game');
 
   // buy a Hint x3 pack with coins (item order: hearts, undo, hint, bottle)
   await page.locator('.shopitem .pricebtn').nth(2).click();
@@ -342,10 +354,10 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.waitForSelector('.modal', { timeout: 5000 });
   await page.locator('.switch').nth(3).click(); // colourblind
   await sleep(400);
-  await page.screenshot({ path: `${SHOTS}/${label}-9-settings.png` });
+  await shot('9-settings');
   await page.locator('.modal button').last().click();
   await sleep(500);
-  await page.screenshot({ path: `${SHOTS}/${label}-10-colorblind.png` });
+  await shot('10-colorblind');
 
   // ---- replaying an already-perfect level must pay nothing (coin-farm guard)
   const beforeReplay = await page.evaluate(() => window.__cf.state());
@@ -565,7 +577,7 @@ async function runViewport(browser, label, width, height, isMobile) {
     problems.push(`[${label}] levels 1-3 should be open after clearing 1 and skipping 2 (locked=${unlockedAfter})`);
   }
   if (skippedAfter !== 1) problems.push(`[${label}] the skipped level 2 should show as skipped on the map (got ${skippedAfter})`);
-  await page.screenshot({ path: `${SHOTS}/${label}-11-reloaded.png` });
+  await shot('11-reloaded');
 
   await context.close();
 }
