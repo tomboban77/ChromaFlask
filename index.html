@@ -61,6 +61,12 @@
           <stop offset="0" stop-color="#ffe08a" />
           <stop offset="1" stop-color="#f5a10c" />
         </linearGradient>
+        <!-- Shaded heart fill so the hearts badge reads like the bevelled coin, not a flat glyph. -->
+        <radialGradient id="cf-heart-shade" cx="0.36" cy="0.28" r="0.85">
+          <stop offset="0" stop-color="#ff8fa3" />
+          <stop offset="0.45" stop-color="#ff3b55" />
+          <stop offset="1" stop-color="#c8102e" />
+        </radialGradient>
         <g id="cf-flask">
           <g clip-path="url(#cf-flask-clip)">
             <rect x="40" y="146" width="120" height="30" fill="#ffb020" />
@@ -178,7 +184,7 @@
           </button>
           <button class="chip chip--btn" id="home-lives-chip" aria-label="Hearts - open shop" data-i18n-aria="home.heartsAria">
             <span class="heartbadge">
-              <svg viewBox="0 0 24 24"><use href="#cf-heart" /></svg>
+              <svg viewBox="0.5 3.6 23 18.2" aria-hidden="true"><use href="#cf-heart" /></svg>
               <b id="home-lives">5</b>
             </span>
             <span class="chip__sub" id="home-lives-sub">Full</span>
