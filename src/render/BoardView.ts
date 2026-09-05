@@ -178,6 +178,8 @@ export class BoardView {
     this.slots = [];
     this.layer.removeChildren();
     this.stream.stop();
+    // Win confetti lives up to ~4 s; a new board should not start under it.
+    this.particles.clear();
   }
 
   /** Staggered drop-in so the board assembles itself rather than appearing. */
