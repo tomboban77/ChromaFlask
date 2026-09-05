@@ -205,7 +205,12 @@ export class BottleView extends Container {
     const lh = h * 0.34;
     const ly = cy - h * 0.06;
     const shackleR = lw * 0.32;
-    p.arc(cx, ly - lh / 2, shackleR, Math.PI, Math.PI * 2)
+    // arc() continues the current path from the pen position - which after
+    // clear() is the bottle mouth - so start the shackle explicitly or a
+    // stray line runs from the mouth down to the padlock.
+    const shackleY = ly - lh / 2;
+    p.moveTo(cx - shackleR, shackleY)
+      .arc(cx, shackleY, shackleR, Math.PI, Math.PI * 2)
       .stroke({ width: Math.max(2, lw * 0.16), color: 0xffc531, cap: 'round' });
     p.roundRect(cx - lw / 2, ly - lh / 2, lw, lh, Math.min(4, lw * 0.15)).fill({ color: 0xffc531 });
     p.circle(cx, ly + lh * 0.02, Math.max(1.4, lw * 0.1)).fill({ color: 0x3d2a05 });
@@ -722,7 +727,11 @@ export class BottleView extends Container {
     const r = size / 2;
     const w = Math.max(1.6, r * 0.32);
     // Hook: sweeps from the left, over the top, down the right side.
-    gfx.arc(cx, cy - r * 0.32, r * 0.58, Math.PI, Math.PI * 2.45)
+    // Start the hook explicitly: arc() would otherwise draw a line from the
+    // pen's last position (the previous band) to the hook's first point.
+    const hookY = cy - r * 0.32;
+    gfx.moveTo(cx - r * 0.58, hookY)
+      .arc(cx, hookY, r * 0.58, Math.PI, Math.PI * 2.45)
       .stroke({ width: w, color: 0xffffff, alpha: 0.5, cap: 'round' });
     // Stem down to just above the dot.
     gfx.moveTo(cx + r * 0.02, cy + r * 0.02)
