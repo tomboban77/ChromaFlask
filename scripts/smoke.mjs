@@ -291,6 +291,39 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.locator('.modal button').last().click(); // Home
   await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
 
+  // ---- mid-level resume: a move made on level 2 survives a full reload
+  await page.evaluate(() => window.__cf.start(2));
+  await sleep(900);
+  const resumeMove = await page.evaluate(() => window.__cf.move(0));
+  await page.evaluate((mv) => window.__cf.tap(mv.from), resumeMove);
+  await page.evaluate((mv) => window.__cf.tap(mv.to), resumeMove);
+  await sleep(1100);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 15_000 });
+  const resumeLabel = (await page.locator('#btn-play').textContent())?.trim();
+  console.log(`  resume          play button reads "${resumeLabel}"`);
+  if (resumeLabel !== 'Continue level 2') {
+    problems.push(`[${label}] play button should offer to continue level 2, got "${resumeLabel}"`);
+  }
+  await page.click('#btn-play');
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 8000 });
+  await sleep(900);
+  const resumed = await page.evaluate(() => window.__cf.state());
+  console.log(`  resumed level   moves=${resumed.moves} tubes=${resumed.tubes}`);
+  if (resumed.moves !== 1 || resumed.tubes !== 5) {
+    problems.push(`[${label}] resumed level 2 should have 1 move and 5 tubes, got ${resumed.moves}/${resumed.tubes}`);
+  }
+  // Leaving a live board is free and drops the saved attempt.
+  await page.click('#btn-back');
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  await page.locator('.modal button').last().click(); // Leave
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+  const afterLeave = (await page.locator('#btn-play').textContent())?.trim();
+  const livesAfterLeave = (await page.locator('#home-lives').textContent())?.trim();
+  console.log(`  after leaving   play button "${afterLeave}", hearts ${livesAfterLeave}`);
+  if (afterLeave !== 'Level 2') problems.push(`[${label}] leaving should clear the saved attempt (got "${afterLeave}")`);
+  if (livesAfterLeave !== '5') problems.push(`[${label}] leaving a live board must not cost a heart (hearts=${livesAfterLeave})`);
+
   // ---- back button: closes an open dialog, then returns from map to home
   await page.click('#btn-settings-home');
   await page.waitForSelector('.modal', { timeout: 5000 });

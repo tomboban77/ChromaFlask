@@ -108,10 +108,17 @@ _Last updated: 2026-09-05_
 - Haptics on pours/errors/wins/buttons (Android; toggle in settings).
 - Accessibility: colourblind glyphs, reduced motion, focus management, 44 px
   touch targets, safe-area insets.
-- **Persistence** — save schema v6 with forward-compatible migrations
+- **Persistence** — save schema v7 with forward-compatible migrations
   (profile, level records, coins, inventory, lives, lifetime stats, mechanic
-  intros, support ID, redeemed codes, granted purchase tokens). LocalStorage
-  with in-memory fallback.
+  intros, support ID, redeemed codes, granted purchase tokens, in-progress
+  attempt). LocalStorage with in-memory fallback.
+- **Mid-level resume** — the current attempt (board, moves, murk state, extra
+  tubes, powerup uses, play time) is saved after every move; killing the app
+  mid-level costs nothing. Home offers "Continue level N", the map node for
+  that level resumes too, and a resumed level never re-asks for a heart. The
+  saved position is validated against the level (same colour units, capacity,
+  tube count) before it is trusted. Cleared by a win, restart or confirmed
+  quit; the tutorial level is never resumed mid-way.
 - **Back button** — one history "guard" entry exists while there is anything
   to go back from. Android/browser back closes a dismissable dialog, asks to
   leave a level, closes the shop, or returns from the map; on home with

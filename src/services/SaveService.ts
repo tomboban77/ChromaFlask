@@ -5,7 +5,8 @@
  * writing one new driver - not touching game code.
  */
 
-import { LIVES_MAX, LIVES_REGEN_MS } from '@/core/progression';
+import { LIVES_MAX, LIVES_REGEN_MS, type PowerupId } from '@/core/progression';
+import type { Board, Move } from '@/core/types';
 
 export interface SaveProfile {
   name: string;
@@ -52,6 +53,23 @@ export interface LifetimeStats {
   bestStreak: number;
 }
 
+/**
+ * A level attempt saved mid-way, so backgrounding or killing the app never
+ * costs the player their moves. Written after every move and powerup use;
+ * cleared by a win, a restart, or a confirmed quit.
+ */
+export interface InProgressState {
+  levelId: number;
+  board: Board;
+  history: Move[];
+  /** Concealed units per tube (murky levels), else zeros. */
+  hidden: number[];
+  extraTubes: number;
+  uses: Record<PowerupId, number>;
+  /** Play time so far, so the win screen's timer excludes the break. */
+  elapsedMs: number;
+}
+
 export interface SaveData {
   version: number;
   profile: SaveProfile | null;
@@ -75,9 +93,11 @@ export interface SaveData {
    * was paid for but interrupted before the grant be restored exactly once.
    */
   grantedPurchaseTokens: string[];
+  /** The attempt the player was in the middle of, if any. */
+  inProgress: InProgressState | null;
 }
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -117,6 +137,7 @@ export function defaultSave(startingCoins: number): SaveData {
     supportId: generateSupportId(),
     redeemedCodes: [],
     grantedPurchaseTokens: [],
+    inProgress: null,
   };
 }
 
@@ -216,7 +237,20 @@ export class SaveService {
       redeemedCodes: parsed.redeemedCodes ?? [],
       // v5 saves predate purchase restore.
       grantedPurchaseTokens: parsed.grantedPurchaseTokens ?? [],
+      // v6 saves predate mid-level resume.
+      inProgress: parsed.inProgress ?? null,
     };
+  }
+
+  // ----------------------------------------------------------- in progress
+  get inProgress(): Readonly<InProgressState> | null {
+    return this.data.inProgress;
+  }
+
+  setInProgress(state: InProgressState | null): void {
+    this.update((d) => {
+      d.inProgress = state;
+    });
   }
 
   get snapshot(): Readonly<SaveData> {

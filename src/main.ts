@@ -2,13 +2,14 @@ import './styles/main.css';
 
 import { LEVELS, LEVEL_COUNT } from '@/core/levels';
 import { getCampaignLevel } from '@/core/campaign';
+import { TUBE_CAPACITY } from '@/core/board';
 import {
   COIN_SHOP, LIVES_MAX, coinsFor, starsFor,
   type CoinShopItem, type PowerupId,
 } from '@/core/progression';
 import type { GeneratedLevel } from '@/core/types';
 
-import { SAVE_VERSION, SaveService } from '@/services/SaveService';
+import { SAVE_VERSION, SaveService, type InProgressState } from '@/services/SaveService';
 import { AuthService } from '@/services/AuthService';
 import { Analytics, POSTHOG_KEY, PostHogDriver } from '@/services/Analytics';
 import { RemoteConfig } from '@/services/RemoteConfig';
@@ -48,6 +49,29 @@ const POWERUP_ICON: Record<PowerupId, string> = {
 
 const HEART_ICON = `<svg viewBox="0 0 24 24" class="heart"><use href="#cf-heart"/></svg>`;
 const COIN_ICON = `<span class="chip__icon chip__icon--coin"></span>`;
+
+/**
+ * A saved attempt is only trusted if it is plausibly this level: same colour
+ * units in the same quantities, no tube over capacity, and no more tubes than
+ * the level plus the bottle powerup could produce. Anything else (a corrupted
+ * or hand-edited save, a level retuned since) starts fresh.
+ */
+function isValidRestore(level: GeneratedLevel, state: InProgressState, maxExtra: number): boolean {
+  const base = level.board.length;
+  if (state.board.length < base || state.board.length > base + maxExtra) return false;
+  if (state.extraTubes !== state.board.length - base) return false;
+  const count = (board: readonly (readonly number[])[]): Map<number, number> => {
+    const m = new Map<number, number>();
+    for (const tube of board) for (const c of tube) m.set(c, (m.get(c) ?? 0) + 1);
+    return m;
+  };
+  if (state.board.some((tube) => tube.length > TUBE_CAPACITY)) return false;
+  const want = count(level.board);
+  const have = count(state.board);
+  if (want.size !== have.size) return false;
+  for (const [c, n] of want) if (have.get(c) !== n) return false;
+  return Array.isArray(state.history) && Array.isArray(state.hidden);
+}
 
 /** "1h 12m" above an hour, "12:07" below, for lives countdowns. */
 function formatCountdown(ms: number): string {
@@ -534,9 +558,12 @@ class App {
     $('#btn-play').addEventListener('click', () => {
       audio.play('button');
       haptic(10);
+      const resume = this.save.inProgress;
       const next = this.save.highestUnlocked(LEVEL_COUNT);
       const done = Object.keys(this.save.snapshot.levels).length;
-      if (done >= LEVEL_COUNT) {
+      if (resume) {
+        this.startLevel(resume.levelId);
+      } else if (done >= LEVEL_COUNT) {
         this.renderMap();
         this.show('map');
       } else {
@@ -573,7 +600,10 @@ class App {
       `★ ${this.save.totalStars}/${LEVEL_COUNT * 3} · ${done} of ${LEVEL_COUNT} levels cleared`;
 
     const next = this.save.highestUnlocked(LEVEL_COUNT);
-    $('#btn-play').textContent = done >= LEVEL_COUNT ? 'Play again' : `Level ${next}`;
+    const resume = this.save.inProgress;
+    $('#btn-play').textContent = resume
+      ? `Continue level ${resume.levelId}`
+      : done >= LEVEL_COUNT ? 'Play again' : `Level ${next}`;
   }
 
   private renderLivesChip(): void {
@@ -941,18 +971,24 @@ class App {
   }
 
   private startLevel(id: number): void {
-    // Hearts gate every level after the tutorial; regen or the shop restores them.
-    if (!this.save.canPlay && this.save.snapshot.tutorialDone) {
+    // An attempt saved mid-level for this id is resumed; starting any other
+    // level abandons it.
+    const saved = this.save.inProgress;
+    const resume = saved && saved.levelId === id ? saved : null;
+
+    // Hearts gate every *fresh* level after the tutorial; a level already in
+    // progress can always be continued - the heart was spent starting it.
+    if (!resume && !this.save.canPlay && this.save.snapshot.tutorialDone) {
       this.analytics.track({ type: 'out_of_lives', level: id });
       this.showLivesDialog(id);
       return;
     }
+    // Only now is the fresh start certain; a blocked start must not discard
+    // an attempt saved on another level.
+    if (!resume) this.save.setInProgress(null);
 
     this.levelId = id;
     this.attempt += 1;
-    this.attemptStartedAt = Date.now();
-    this.uses = { undo: 0, hint: 0, bottle: 0 };
-    this.extraTubes = 0;
     this.nudged = false;
 
     try {
@@ -964,13 +1000,29 @@ class App {
       return;
     }
 
+    const maxExtra = this.remote.current.economy.maxExtraTubes;
+    const restore = resume && isValidRestore(this.level, resume, maxExtra) ? resume : null;
+    if (resume && !restore) this.save.setInProgress(null);
+
+    this.attemptStartedAt = Date.now() - (restore?.elapsedMs ?? 0);
+    this.uses = restore ? { ...restore.uses } : { undo: 0, hint: 0, bottle: 0 };
+    this.extraTubes = restore?.extraTubes ?? 0;
+
     this.applySettings();
-    this.board.mount(this.level, this.save.snapshot.settings.colorblind);
+    this.board.mount(
+      this.level,
+      this.save.snapshot.settings.colorblind,
+      restore ? { board: restore.board, history: restore.history, hidden: restore.hidden } : undefined,
+    );
     this.updateHud();
     this.show('game');
 
-    this.save.bumpStat('plays');
-    this.analytics.track({ type: 'level_start', level: id, attempt: this.attempt });
+    if (restore) {
+      this.toast.show(`Continuing level ${id}`, 'info', 1600);
+    } else {
+      this.save.bumpStat('plays');
+      this.analytics.track({ type: 'level_start', level: id, attempt: this.attempt });
+    }
 
     if (id === 1 && !this.save.snapshot.tutorialDone) {
       window.setTimeout(() => this.tutorial.start(), 700);
@@ -1083,8 +1135,32 @@ class App {
     });
   }
 
+  /**
+   * Persist the current attempt so it survives the app being killed. Called
+   * after every move and powerup. A board with nothing done on it stores
+   * nothing; the tutorial level is never resumed mid-way (the coaching would
+   * restart out of step).
+   */
+  private persistProgress(): void {
+    if (!this.level || this.tutorial.active || this.board.isResolved) return;
+    if (this.board.moveCount === 0 && this.extraTubes === 0) {
+      this.save.setInProgress(null);
+      return;
+    }
+    this.save.setInProgress({
+      levelId: this.levelId,
+      board: this.board.snapshot(),
+      history: this.board.historySnapshot(),
+      hidden: this.board.hiddenSnapshot(),
+      extraTubes: this.extraTubes,
+      uses: { ...this.uses },
+      elapsedMs: Date.now() - this.attemptStartedAt,
+    });
+  }
+
   private restartLevel(): void {
     if (!this.level) return;
+    this.save.setInProgress(null);
     this.uses = { undo: 0, hint: 0, bottle: 0 };
     this.extraTubes = 0;
     this.nudged = false;
@@ -1099,6 +1175,7 @@ class App {
     this.tutorial.notify('pour');
     this.updateTutorialHand();
     this.updateHud();
+    this.persistProgress();
 
     // One gentle nudge if the player drifts well past par.
     const par = this.level?.par ?? 0;
@@ -1185,6 +1262,7 @@ class App {
     }
 
     if (source === 'free') this.uses[id] += 1;
+    this.persistProgress();
     haptic(14);
     this.analytics.track({
       type: 'powerup_used',
@@ -1235,6 +1313,7 @@ class App {
     const level = this.level;
     if (!level) return;
     this.winCount += 1;
+    this.save.setInProgress(null);
 
     const moves = this.board.moveCount;
     const seconds = Math.round((Date.now() - this.attemptStartedAt) / 1000);
@@ -1440,6 +1519,8 @@ class App {
   private quitToHome(): void {
     // Leaving a won board is navigation, not a quit: keep the funnel honest.
     if (!this.board.isResolved) {
+      // The dialog said this attempt's progress would be lost; make it so.
+      this.save.setInProgress(null);
       this.analytics.track({
         type: 'level_quit',
         level: this.levelId,

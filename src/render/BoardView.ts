@@ -31,6 +31,13 @@ interface Slot {
   y: number;
 }
 
+/** A saved mid-level position to mount instead of the level's opening board. */
+export interface BoardRestore {
+  readonly board: Board;
+  readonly history: readonly Move[];
+  readonly hidden: readonly number[];
+}
+
 /**
  * Build render bands from a unit stack, optionally stopping partway up so the
  * top band can be a fraction of a unit while liquid is in flight.
@@ -95,18 +102,23 @@ export class BoardView {
   }
 
   // ------------------------------------------------------------- lifecycle
-  mount(level: GeneratedLevel, colorblind: boolean): void {
+  /**
+   * Mount a level at its opening position, or - with `restore` - at a saved
+   * mid-level position (board, move history and murk state as they were).
+   * The caller validates the restore against the level first.
+   */
+  mount(level: GeneratedLevel, colorblind: boolean, restore?: BoardRestore): void {
     this.teardown();
-    this.board = cloneBoard(level.board);
+    this.board = cloneBoard(restore ? restore.board : level.board);
     this.rules = rulesFor(level.spec);
-    this.history = [];
+    this.history = restore ? restore.history.map((m) => ({ ...m })) : [];
     this.selected = null;
     this.busy = false;
     this.noWinWarned = false;
 
-    this.hidden = this.board.map((tube) =>
-      level.spec.murky ? Math.max(0, tube.length - 1) : 0,
-    );
+    this.hidden = restore
+      ? this.board.map((_, i) => restore.hidden[i] ?? 0)
+      : this.board.map((tube) => (level.spec.murky ? Math.max(0, tube.length - 1) : 0));
 
     for (let i = 0; i < this.board.length; i++) {
       this.addBottleView(i, colorblind);
@@ -224,6 +236,15 @@ export class BoardView {
 
   snapshot(): Board {
     return cloneBoard(this.board);
+  }
+
+  /** Copies for persistence (mid-level resume). */
+  historySnapshot(): Move[] {
+    return this.history.map((m) => ({ ...m }));
+  }
+
+  hiddenSnapshot(): number[] {
+    return this.hidden.slice();
   }
 
   private syncAll(): void {

@@ -28,8 +28,11 @@ were benchmarked separately on this machine (Node 22, desktop).
 > screen; U4 splash follows real boot progress (450 ms floor); P2 critical
 > images 712 → 547 KB; S3 build-time CSP (Pixi via `unsafe-eval` entry so
 > `new Function` is not needed); O4 e2e runs on Playwright Chromium in CI
-> (non-blocking until seen green). Remaining P1: U2 mid-level resume, lazy
-> Pixi chunk, E6 already done.
+> (non-blocking until seen green); U2 mid-level resume (save v7, validated
+> restore, "Continue level N", never re-asks for a heart; e2e-covered).
+> P1 is complete except the lazy Pixi chunk, moved to P2: it saves ~140 KB gz
+> on the critical path but requires making level start asynchronous, and the
+> chunk already downloads in parallel via modulepreload.
 >
 > **Decisions taken with the owner's go-ahead (same day):** E2 economy
 > rebalanced (200 start, free 3 undo / 1 hint / 0 bottle, 50 + 15/star);
