@@ -95,9 +95,11 @@ export interface SaveData {
   grantedPurchaseTokens: string[];
   /** The attempt the player was in the middle of, if any. */
   inProgress: InProgressState | null;
+  /** Whether endless mode has been introduced with a toast. */
+  endlessSeen: boolean;
 }
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -138,6 +140,7 @@ export function defaultSave(startingCoins: number): SaveData {
     redeemedCodes: [],
     grantedPurchaseTokens: [],
     inProgress: null,
+    endlessSeen: false,
   };
 }
 
@@ -239,6 +242,8 @@ export class SaveService {
       grantedPurchaseTokens: parsed.grantedPurchaseTokens ?? [],
       // v6 saves predate mid-level resume.
       inProgress: parsed.inProgress ?? null,
+      // v7 saves predate endless mode.
+      endlessSeen: parsed.endlessSeen ?? false,
     };
   }
 
@@ -385,14 +390,54 @@ export class SaveService {
     return this.data.levels[String(levelId)];
   }
 
-  /** Highest level the player may enter: one past their furthest clear. */
+  /** Highest campaign level the player may enter: one past their furthest clear. */
   highestUnlocked(levelCount: number): number {
     let cleared = 0;
     for (const key of Object.keys(this.data.levels)) {
       const id = Number(key);
-      if (Number.isFinite(id) && id > cleared) cleared = id;
+      if (Number.isFinite(id) && id <= levelCount && id > cleared) cleared = id;
     }
     return Math.min(levelCount, cleared + 1);
+  }
+
+  /** Campaign levels cleared (ids within the campaign only). */
+  campaignCleared(levelCount: number): number {
+    let n = 0;
+    for (const key of Object.keys(this.data.levels)) {
+      const id = Number(key);
+      if (Number.isFinite(id) && id >= 1 && id <= levelCount) n += 1;
+    }
+    return n;
+  }
+
+  /** Stars earned on campaign levels only (endless stars are shown separately). */
+  campaignStars(levelCount: number): number {
+    let sum = 0;
+    for (const [key, r] of Object.entries(this.data.levels)) {
+      const id = Number(key);
+      if (Number.isFinite(id) && id >= 1 && id <= levelCount) sum += r.stars;
+    }
+    return sum;
+  }
+
+  /** Endless levels cleared (ids past the campaign). */
+  endlessCleared(levelCount: number): number {
+    let n = 0;
+    for (const key of Object.keys(this.data.levels)) {
+      const id = Number(key);
+      if (Number.isFinite(id) && id > levelCount) n += 1;
+    }
+    return n;
+  }
+
+  /** The next endless level to play: one past the furthest endless clear. */
+  nextEndlessId(levelCount: number): number {
+    let furthest = levelCount;
+    for (const key of Object.keys(this.data.levels)) {
+      const id = Number(key);
+      if (Number.isFinite(id) && id > furthest) furthest = id;
+    }
+    return furthest + 1;
   }
 
   get totalStars(): number {

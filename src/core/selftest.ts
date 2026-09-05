@@ -10,7 +10,7 @@ import {
 } from './board';
 import { getCampaignLevel, isStoredOptimal, storedLevelCount } from './campaign';
 import { generateLevel } from './generator';
-import { LEVELS } from './levels';
+import { ENDLESS_START, LEVELS, endlessSpec, getLevelSpec, isEndless } from './levels';
 import { DEFAULT_ECONOMY, coinsFor, starsFor } from './progression';
 import { solvability, solve } from './solver';
 import type { Board, BoardRules, Move } from './types';
@@ -301,6 +301,33 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
     `\n  ${LEVELS.length} levels verified - total ${(totalMs / 1000).toFixed(1)}s, ` +
     `worst L${worstId} at ${worstMs.toFixed(0)}ms`,
   );
+}
+
+// -------------------------------------------------------------- endless --
+// Endless levels are generated on demand, so the recipe must deal reliably
+// and quickly at both ends of its difficulty ramp: the first cycle and a tier
+// where every par floor has reached its cap.
+{
+  check('endless: ids past the campaign', isEndless(ENDLESS_START) && !isEndless(LEVELS.length));
+  check('endless: getLevelSpec resolves endless ids', getLevelSpec(ENDLESS_START).id === ENDLESS_START);
+  const sample = [
+    ...Array.from({ length: 5 }, (_, i) => ENDLESS_START + i),
+    ...Array.from({ length: 5 }, (_, i) => ENDLESS_START + 120 + i),
+  ];
+  let worst = 0;
+  for (const id of sample) {
+    const spec = endlessSpec(id);
+    const t0 = performance.now();
+    const gen = generateLevel(spec);
+    const ms = performance.now() - t0;
+    worst = Math.max(worst, ms);
+    const rules = rulesFor(spec);
+    check(`E${id} solution wins`, isSolved(replay(gen.board, gen.solution, rules), rules));
+    check(`E${id} meets minPar`, gen.par >= spec.minPar, `par=${gen.par} min=${spec.minPar}`);
+    check(`E${id} generates under 3s`, ms < 3000, `${ms.toFixed(0)}ms`);
+    check(`E${id} deterministic`, JSON.stringify(generateLevel(spec).board) === JSON.stringify(gen.board));
+  }
+  console.log(`  endless sample of ${sample.length} generated, worst ${worst.toFixed(0)}ms`);
 }
 
 // -------------------------------------------------------- support codes --

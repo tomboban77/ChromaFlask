@@ -122,7 +122,54 @@ export const LEVELS: readonly LevelSpec[] = [
   ),
 ];
 
+// ------------------------------------------------------------------ endless
+/** Endless levels are numbered straight on from the campaign: 201, 202, ... */
+export const ENDLESS_START = LEVEL_COUNT + 1;
+
+export function isEndless(id: number): boolean {
+  return id > LEVEL_COUNT;
+}
+
+/** 1-based position within endless mode ("Endless #7"). */
+export function endlessIndex(id: number): number {
+  return id - LEVEL_COUNT;
+}
+
+/**
+ * Endless mode: levels beyond the campaign, generated on demand (in the
+ * solver worker, so the phone never stalls).
+ *
+ * A five-level cycle of the shapes the campaign proved deal reliably: a full
+ * eight-colour board, a seven-colour murky board, a cauldron squeeze, a plain
+ * squeeze, and a breather. The par floor creeps up by one every twenty levels
+ * and stops at the highest floor each shape reached in the campaign, so
+ * generation stays fast and can never run out of attempts. Murk alternates on
+ * top of that. Deterministic per id, like everything else.
+ */
+export function endlessSpec(id: number): LevelSpec {
+  const n = endlessIndex(id);
+  const tier = Math.floor((n - 1) / 20);
+  const murky = n % 2 === 0;
+  const name = nameFor(id);
+  switch ((n - 1) % 5) {
+    case 0:
+      return { id, colors: 8, empties: 2, minPar: Math.min(21, 18 + tier), name, murky };
+    case 1:
+      return { id, colors: 7, empties: 2, minPar: Math.min(18, 15 + tier), name, murky: true };
+    case 2:
+      return {
+        id, colors: 6, empties: 1, cauldron: true, minPar: Math.min(15, 13 + tier), name, murky,
+      };
+    case 3:
+      return { id, colors: 6, empties: 1, minPar: Math.min(15, 13 + tier), name, murky };
+    default:
+      return { id, colors: 7, empties: 3, minPar: Math.min(14, 12 + tier), name, murky: true };
+  }
+}
+
 export function getLevelSpec(id: number): LevelSpec {
+  if (!Number.isInteger(id) || id < 1) throw new Error(`No level ${id}`);
+  if (isEndless(id)) return endlessSpec(id);
   const spec = LEVELS[id - 1];
   if (!spec) throw new Error(`No level ${id}`);
   return spec;

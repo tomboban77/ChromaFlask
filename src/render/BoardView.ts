@@ -158,8 +158,14 @@ export class BoardView {
       this.noWinTimer = null;
     }
     this.clearHint();
-    gsap.killTweensOf(this.bottles);
     for (const b of this.bottles) {
+      // Per target, not the array: gsap.killTweensOf([...]) silently kills
+      // nothing in GSAP 3.15, which let intro/layout tweens outlive their
+      // destroyed bottles and throw on every frame. Scale is tweened on the
+      // completion pulse, so it needs killing too (the cork is handled in
+      // BottleView.destroy).
+      gsap.killTweensOf(b);
+      gsap.killTweensOf(b.scale);
       b.removeAllListeners();
       b.destroy({ children: true });
     }

@@ -1,8 +1,9 @@
 import './styles/main.css';
 
-import { LEVELS, LEVEL_COUNT } from '@/core/levels';
+import { LEVELS, LEVEL_COUNT, endlessIndex, getLevelSpec, isEndless } from '@/core/levels';
 import { getCampaignLevel } from '@/core/campaign';
 import { TUBE_CAPACITY } from '@/core/board';
+import { solverClient } from '@/services/SolverClient';
 import {
   COIN_SHOP, LIVES_MAX, coinsFor, starThresholds, starsFor,
   type CoinShopItem, type PowerupId,
@@ -20,6 +21,7 @@ import {
   SUPPORT_CODE_ERROR_TEXT, applySupportCode, formatSupportId, supportMailto, verifySupportCode,
 } from '@/services/Support';
 
+import gsap from 'gsap';
 import { audio } from '@/audio/AudioEngine';
 import { GameStage } from '@/render/GameStage';
 import { BoardView } from '@/render/BoardView';
@@ -320,6 +322,18 @@ class App {
       move: (i: number) => this.level?.solution[i] ?? null,
       /** Test economy setup without depending on the live tuning. */
       addCoins: (n: number) => this.save.addCoins(n),
+      /** Live GSAP tweens with their targets, for chasing animation-after-destroy bugs. */
+      tweens: () =>
+        gsap.globalTimeline.getChildren(true, true, false).map((t) => ({
+          vars: Object.keys(t.vars).filter(
+            (k) => !['duration', 'ease', 'delay', 'onComplete', 'onStart', 'onUpdate', 'yoyo', 'repeat'].includes(k),
+          ),
+          targets: t.targets().map((x: unknown) => {
+            const o = x as { constructor: { name: string }; destroyed?: boolean; index?: number };
+            return `${o.constructor.name}${o.index !== undefined ? `#${o.index}` : ''}${o.destroyed ? '(destroyed)' : ''}`;
+          }),
+          progress: Number(t.progress().toFixed(2)),
+        })),
       state: () => ({
         screen: SCREENS.find((n) =>
           $(`#screen-${n}`).classList.contains('screen--active'),
@@ -560,14 +574,14 @@ class App {
       haptic(10);
       const resume = this.save.inProgress;
       const next = this.save.highestUnlocked(LEVEL_COUNT);
-      const done = Object.keys(this.save.snapshot.levels).length;
+      const done = this.save.campaignCleared(LEVEL_COUNT);
       if (resume) {
-        this.startLevel(resume.levelId);
+        void this.startLevel(resume.levelId);
       } else if (done >= LEVEL_COUNT) {
-        this.renderMap();
-        this.show('map');
+        // Campaign finished: Play goes straight on into endless mode.
+        void this.startLevel(this.save.nextEndlessId(LEVEL_COUNT));
       } else {
-        this.startLevel(next);
+        void this.startLevel(next);
       }
     });
 
@@ -595,15 +609,24 @@ class App {
     $('#home-coins').textContent = String(this.save.coins);
     this.renderLivesChip();
 
-    const done = Object.keys(this.save.snapshot.levels).length;
+    const done = this.save.campaignCleared(LEVEL_COUNT);
+    const endless = this.save.endlessCleared(LEVEL_COUNT);
     $('#home-progress').textContent =
-      `★ ${this.save.totalStars}/${LEVEL_COUNT * 3} · ${done} of ${LEVEL_COUNT} levels cleared`;
+      `★ ${this.save.campaignStars(LEVEL_COUNT)}/${LEVEL_COUNT * 3} · ${done} of ${LEVEL_COUNT} levels cleared` +
+      (endless > 0 ? ` · ${endless} endless` : '');
 
     const next = this.save.highestUnlocked(LEVEL_COUNT);
     const resume = this.save.inProgress;
     $('#btn-play').textContent = resume
-      ? `Continue level ${resume.levelId}`
-      : done >= LEVEL_COUNT ? 'Play again' : `Level ${next}`;
+      ? `Continue ${this.levelLabel(resume.levelId).toLowerCase()}`
+      : done >= LEVEL_COUNT
+        ? this.levelLabel(this.save.nextEndlessId(LEVEL_COUNT))
+        : `Level ${next}`;
+  }
+
+  /** "Level 12" inside the campaign, "Endless #7" beyond it. */
+  private levelLabel(id: number): string {
+    return isEndless(id) ? `Endless #${endlessIndex(id)}` : `Level ${id}`;
   }
 
   private renderLivesChip(): void {
@@ -626,7 +649,7 @@ class App {
     $('#map-avatar').textContent = profile?.avatar ?? '🐱';
     $('#map-name').textContent = profile?.name ?? 'Player';
     $('#map-coins').textContent = String(this.save.coins);
-    $('#map-stars').textContent = `${this.save.totalStars}/${LEVEL_COUNT * 3}`;
+    $('#map-stars').textContent = `${this.save.campaignStars(LEVEL_COUNT)}/${LEVEL_COUNT * 3}`;
 
     const unlocked = this.save.highestUnlocked(LEVEL_COUNT);
     const grid = $('#level-grid');
@@ -662,9 +685,25 @@ class App {
       if (!locked) {
         node.addEventListener('click', () => {
           audio.play('button');
-          this.startLevel(spec.id);
+          void this.startLevel(spec.id);
         });
       }
+      grid.appendChild(node);
+    }
+
+    // Once the campaign is done, the map ends in the door to endless mode.
+    const done = this.save.campaignCleared(LEVEL_COUNT);
+    if (done >= LEVEL_COUNT) {
+      const nextEndless = this.save.nextEndlessId(LEVEL_COUNT);
+      const node = el('button', 'node node--endless node--next');
+      node.setAttribute('aria-label', `Endless mode, next is ${this.levelLabel(nextEndless)}`);
+      node.appendChild(el('span', 'node__num', '∞'));
+      node.appendChild(el('span', 'node__name', this.levelLabel(nextEndless)));
+      node.appendChild(el('span', 'node__stars', ''));
+      node.addEventListener('click', () => {
+        audio.play('button');
+        void this.startLevel(nextEndless);
+      });
       grid.appendChild(node);
     }
 
@@ -674,10 +713,10 @@ class App {
         ?.scrollIntoView({ block: 'center' });
     });
 
-    const done = Object.keys(this.save.snapshot.levels).length;
+    const endless = this.save.endlessCleared(LEVEL_COUNT);
     $('#map-footnote').textContent =
       done >= LEVEL_COUNT
-        ? 'All levels cleared. More coming soon.'
+        ? `All ${LEVEL_COUNT} levels cleared · ${endless} endless ${endless === 1 ? 'level' : 'levels'} cleared`
         : `${done} of ${LEVEL_COUNT} levels cleared`;
 
     $('#btn-settings-map').onclick = () => this.openSettings();
@@ -970,7 +1009,11 @@ class App {
     $('#btn-bottle').addEventListener('click', () => void this.usePowerup('bottle'));
   }
 
-  private startLevel(id: number): void {
+  /** Guards against a double tap while an endless level is being generated. */
+  private starting = false;
+
+  private async startLevel(id: number): Promise<void> {
+    if (this.starting) return;
     // An attempt saved mid-level for this id is resumed; starting any other
     // level abandons it.
     const saved = this.save.inProgress;
@@ -992,8 +1035,23 @@ class App {
     this.nudged = false;
 
     try {
-      // Precomputed at build time; the generator is only a fallback.
-      this.level = getCampaignLevel(id);
+      if (isEndless(id)) {
+        // Generated on demand in the worker; usually well under a second, but a
+        // cauldron deal on a slow phone can take a few, so say so.
+        this.starting = true;
+        const brewing = window.setTimeout(
+          () => this.toast.show('Brewing a fresh potion…', 'info', 2600), 300,
+        );
+        try {
+          this.level = await solverClient.generate(getLevelSpec(id));
+        } finally {
+          window.clearTimeout(brewing);
+          this.starting = false;
+        }
+      } else {
+        // Precomputed at build time; the generator is only a fallback.
+        this.level = getCampaignLevel(id);
+      }
     } catch (err) {
       console.error(err);
       this.toast.show('Could not build that level. Please try another.', 'error');
@@ -1018,10 +1076,17 @@ class App {
     this.show('game');
 
     if (restore) {
-      this.toast.show(`Continuing level ${id}`, 'info', 1600);
+      this.toast.show(`Continuing ${this.levelLabel(id).toLowerCase()}`, 'info', 1600);
     } else {
       this.save.bumpStat('plays');
       this.analytics.track({ type: 'level_start', level: id, attempt: this.attempt });
+    }
+
+    if (isEndless(id) && !this.save.snapshot.endlessSeen) {
+      this.save.update((d) => {
+        d.endlessSeen = true;
+      });
+      this.toast.show('Endless mode: fresh potions forever, and they keep getting harder', 'info', 4200);
     }
 
     if (id === 1 && !this.save.snapshot.tutorialDone) {
@@ -1188,7 +1253,7 @@ class App {
 
   private updateHud(): void {
     $('#game-coins').textContent = String(this.save.coins);
-    $('#game-level-label').textContent = `Level ${this.levelId}`;
+    $('#game-level-label').textContent = this.levelLabel(this.levelId);
     const moves = this.board.moveCount;
     // "Ideal" is the proven minimum pours for this level (par, in golf terms -
     // but most players do not know the golf term).
@@ -1347,7 +1412,8 @@ class App {
       seconds,
     });
 
-    const isLast = this.levelId >= LEVEL_COUNT;
+    // Finishing level 200 is the campaign's finale; the door to endless opens.
+    const isLast = this.levelId === LEVEL_COUNT;
     window.setTimeout(
       () => this.showWinModal({
         stars, moves, seconds, reward, isLast, prevStars, prevBest, streak,
@@ -1436,13 +1502,18 @@ class App {
       <div class="${isNewBest ? 'statgrid__best' : ''}"><b>${bestShown}</b><span>${isNewBest ? 'New best!' : 'Best'}</span></div>`;
     content.appendChild(stats);
 
-    // Progress through the campaign, plus the streak when there is one worth showing.
+    // Progress through the campaign (or the endless tally), plus the streak
+    // when there is one worth showing.
     const meta = el('div', 'win__meta');
-    const cleared = Object.keys(this.save.snapshot.levels).length;
+    const endless = isEndless(this.levelId);
+    const cleared = endless
+      ? this.save.endlessCleared(LEVEL_COUNT)
+      : this.save.campaignCleared(LEVEL_COUNT);
     const progress = el('div', 'win__progress');
-    progress.innerHTML =
-      `<span class="win__progress-track"><i style="width:${Math.round((cleared / LEVEL_COUNT) * 100)}%"></i></span>` +
-      `<span class="win__progress-label">${cleared} / ${LEVEL_COUNT} levels</span>`;
+    progress.innerHTML = endless
+      ? `<span class="win__progress-label">${cleared} endless ${cleared === 1 ? 'level' : 'levels'} cleared</span>`
+      : `<span class="win__progress-track"><i style="width:${Math.round((cleared / LEVEL_COUNT) * 100)}%"></i></span>` +
+        `<span class="win__progress-label">${cleared} / ${LEVEL_COUNT} levels</span>`;
     meta.appendChild(progress);
     if (w.streak >= 2) meta.appendChild(el('span', 'win__streak', `🔥 ${w.streak} in a row`));
     content.appendChild(meta);
@@ -1458,24 +1529,21 @@ class App {
       });
       return b;
     };
-    if (w.isLast) {
-      actions.appendChild(act('Back to home', 'btn btn--primary btn--wide', () => this.quitToHome()));
-      const row = el('div', 'modal__row');
-      row.appendChild(act('Play again', 'btn btn--ghost', () => this.restartLevel()));
-      actions.appendChild(row);
-    } else {
-      actions.appendChild(
-        act('Next level', 'btn btn--success btn--wide win__next', () => this.startLevel(this.levelId + 1)),
-      );
-      const row = el('div', 'modal__row');
-      row.appendChild(act('Replay', 'btn btn--ghost', () => this.restartLevel()));
-      row.appendChild(act('Home', 'btn btn--ghost', () => this.quitToHome()));
-      actions.appendChild(row);
-    }
+    // The campaign finale leads into endless mode; everything else leads to the next level.
+    const nextLabel = w.isLast ? 'Start endless mode' : 'Next level';
+    actions.appendChild(
+      act(nextLabel, 'btn btn--success btn--wide win__next', () => {
+        void this.startLevel(this.levelId + 1);
+      }),
+    );
+    const row = el('div', 'modal__row');
+    row.appendChild(act('Replay', 'btn btn--ghost', () => this.restartLevel()));
+    row.appendChild(act('Home', 'btn btn--ghost', () => this.quitToHome()));
+    actions.appendChild(row);
     content.appendChild(actions);
 
     this.modal.open({
-      title: w.isLast ? 'All levels cleared!' : `Level ${this.levelId} complete!`,
+      title: w.isLast ? `All ${LEVEL_COUNT} levels cleared!` : `${this.levelLabel(this.levelId)} complete!`,
       content,
       dismissable: false,
     });
@@ -1494,9 +1562,7 @@ class App {
       }, 180 + i * 260);
     });
 
-    if (!w.isLast) {
-      window.setTimeout(() => audio.play('unlock'), 180 + 3 * 260 + 200);
-    }
+    window.setTimeout(() => audio.play('unlock'), 180 + 3 * 260 + 200);
   }
 
   /** Roll a "+N" counter up to its value with coin ticks along the way. */
@@ -1677,7 +1743,6 @@ class App {
   private showProfileDialog(): void {
     const s = this.save.snapshot;
     const stats = s.stats;
-    const cleared = Object.keys(s.levels).length;
 
     const content = el('div', 'profdlg');
 
@@ -1694,8 +1759,9 @@ class App {
 
     const grid = el('div', 'profdlg__grid');
     const rows: Array<[string, string]> = [
-      ['Levels cleared', `${cleared} / ${LEVEL_COUNT}`],
-      ['Stars', `${this.save.totalStars} / ${LEVEL_COUNT * 3}`],
+      ['Levels cleared', `${this.save.campaignCleared(LEVEL_COUNT)} / ${LEVEL_COUNT}`],
+      ['Stars', `${this.save.campaignStars(LEVEL_COUNT)} / ${LEVEL_COUNT * 3}`],
+      ['Endless cleared', String(this.save.endlessCleared(LEVEL_COUNT))],
       ['Perfect clears', String(stats.perfects)],
       ['Best win streak', String(stats.bestStreak)],
       ['Total pours', String(stats.pours)],

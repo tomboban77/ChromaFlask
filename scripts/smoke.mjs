@@ -61,7 +61,21 @@ async function runViewport(browser, label, width, height, isMobile) {
   page.on('response', (res) => {
     if (res.status() >= 400) problems.push(`[${label}] HTTP ${res.status()} ${res.url()}`);
   });
-  page.on('pageerror', (err) => problems.push(`[${label}] pageerror: ${err.message}`));
+  // One entry per distinct error with a count and the top of its stack: a
+  // per-frame failure would otherwise drown the report in identical lines.
+  const seenErrors = new Map(); // key -> { index, count }
+  page.on('pageerror', (err) => {
+    const top = (err.stack || '').split('\n').slice(1, 4).map((l) => l.trim()).join(' <- ');
+    const key = `[${label}] pageerror: ${err.message} ${top}`;
+    const seen = seenErrors.get(key);
+    if (!seen) {
+      seenErrors.set(key, { index: problems.length, count: 1 });
+      problems.push(key);
+    } else {
+      seen.count += 1;
+      problems[seen.index] = `${key} (x${seen.count})`;
+    }
+  });
 
   await page.goto(URL, { waitUntil: 'load' });
 
@@ -323,6 +337,20 @@ async function runViewport(browser, label, width, height, isMobile) {
   console.log(`  after leaving   play button "${afterLeave}", hearts ${livesAfterLeave}`);
   if (afterLeave !== 'Level 2') problems.push(`[${label}] leaving should clear the saved attempt (got "${afterLeave}")`);
   if (livesAfterLeave !== '5') problems.push(`[${label}] leaving a live board must not cost a heart (hearts=${livesAfterLeave})`);
+
+  // ---- endless mode: level 201 is generated in the worker on demand
+  await page.evaluate(() => window.__cf.start(201));
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
+  await page.waitForFunction(() => window.__cf.state().tubes > 0, null, { timeout: 15_000 });
+  await sleep(600);
+  const endless = await page.evaluate(() => window.__cf.state());
+  const endlessLabel = (await page.locator('#game-level-label').textContent())?.trim();
+  console.log(`  endless #1      "${endlessLabel}" tubes=${endless.tubes} ideal=${endless.par}`);
+  if (endlessLabel !== 'Endless #1') problems.push(`[${label}] HUD should read "Endless #1", got "${endlessLabel}"`);
+  if (endless.tubes !== 10) problems.push(`[${label}] endless #1 should be 8 colours + 2 empties = 10 tubes, got ${endless.tubes}`);
+  if (!(endless.par >= 18)) problems.push(`[${label}] endless #1 ideal should be >= 18, got ${endless.par}`);
+  await page.click('#btn-back'); // no moves made: straight home, no dialog
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
 
   // ---- back button: closes an open dialog, then returns from map to home
   await page.click('#btn-settings-home');

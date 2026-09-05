@@ -1052,6 +1052,14 @@ body {
 }
 .statgrid__best span { color: var(--gold-hi); font-weight: 800; }
 
+/* Endless entry at the foot of the map: gold-rimmed, never "locked". */
+.node--endless {
+  border-color: var(--gold) !important;
+  background: linear-gradient(180deg, rgba(255, 197, 49, 0.22), rgba(120, 60, 200, 0.35)) !important;
+  box-shadow: 0 0 0 3px rgba(255, 197, 49, 0.18), 0 6px 16px rgba(20, 5, 50, 0.45);
+}
+.node--endless .node__num { color: var(--gold-hi); font-size: 26px; line-height: 1; }
+
 /* ----------------------------------------------------------- how to play -- */
 .howto { text-align: left; }
 .howto h3 {

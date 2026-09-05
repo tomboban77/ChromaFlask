@@ -41,6 +41,22 @@ _Last updated: 2026-09-05_
   generation speed (worst ≈ 1 s desktop for one deep cauldron seed; typical
   well under 100 ms).
 
+### Endless mode (levels 201+)
+- Numbered straight on from the campaign and generated on demand in the
+  solver worker (`endlessSpec` in `levels.ts`; "Brewing a fresh potion…" if
+  it takes more than 300 ms). A five-level cycle of proven shapes - 8-colour
+  board, 7-colour murky, cauldron squeeze, plain squeeze, breather - with the
+  par floor rising one step every 20 levels up to each shape's campaign cap,
+  and murk alternating. Deterministic per id, so resume and analytics work
+  unchanged.
+- Entered from the level-200 win screen ("Start endless mode"), the home Play
+  button once the campaign is done ("Endless #n"), or a gold ∞ node at the
+  foot of the map. HUD and win screen say "Endless #n"; profile shows
+  "Endless cleared". Campaign counters (stars, cleared, progress bar) count
+  campaign ids only.
+- `test:core` generates a ten-level sample at both ends of the ramp (worst
+  ~0.8 s desktop); `test:e2e` starts Endless #1 through the worker.
+
 ### Twist mechanics
 - **The Cauldron** (from level 22, every 10th) — gold-rimmed pot at tube 0:
   accepts **any** colour, but **must be empty to win**. First-class solver
@@ -178,7 +194,7 @@ _Last updated: 2026-09-05_
 | Trademark search | Run "ChromaFlask" through USPTO/EUIPO + both app stores before launch. |
 | iOS haptics | Web vibration is unsupported on iOS; the Capacitor wrapper needs a native haptics bridge. |
 | Receipt validation | Client-side purchase grants are fine for launch but spoofable; add a server verification endpoint before revenue scales. |
-| Full audit | [AUDIT.md](AUDIT.md) (2026-09-05) — findings by area with a P0/P1/P2 roadmap. P0 complete. P1: L1/P1 precompute + worker, P3, P2 images, S3 CSP, O4, U4 done; U2 mid-level resume and lazy Pixi next. |
+| Full audit | [AUDIT.md](AUDIT.md) (2026-09-05) — findings by area with a P0/P1/P2 roadmap. P0 and P1 complete (lazy Pixi deferred). P2 in progress: L5 endless mode done; next daily challenge, chapters, achievements. |
 
 ---
 
