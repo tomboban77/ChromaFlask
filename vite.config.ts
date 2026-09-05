@@ -9,7 +9,10 @@ export default defineConfig({
   server: { host: true, port: 5173 },
   build: {
     target: 'es2022',
-    sourcemap: true,
+    // No maps in the published bundle: they reproduce every source file
+    // verbatim (including the support-code secret) and add ~2.7 MB to dist.
+    // Flip to 'hidden' if an error tracker needs them uploaded out of band.
+    sourcemap: false,
     rollupOptions: {
       output: {
         // Rolldown (Vite 8) requires the function form; the object form that

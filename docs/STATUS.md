@@ -3,7 +3,7 @@
 The living record of what is built, what is deliberately deferred, and what
 comes next. Update this doc whenever a feature lands or a decision is made.
 
-_Last updated: 2026-09-04_
+_Last updated: 2026-09-05_
 
 ---
 
@@ -61,28 +61,49 @@ _Last updated: 2026-09-04_
   re-opens if the player returns from the shop to a still-dead board.
 
 ### Economy & monetisation
-- **Coins** — earned per win (base + stars + first-clear bonus).
+- **Coins** — earned per win (base + stars + first-clear bonus). Replays pay
+  only for stars not previously earned, so a cleared level is never a coin
+  farm (`coinsFor`, covered by `test:core` and `test:e2e`).
 - **Hearts** — 5 max, one regenerates per 30 min (wall-clock, works while the
-  app is closed); lost on abandoning or failing a level (never during the
-  tutorial); infinite-hearts boosts from bundles.
-- **Powerups** — per-level free uses → shop-bought stock → **shop opens**
-  (never silently charged to coins; empty badge becomes a green "+").
+  app is closed). One rule: a heart pays for a **failure** — restarting or
+  leaving a board that is dead-ended or proven unwinnable. Quitting or
+  restarting a live board is free, the tutorial never costs a heart, and
+  infinite-hearts boosts come from bundles.
+- **Powerups** — per-attempt free uses (3 undo, 1 hint, 0 bottle) →
+  shop-bought stock → **shop opens** (never silently charged to coins; empty
+  badge becomes a green "+"). Bottles are deliberately never free: a free
+  extra tube erases the difficulty curve.
+- **Economy tuning** — 200 starting coins; a 3-star first clear pays 95
+  (50 + 15/star). Hint ×3 = 200, Bottle ×3 = 320, Undo ×3 = 80, hearts 500.
+  All in `DEFAULT_ECONOMY`, meant to be retuned live via RemoteConfig.
 - **Shop** — 2 real-money bundles + 3 coin packs (via the Payments driver) and
   a coins section (heart refill, powerup 3-packs). "Popular"/"Best value"
   badges only — no fabricated discount claims (store policy).
 - **Payments** (`src/services/Payments.ts`) — store-billing only, by design:
-  Google Play Billing driver (Digital Goods API, localized prices, consumables
-  consumed on grant); dev builds simulate the store behind an explicit
-  confirm dialog; plain-web production hides real-money items entirely.
+  Google Play Billing driver (Digital Goods API, localized prices); dev builds
+  simulate the store behind an explicit confirm dialog; plain-web production
+  hides real-money items entirely. Delivery is grant → record token → consume,
+  and every boot restores purchases the store still holds as unconsumed, so
+  an app killed mid-purchase never loses the sale or double-grants it.
 
 ### Platform & polish
 - Candy UI style throughout (gold trim, ivory pills, glossy green CTAs).
 - Haptics on pours/errors/wins/buttons (Android; toggle in settings).
 - Accessibility: colourblind glyphs, reduced motion, focus management, 44 px
   touch targets, safe-area insets.
-- **Persistence** — save schema v4 with forward-compatible migrations
+- **Persistence** — save schema v6 with forward-compatible migrations
   (profile, level records, coins, inventory, lives, lifetime stats, mechanic
-  intros). LocalStorage with in-memory fallback.
+  intros, support ID, redeemed codes, granted purchase tokens). LocalStorage
+  with in-memory fallback.
+- **Back button** — one history "guard" entry exists while there is anything
+  to go back from. Android/browser back closes a dismissable dialog, asks to
+  leave a level, closes the shop, or returns from the map; on home with
+  nothing open it exits, as Android expects.
+- **Error reporting** — uncaught errors and rejections (and boot failures) are
+  sent as `client_error` analytics events, de-duplicated and capped at five
+  per session. A failed boot shows a Reload control instead of a stuck splash.
+- **Analytics consent** — Settings → "Share anonymous usage data" (default on)
+  gates every event that leaves the device.
 - **Art pipeline** — drop PNG sources in `art/`, run
   `node scripts/optimize-art.mjs` → optimized WebP in `public/` (preloaded).
 - **PWA / store-wrap readiness** — full icon set (192/512 + maskable variants
@@ -105,6 +126,7 @@ _Last updated: 2026-09-04_
 | Trademark search | Run "ChromaFlask" through USPTO/EUIPO + both app stores before launch. |
 | iOS haptics | Web vibration is unsupported on iOS; the Capacitor wrapper needs a native haptics bridge. |
 | Receipt validation | Client-side purchase grants are fine for launch but spoofable; add a server verification endpoint before revenue scales. |
+| Full audit | [AUDIT.md](AUDIT.md) (2026-09-05) — findings by area with a P0/P1/P2 roadmap. P0 items E1, U3, U1, E4, S1, S2, O1, O2 are done; P1 starts with precomputed levels and mid-level resume. |
 
 ---
 

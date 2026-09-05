@@ -107,10 +107,13 @@ the audio clock). Nothing to download or decode.
 ## What is stubbed
 
 Local-only by design. There is no backend: saves go to `localStorage` (falling
-back to memory in private browsing, with the player warned), the profile is a
-local guest identity, and analytics logs to the console in dev. Each of these
-sits behind a driver interface, so adding real auth, cloud save or an analytics
-vendor means writing one driver rather than editing gameplay code.
+back to memory in private browsing, with the player warned) and the profile is
+a local guest identity. Analytics go to PostHog over its plain capture endpoint
+(no SDK), keyed by the save's random support ID and gated by the "Share
+anonymous usage data" setting; uncaught errors are reported the same way. Each
+of these sits behind a driver interface, so adding real auth, cloud save or a
+different analytics vendor means writing one driver rather than editing
+gameplay code.
 
 Real-money purchases only exist through platform billing: the Play Billing
 driver activates inside an Android TWA, dev builds simulate the store behind an

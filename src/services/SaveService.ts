@@ -25,6 +25,8 @@ export interface GameSettings {
   haptics: boolean;
   colorblind: boolean;
   reducedMotion: boolean;
+  /** Consent to send anonymous usage events (level funnel, errors) off-device. */
+  analytics: boolean;
 }
 
 /** Owned powerup uses bought in the shop, spent after the per-level free uses. */
@@ -68,9 +70,14 @@ export interface SaveData {
   supportId: string;
   /** Normalized support codes already applied, so a code redeems once. */
   redeemedCodes: string[];
+  /**
+   * Store purchase tokens whose goods have been granted. Lets a purchase that
+   * was paid for but interrupted before the grant be restored exactly once.
+   */
+  grantedPurchaseTokens: string[];
 }
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -99,6 +106,7 @@ export function defaultSave(startingCoins: number): SaveData {
       haptics: true,
       colorblind: false,
       reducedMotion: false,
+      analytics: true,
     },
     tutorialDone: false,
     inventory: { undo: 0, hint: 0, bottle: 0 },
@@ -108,6 +116,7 @@ export function defaultSave(startingCoins: number): SaveData {
     cauldronSeen: false,
     supportId: generateSupportId(),
     redeemedCodes: [],
+    grantedPurchaseTokens: [],
   };
 }
 
@@ -205,6 +214,8 @@ export class SaveService {
       // v4 saves predate support codes; mint the ID on first migrated load.
       supportId: parsed.supportId ?? fallback.supportId,
       redeemedCodes: parsed.redeemedCodes ?? [],
+      // v5 saves predate purchase restore.
+      grantedPurchaseTokens: parsed.grantedPurchaseTokens ?? [],
     };
   }
 
@@ -249,10 +260,33 @@ export class SaveService {
     const keepSettings = this.data.settings;
     const keepSupportId = this.data.supportId;
     const keepRedeemed = this.data.redeemedCodes;
+    // Granted tokens survive too: a reset must not turn an old, already
+    // consumed purchase into a second free grant on the next restore.
+    const keepGranted = this.data.grantedPurchaseTokens;
     this.data = defaultSave(this.startingCoins);
     this.data.settings = keepSettings;
     this.data.supportId = keepSupportId;
     this.data.redeemedCodes = keepRedeemed;
+    this.data.grantedPurchaseTokens = keepGranted;
+    this.flush();
+  }
+
+  // ------------------------------------------------------------- purchases
+  hasGrantedPurchase(token: string): boolean {
+    return this.data.grantedPurchaseTokens.includes(token);
+  }
+
+  markPurchaseGranted(token: string): void {
+    this.update((d) => {
+      if (d.grantedPurchaseTokens.includes(token)) return;
+      d.grantedPurchaseTokens.push(token);
+      // Tokens are only needed until the store confirms consumption; keep a
+      // generous tail rather than an unbounded list.
+      if (d.grantedPurchaseTokens.length > 64) {
+        d.grantedPurchaseTokens.splice(0, d.grantedPurchaseTokens.length - 64);
+      }
+    });
+    // Written immediately: this is the record that prevents a double grant.
     this.flush();
   }
 
@@ -296,7 +330,10 @@ export class SaveService {
     return true;
   }
 
-  recordClear(levelId: number, stars: number, moves: number): { isFirstClear: boolean } {
+  /** Returns the record as it stood before this clear; `prevStars` is null on a first clear. */
+  recordClear(
+    levelId: number, stars: number, moves: number,
+  ): { isFirstClear: boolean; prevStars: number | null } {
     const key = String(levelId);
     const prev = this.data.levels[key];
     const isFirstClear = !prev;
@@ -307,7 +344,7 @@ export class SaveService {
         clearedAt: Date.now(),
       };
     });
-    return { isFirstClear };
+    return { isFirstClear, prevStars: prev ? prev.stars : null };
   }
 
   levelRecord(levelId: number): LevelRecord | undefined {

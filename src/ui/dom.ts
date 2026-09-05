@@ -81,6 +81,8 @@ export class ModalHost {
   private current: HTMLElement | null = null;
   private onCloseCb: (() => void) | null = null;
   private lastFocus: HTMLElement | null = null;
+  /** Fires after any open or close, for hosts that mirror dialog state (history, pausing). */
+  onOpenChange: ((open: boolean) => void) | null = null;
 
   constructor(private readonly root: HTMLElement) {
     this.root.addEventListener('pointerdown', (ev) => {
@@ -97,8 +99,15 @@ export class ModalHost {
     return this.current !== null;
   }
 
+  /** Whether Escape, the backdrop and the back button may close the open dialog. */
+  get isDismissable(): boolean {
+    return this.isOpen && this.dismissable;
+  }
+
   open(options: ModalOptions): HTMLElement {
-    this.close();
+    // Replacing a dialog: tear the old one down without announcing "closed",
+    // since the host is about to hear "open" anyway.
+    this.closeInternal(false);
     this.lastFocus = document.activeElement as HTMLElement | null;
     this.dismissable = options.dismissable ?? true;
     this.onCloseCb = options.onClose ?? null;
@@ -146,10 +155,15 @@ export class ModalHost {
 
     // Move focus in so keyboard and screen-reader users land inside the dialog.
     window.setTimeout(() => modal.querySelector('button')?.focus(), 60);
+    this.onOpenChange?.(true);
     return modal;
   }
 
   close(): void {
+    this.closeInternal(true);
+  }
+
+  private closeInternal(notify: boolean): void {
     if (!this.current) return;
     this.current.remove();
     this.current = null;
@@ -161,5 +175,7 @@ export class ModalHost {
     // Always run: onClose is a cleanup hook (timers etc.), and skipping it when
     // one dialog replaces another would leak whatever the first one started.
     cb?.();
+    // After the cleanup hook, which may itself have opened another dialog.
+    if (notify) this.onOpenChange?.(this.isOpen);
   }
 }

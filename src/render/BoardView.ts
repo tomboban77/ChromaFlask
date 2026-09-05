@@ -207,6 +207,20 @@ export class BoardView {
     return isDeadlocked(this.board, this.rules);
   }
 
+  /** True once this board has been won (and the win reported). Cleared by undo. */
+  get isResolved(): boolean {
+    return this.resolved;
+  }
+
+  /**
+   * True when the attempt is genuinely lost: no legal move remains, or the
+   * solver has *proven* no winning line exists. This is what a heart is for;
+   * a live board that the player simply walks away from is not a failure.
+   */
+  get isLost(): boolean {
+    return !this.resolved && (this.noWinWarned || this.isDead);
+  }
+
   snapshot(): Board {
     return cloneBoard(this.board);
   }

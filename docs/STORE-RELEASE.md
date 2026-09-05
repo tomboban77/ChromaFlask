@@ -38,6 +38,11 @@ ChromaFlask uses **only original assets**, all authored in this repository:
 - **Server-side receipt validation** is strongly recommended before granting
   large coin packs at scale — plan a small backend endpoint before revenue
   grows (client-only grants are acceptable for launch, but are spoofable).
+- **Interrupted purchases are restored automatically.** On every boot the
+  app asks the store for unconsumed purchases and grants anything that was
+  paid for but never delivered (app killed between the payment sheet and the
+  grant), exactly once. Test this with a license tester: buy, force-stop the
+  app before the toast, relaunch, expect "Your purchase has been restored".
 - **No deceptive pricing**: do not show fake "90% OFF" strikethrough prices
   unless there is a genuine former price. We use "Popular"/"Best value" badges
   instead.
@@ -46,12 +51,24 @@ ChromaFlask uses **only original assets**, all authored in this repository:
 
 ## 3. Store listing requirements
 
-- [ ] **Privacy policy URL** (required by both stores, even with no data
-      collection). State plainly: progress stored on-device (localStorage),
-      no personal data leaves the device, analytics are local/console today.
-      Update it before wiring a real analytics backend.
+- [ ] **Privacy policy URL** (required by both stores). Draft:
+      [PRIVACY-POLICY.md](PRIVACY-POLICY.md) — host it at a public URL and
+      paste that URL into both consoles. What it must say, because it is what
+      the build does: progress is stored on-device; **anonymous usage
+      analytics are sent to PostHog (US)** keyed by the random support ID,
+      with no name, email or device identifiers; the choice is shown as a
+      checkbox (on by default) on the first-run profile screen and can be
+      changed any time in Settings → "Share anonymous usage data". If a
+      strict opt-in is required for a market, flip the `checked` attribute
+      on `#analytics-consent` in `index.html`.
 - [ ] **Google Play Data safety form** / **Apple privacy nutrition label** —
-      must match reality. Currently: no data collected, no data shared.
+      must match reality. Currently: **App interactions** (levels played,
+      purchases, errors) and **Device or other IDs** (the random support ID)
+      are *collected*, *not shared*, *not linked to identity*, used for
+      analytics and app functionality; deletable by the player (Settings →
+      Reset progress does not clear it — say so, or wire a "delete my data"
+      request to your PostHog project). No data is collected while the
+      Settings toggle is off.
 - [ ] **Content rating questionnaires** (IARC on Play): puzzle, no violence —
       expect Everyone/4+. Declare that the app contains in-app purchases.
 - [ ] **"Contains ads" declaration**: currently *no ads*. If ads are added
@@ -65,8 +82,10 @@ ChromaFlask uses **only original assets**, all authored in this repository:
 
 ## 4. Monetization fairness (policy + player trust)
 
-- Hearts regenerate for free (1 per 30 min, max 5) and level 1 + the tutorial
-  never cost a heart — the game is fully playable without paying.
+- Hearts regenerate for free (1 per 30 min, max 5), are lost only on a
+  genuinely failed attempt (a dead-ended or provably unwinnable board), and
+  level 1 + the tutorial never cost a heart — the game is fully playable
+  without paying.
 - Every real-money item can also be earned: coins come from wins; boosters
   are purchasable with coins.
 - Prices, free allowances, and regen timing are tunable in

@@ -12,7 +12,9 @@ import { SAVE_VERSION, SaveService } from '@/services/SaveService';
 import { AuthService } from '@/services/AuthService';
 import { Analytics, POSTHOG_KEY, PostHogDriver } from '@/services/Analytics';
 import { RemoteConfig } from '@/services/RemoteConfig';
-import { IAP_CATALOG, Payments, type IapProduct } from '@/services/Payments';
+import {
+  IAP_CATALOG, Payments, getProduct, type IapProduct, type ProductId,
+} from '@/services/Payments';
 import {
   SUPPORT_CODE_ERROR_TEXT, applySupportCode, formatSupportId, supportMailto, verifySupportCode,
 } from '@/services/Support';
@@ -86,19 +88,38 @@ class App {
   /** Where the shop's close button returns to. */
   private shopReturn: ScreenId = 'home';
 
+  /**
+   * Back-button support. One extra history entry (the "guard") exists exactly
+   * while there is something to go back from - a non-root screen or an open
+   * dialog. Back pops it, we act, and re-push it if there is still somewhere
+   * to go back from. On the root screen with nothing open, back leaves the
+   * app, which is what Android expects.
+   */
+  private guardPushed = false;
+  private ignoreNextPop = false;
+
   async boot(): Promise<void> {
     // The splash progress starts immediately so the first paint already moves.
     const splashDone = this.animateSplash();
 
     await this.remote.refresh();
-    void this.payments.init();
     this.save = new SaveService(this.remote.current.economy.startingCoins);
+    // Off the boot path. Once the store is reachable, settle anything that was
+    // paid for but never delivered (see Payments.ts lifecycle notes).
+    void this.payments.init().then(() => this.restorePurchases());
     // The support ID doubles as the analytics identity, so a support email
     // can be matched to its funnel without collecting anything personal.
-    if (POSTHOG_KEY) this.analytics.addDriver(new PostHogDriver(POSTHOG_KEY, this.save.supportId));
+    // Gated by the "Share anonymous usage data" setting.
+    if (POSTHOG_KEY) {
+      this.analytics.addDriver(
+        new PostHogDriver(POSTHOG_KEY, this.save.supportId, () => this.save.snapshot.settings.analytics),
+      );
+    }
+    this.installErrorReporting();
 
     this.toast = new ToastHost($('#toast-root'));
     this.modal = new ModalHost($('#modal-root'));
+    this.modal.onOpenChange = () => this.syncHistoryGuard();
     this.confetti = new Confetti(
       $<HTMLCanvasElement>('#fx-confetti'),
       () =>
@@ -201,6 +222,65 @@ class App {
     });
   }
 
+  // ------------------------------------------------------ error reporting
+  /** Messages already reported this session; the same crash loop is sent once. */
+  private readonly reportedErrors = new Set<string>();
+
+  /**
+   * Uncaught errors and rejections become analytics events, so a WebGL
+   * context loss on one GPU or a storage quota error on one browser shows up
+   * as a count in the dashboard rather than as a one-star review. Capped and
+   * de-duplicated so a tight failure loop cannot flood the pipe.
+   */
+  private installErrorReporting(): void {
+    window.addEventListener('error', (ev) => {
+      this.reportError('error', ev.error ?? ev.message);
+    });
+    window.addEventListener('unhandledrejection', (ev) => {
+      this.reportError('unhandledrejection', ev.reason);
+    });
+  }
+
+  private reportError(source: 'error' | 'unhandledrejection' | 'boot', raw: unknown): void {
+    if (this.reportedErrors.size >= 5) return;
+    const err = raw instanceof Error ? raw : null;
+    const message = String(err?.message ?? raw ?? 'unknown').slice(0, 300);
+    if (this.reportedErrors.has(message)) return;
+    this.reportedErrors.add(message);
+    const event: Parameters<Analytics['track']>[0] = {
+      type: 'client_error',
+      source,
+      message,
+      saveVersion: SAVE_VERSION,
+      ...(err?.stack ? { stack: err.stack.slice(0, 1500) } : {}),
+      ...(this.stage?.app?.renderer ? { renderer: this.stage.rendererType } : {}),
+      ...(this.level ? { level: this.levelId } : {}),
+    };
+    this.analytics.track(event);
+  }
+
+  /**
+   * Boot could not complete (renderer init, missing DOM, a throwing driver).
+   * Replace the endless splash with a plain, honest recovery control.
+   */
+  showBootFailure(err: unknown): void {
+    console.error('[boot] failed', err);
+    try {
+      this.reportError('boot', err);
+    } catch {
+      /* analytics may itself be what failed */
+    }
+    const pct = document.querySelector<HTMLElement>('#boot-pct');
+    const bar = document.querySelector<HTMLElement>('.splash');
+    if (pct) pct.textContent = 'Something went wrong while loading.';
+    if (bar) {
+      const retry = el('button', 'btn btn--primary', 'Reload');
+      retry.style.marginTop = '14px';
+      retry.addEventListener('click', () => window.location.reload());
+      bar.appendChild(retry);
+    }
+  }
+
   /**
    * Automation surface for the smoke test. Stripped from production builds by
    * the `import.meta.env.DEV` guard, so it cannot be used to cheat a release.
@@ -213,6 +293,8 @@ class App {
       busy: () => this.board.isBusy,
       /** Nth move of the generated winning line, for deterministic tests. */
       move: (i: number) => this.level?.solution[i] ?? null,
+      /** Test economy setup without depending on the live tuning. */
+      addCoins: (n: number) => this.save.addCoins(n),
       state: () => ({
         screen: SCREENS.find((n) =>
           $(`#screen-${n}`).classList.contains('screen--active'),
@@ -261,6 +343,74 @@ class App {
     // The Pixi host has no size while hidden; nudge a reflow once it is shown.
     if (id === 'game') requestAnimationFrame(() => this.stage.app.resize());
     this.updateTutorialHand();
+    this.syncHistoryGuard();
+  }
+
+  // ---------------------------------------------------------- back button
+  /** The screen the back button may exit from: home, or profile setup on first run. */
+  private get rootScreen(): ScreenId {
+    return this.save.snapshot.profile ? 'home' : 'profile';
+  }
+
+  private wireHistory(): void {
+    window.history.replaceState({ cf: 'root' }, '');
+    window.addEventListener('popstate', (ev) => {
+      if (this.ignoreNextPop) {
+        this.ignoreNextPop = false;
+        return;
+      }
+      const state = ev.state as { cf?: string } | null;
+      if (state?.cf === 'guard') {
+        // Forward navigation back onto the guard: nothing to act on.
+        this.guardPushed = true;
+        return;
+      }
+      this.guardPushed = false;
+      this.onBack();
+      this.syncHistoryGuard();
+    });
+  }
+
+  private syncHistoryGuard(): void {
+    if (this.current === 'boot') return;
+    const needed = this.current !== this.rootScreen || this.modal.isOpen;
+    if (needed && !this.guardPushed) {
+      window.history.pushState({ cf: 'guard' }, '');
+      this.guardPushed = true;
+    } else if (!needed && this.guardPushed) {
+      // Back on the root with nothing open: drop the guard so the next back
+      // press leaves the app instead of being swallowed.
+      this.guardPushed = false;
+      this.ignoreNextPop = true;
+      window.history.back();
+    }
+  }
+
+  /** What the back button does, per context. Mirrors the on-screen back affordances. */
+  private onBack(): void {
+    if (this.modal.isOpen) {
+      // Non-dismissable dialogs (win, stuck) hold: the player must choose.
+      if (this.modal.isDismissable) this.modal.close();
+      return;
+    }
+    switch (this.current) {
+      case 'game':
+        this.confirmQuit();
+        break;
+      case 'shop':
+        this.closeShop();
+        break;
+      case 'map':
+        this.goHome();
+        break;
+      case 'profile':
+        // Editing an existing look: back returns home. First-run setup is the root.
+        if (this.save.snapshot.profile) this.goHome();
+        break;
+      case 'home':
+      case 'boot':
+        break;
+    }
   }
 
   private applySettings(): void {
@@ -295,6 +445,8 @@ class App {
     });
 
     window.addEventListener('pagehide', () => this.save.flush());
+
+    this.wireHistory();
 
     // Desktop convenience: number keys pick a bottle, Escape drops it.
     window.addEventListener('keydown', (ev) => {
@@ -346,8 +498,10 @@ class App {
     audio.unlock();
     audio.play('button');
     const profile = await this.auth.signIn(name, this.chosenAvatar);
+    const consent = $<HTMLInputElement>('#analytics-consent').checked;
     this.save.update((d) => {
       d.profile = profile;
+      d.settings.analytics = consent;
     });
     this.analytics.track({ type: 'profile_created', avatar: profile.avatar });
     this.renderHome();
@@ -510,7 +664,10 @@ class App {
   }
 
   private closeShop(): void {
-    const target = this.shopReturn === 'shop' ? 'home' : this.shopReturn;
+    let target = this.shopReturn === 'shop' ? 'home' : this.shopReturn;
+    // The shop can be reached from the lives dialog after a win; there is no
+    // board to return to in that case, only a finished one. Go home instead.
+    if (target === 'game' && this.board.isResolved) target = 'home';
     if (target === 'home') this.renderHome();
     if (target === 'map') this.renderMap();
     if (target === 'game') this.updateHud();
@@ -678,17 +835,70 @@ class App {
       return; // cancelled: stay quiet, the player changed their mind
     }
 
-    this.save.addCoins(product.coins);
-    for (const [pid, n] of Object.entries(product.powerups ?? {})) {
-      this.save.addInventory(pid as PowerupId, n ?? 0);
-    }
-    if (product.infiniteLivesHours) this.save.addInfiniteLives(product.infiniteLivesHours);
+    await this.settlePurchase(result.productId, result.token);
 
     audio.play('unlock');
     haptic([15, 40, 25]);
     this.confetti.burst(1);
     this.toast.show(`${product.title} added - enjoy!`, 'info', 2600);
     this.renderShop();
+  }
+
+  /** Put a product's goods into the save. Pure grant; no store interaction. */
+  private grantProduct(product: IapProduct): void {
+    this.save.addCoins(product.coins);
+    for (const [pid, n] of Object.entries(product.powerups ?? {})) {
+      this.save.addInventory(pid as PowerupId, n ?? 0);
+    }
+    if (product.infiniteLivesHours) this.save.addInfiniteLives(product.infiniteLivesHours);
+  }
+
+  /**
+   * Deliver a paid purchase exactly once, then release it at the store.
+   *
+   * Order matters: grant -> record the token (flushed to disk) -> consume. If
+   * anything dies after the record, the next boot's restore sees the token as
+   * already granted and only consumes. If it dies before, restore grants.
+   * Returns true when goods were granted by this call.
+   */
+  private async settlePurchase(productId: ProductId, token: string | null): Promise<boolean> {
+    const product = getProduct(productId);
+    const alreadyGranted = token !== null && this.save.hasGrantedPurchase(token);
+    if (!alreadyGranted) {
+      this.grantProduct(product);
+      if (token !== null) this.save.markPurchaseGranted(token);
+      else this.save.flush();
+    }
+    if (token !== null) {
+      // A failed consume is not a lost sale: the token stays pending at the
+      // store and is retried on the next boot.
+      await this.payments.consume(token);
+    }
+    return !alreadyGranted;
+  }
+
+  /** Boot-time sweep of purchases the store still holds as unconsumed. */
+  private async restorePurchases(): Promise<void> {
+    let pending;
+    try {
+      pending = await this.payments.listPending();
+    } catch {
+      return;
+    }
+    let restored = 0;
+    for (const p of pending) {
+      if (await this.settlePurchase(p.productId, p.token)) restored += 1;
+    }
+    if (restored > 0) {
+      this.analytics.track({ type: 'iap_restored', count: restored });
+      this.toast.show(
+        restored === 1 ? 'Your purchase has been restored' : `${restored} purchases restored`,
+        'info', 3200,
+      );
+      if (this.current === 'shop') this.renderShop();
+      else if (this.current === 'home') this.renderHome();
+      else if (this.current === 'game') this.updateHud();
+    }
   }
 
   private buyCoinItem(item: CoinShopItem): void {
@@ -827,16 +1037,22 @@ class App {
       refillBtn.disabled = full || this.save.coins < refill.price;
     };
 
+    // Set when the dialog hands off somewhere (retry or shop) so the close
+    // handler knows the player did not simply dismiss it.
+    let handedOff = false;
+
     refillBtn.addEventListener('click', () => {
       this.buyCoinItem(refill);
       refresh();
       if (retryLevel !== null && this.save.canPlay) {
+        handedOff = true;
         this.modal.close();
         this.startLevel(retryLevel);
       }
     });
     shopBtn.addEventListener('click', () => {
       audio.play('button');
+      handedOff = true;
       this.modal.close();
       this.openShop('lives');
     });
@@ -849,7 +1065,15 @@ class App {
       title: 'More Lives',
       content,
       closeButton: true,
-      onClose: () => window.clearInterval(timer),
+      onClose: () => {
+        window.clearInterval(timer);
+        // Out-of-hearts gate dismissed while standing on a finished board
+        // (win -> "Next level" -> no hearts): there is nothing left to play
+        // here, so go home rather than stranding the player on a solved level.
+        if (!handedOff && this.current === 'game' && this.board.isResolved) {
+          this.goHome();
+        }
+      },
     });
   }
 
@@ -1007,8 +1231,9 @@ class App {
     const moves = this.board.moveCount;
     const seconds = Math.round((Date.now() - this.attemptStartedAt) / 1000);
     const stars = starsFor(moves, level.par);
-    const { isFirstClear } = this.save.recordClear(this.levelId, stars, moves);
-    const reward = coinsFor(stars, isFirstClear, this.remote.current.economy);
+    const { prevStars } = this.save.recordClear(this.levelId, stars, moves);
+    // Replays only pay for newly earned stars - see coinsFor.
+    const reward = coinsFor(stars, prevStars, this.remote.current.economy);
     this.save.addCoins(reward);
     this.save.bumpStat('wins');
     if (stars === 3) this.save.bumpStat('perfects');
@@ -1136,10 +1361,10 @@ class App {
           onClick: () => this.usePowerup('bottle'),
         },
         {
-          label: 'Restart level',
+          label: this.heartCostLabel('Restart level'),
           kind: 'ghost',
           onClick: () => {
-            // Restarting out of a dead end counts as a failed attempt.
+            // Restarting out of a dead end is a failed attempt.
             this.loseLife('failed');
             this.restartLevel();
           },
@@ -1149,9 +1374,25 @@ class App {
     });
   }
 
+  /** Whether giving up on the current board right now would cost a heart. */
+  private get heartAtStake(): boolean {
+    return this.board.isLost && !this.tutorial.active && !this.save.hasInfiniteLives;
+  }
+
+  private heartCostLabel(label: string): string {
+    return this.heartAtStake ? `${label} (costs a heart)` : label;
+  }
+
+  /**
+   * One rule for hearts: they pay for *failures*. A board that is dead-ended
+   * or proven unwinnable has been failed; restarting or leaving it costs a
+   * heart. Walking away from a live board, or restarting one, is free - the
+   * player only loses the moves they made.
+   */
   private loseLife(cause: 'quit' | 'failed'): void {
     // Never punish a player who is still inside the level-1 tutorial.
     if (this.tutorial.active) return;
+    if (!this.board.isLost) return;
     this.save.loseLife();
     this.save.breakStreak();
     this.analytics.track({ type: 'life_lost', level: this.levelId, cause });
@@ -1159,17 +1400,16 @@ class App {
 
   // --------------------------------------------------------------- dialogs
   private confirmQuit(): void {
-    if (this.board.moveCount === 0) {
+    if (this.board.moveCount === 0 || this.board.isResolved) {
       this.quitToHome();
       return;
     }
-    const heartWarning =
-      !this.save.hasInfiniteLives && !this.tutorial.active
-        ? ' You will also lose a heart.'
-        : '';
+    const body = this.heartAtStake
+      ? 'This level cannot be won from here. Leaving now costs a heart.'
+      : 'Your progress on this attempt will be lost.';
     this.modal.open({
       title: 'Leave this level?',
-      bodyHtml: `Your progress on this attempt will be lost.${heartWarning}`,
+      bodyHtml: body,
       inlineButtons: true,
       buttons: [
         { label: 'Stay', kind: 'ghost' },
@@ -1186,12 +1426,20 @@ class App {
   }
 
   private quitToHome(): void {
-    this.analytics.track({
-      type: 'level_quit',
-      level: this.levelId,
-      moves: this.board.moveCount,
-      seconds: Math.round((Date.now() - this.attemptStartedAt) / 1000),
-    });
+    // Leaving a won board is navigation, not a quit: keep the funnel honest.
+    if (!this.board.isResolved) {
+      this.analytics.track({
+        type: 'level_quit',
+        level: this.levelId,
+        moves: this.board.moveCount,
+        seconds: Math.round((Date.now() - this.attemptStartedAt) / 1000),
+      });
+    }
+    this.goHome();
+  }
+
+  /** Plain navigation to home, with no analytics side effects. */
+  private goHome(): void {
     this.tutorial.abort();
     this.renderHome();
     this.show('home');
@@ -1199,13 +1447,24 @@ class App {
 
   private confirmRestart(): void {
     if (this.board.moveCount === 0) return;
+    const body = this.heartAtStake
+      ? 'This level cannot be won from here. Restarting costs a heart.'
+      : 'The board will be reset to the beginning.';
     this.modal.open({
       title: 'Restart level?',
-      bodyHtml: 'The board will be reset to the beginning.',
+      bodyHtml: body,
       inlineButtons: true,
       buttons: [
         { label: 'Cancel', kind: 'ghost' },
-        { label: 'Restart', kind: 'primary', onClick: () => this.restartLevel() },
+        {
+          label: 'Restart',
+          kind: 'primary',
+          onClick: () => {
+            // Same rule as the stuck dialog: only a lost board costs a heart.
+            this.loseLife('failed');
+            this.restartLevel();
+          },
+        },
       ],
     });
   }
@@ -1262,6 +1521,7 @@ class App {
     const profile = this.save.snapshot.profile;
     const input = $<HTMLInputElement>('#name-input');
     input.value = profile?.name ?? '';
+    $<HTMLInputElement>('#analytics-consent').checked = this.save.snapshot.settings.analytics;
     this.chosenAvatar = profile?.avatar ?? this.chosenAvatar;
     for (const child of Array.from($('#avatar-grid').children)) {
       child.setAttribute('aria-checked', String(child.textContent === this.chosenAvatar));
@@ -1279,6 +1539,8 @@ class App {
       ['haptics', 'Vibration', 'Where the device supports it'],
       ['colorblind', 'Colourblind aid', 'Adds a shape marker to each colour'],
       ['reducedMotion', 'Reduced motion', 'Shorter animations, no particles'],
+      // Keep last: the smoke test addresses the switches above by position.
+      ['analytics', 'Share anonymous usage data', 'Which levels are played and where things break. Never your name or email'],
     ];
 
     for (const [key, label, desc] of rows) {
@@ -1490,4 +1752,4 @@ class App {
 }
 
 const app = new App();
-void app.boot();
+app.boot().catch((err: unknown) => app.showBootFailure(err));

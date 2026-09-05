@@ -17,6 +17,10 @@ export type AnalyticsEvent =
   | { type: 'shop_coin_spend'; item: string; price: number }
   | { type: 'iap_start'; product: string }
   | { type: 'iap_result'; product: string; ok: boolean; reason?: string }
+  | { type: 'iap_restored'; count: number }
+  /** Uncaught error or rejection; also boot failures. Rate-limited per session. */
+  | { type: 'client_error'; source: 'error' | 'unhandledrejection' | 'boot'; message: string;
+      stack?: string; renderer?: string; level?: number; saveVersion: number }
   | { type: 'life_lost'; level: number; cause: 'quit' | 'failed' }
   | { type: 'out_of_lives'; level: number }
   | { type: 'support_email_open'; level: number }
@@ -46,10 +50,15 @@ export class PostHogDriver implements AnalyticsDriver {
     private readonly apiKey: string,
     /** Stable anonymous ID; the save's supportId, so support and funnel line up. */
     private readonly distinctId: string,
+    /**
+     * Player consent, read per event so the Settings toggle takes effect
+     * immediately. Nothing leaves the device while this returns false.
+     */
+    private readonly enabled: () => boolean = () => true,
   ) {}
 
   track(event: AnalyticsEvent): void {
-    if (!this.apiKey) return;
+    if (!this.apiKey || !this.enabled()) return;
     const { type, ...properties } = event;
     const body = JSON.stringify({
       api_key: this.apiKey,

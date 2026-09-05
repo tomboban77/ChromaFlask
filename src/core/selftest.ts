@@ -10,6 +10,7 @@ import {
 } from './board';
 import { generateLevel } from './generator';
 import { LEVELS } from './levels';
+import { DEFAULT_ECONOMY, coinsFor, starsFor } from './progression';
 import { solvability, solve } from './solver';
 import type { Board, BoardRules, Move } from './types';
 
@@ -99,6 +100,23 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
     'canonicalKey distinguishes contents',
     canonicalKey([[0, 1]]) !== canonicalKey([[1, 0]]),
   );
+}
+
+// -------------------------------------------------------------- economy
+{
+  const e = DEFAULT_ECONOMY;
+  const firstPerfect = e.baseReward + 3 * e.rewardPerStar + e.firstClearBonus;
+  check('coins: first clear pays base + stars + bonus', coinsFor(3, null, e) === firstPerfect);
+  check('coins: first 1-star clear', coinsFor(1, null, e) === e.baseReward + e.rewardPerStar + e.firstClearBonus);
+  // The replay farm: repeating a level must never pay for stars already owned.
+  check('coins: replay at same stars pays nothing', coinsFor(3, 3, e) === 0);
+  check('coins: replay at fewer stars pays nothing', coinsFor(1, 3, e) === 0);
+  check('coins: replay improving 1 -> 3 pays two stars', coinsFor(3, 1, e) === 2 * e.rewardPerStar);
+  check('coins: replay improving 2 -> 3 pays one star', coinsFor(3, 2, e) === e.rewardPerStar);
+
+  check('stars: par is 3 stars', starsFor(10, 10) === 3);
+  check('stars: within tolerance is 3 stars', starsFor(12, 10) === 3);
+  check('stars: well past par is 1 star', starsFor(40, 10) === 1);
 }
 
 // -------------------------------------------------------- cauldron rules

@@ -145,6 +145,16 @@
             />
           </label>
 
+          <!-- Analytics consent is a visible choice at setup, not a buried
+               default. Mirrors Settings -> "Share anonymous usage data". -->
+          <label class="consent">
+            <input type="checkbox" id="analytics-consent" checked />
+            <span>
+              Share anonymous usage data (which levels are played, crashes) to help
+              improve ChromaFlask. Never your name or email. Change any time in Settings.
+            </span>
+          </label>
+
           <button class="btn btn--primary btn--wide" id="btn-start-profile">
             Start playing
           </button>

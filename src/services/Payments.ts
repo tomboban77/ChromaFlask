@@ -17,6 +17,18 @@
  * Displayed prices come from the store catalog at runtime whenever possible
  * (localized currency, tax handling); the catalog strings here are only the
  * offline fallback for screenshots and dev.
+ *
+ * Purchase lifecycle - the part that protects revenue:
+ *
+ *   1. `purchase(id)` runs the store sheet and returns the purchase token.
+ *      The driver does NOT consume it.
+ *   2. The app grants the goods, records the token in the save (so the grant
+ *      is idempotent), then calls `consume(token)`.
+ *   3. On every boot the app calls `listPending()` and settles anything the
+ *      store still holds: paid but never granted (app died between the sheet
+ *      and the grant) gets granted now; granted but never consumed just gets
+ *      consumed. Either way the player ends up with exactly what they paid
+ *      for, exactly once, and the SKU becomes purchasable again.
  */
 
 import type { PowerupId } from '@/core/progression';
@@ -69,8 +81,19 @@ export function getProduct(id: ProductId): IapProduct {
   return product;
 }
 
+export function isProductId(id: string): id is ProductId {
+  return IAP_CATALOG.some((p) => p.id === id);
+}
+
+/** A purchase the store has recorded but the app has not yet consumed. */
+export interface PendingPurchase {
+  readonly productId: ProductId;
+  readonly token: string;
+}
+
 export type PurchaseResult =
-  | { ok: true; productId: ProductId }
+  /** `token` is null only for drivers without a token concept (dev simulator). */
+  | { ok: true; productId: ProductId; token: string | null }
   | { ok: false; reason: 'cancelled' | 'unavailable' | 'failed' };
 
 export interface PaymentDriver {
@@ -79,7 +102,12 @@ export interface PaymentDriver {
   isAvailable(): Promise<boolean>;
   /** Localized display prices keyed by product id, best effort. */
   getPrices(ids: readonly ProductId[]): Promise<Partial<Record<ProductId, string>>>;
+  /** Runs the store sheet. Never consumes: the app does that after granting. */
   purchase(id: ProductId): Promise<PurchaseResult>;
+  /** Purchases the store still holds as unconsumed. */
+  listPending(): Promise<PendingPurchase[]>;
+  /** Marks a consumable as delivered so it can be bought again. */
+  consume(token: string): Promise<void>;
 }
 
 // ------------------------------------------------------- Play Billing (TWA)
@@ -90,8 +118,14 @@ interface DigitalGoodsItemDetails {
   price?: { currency: string; value: string };
 }
 
+interface DigitalGoodsPurchaseDetails {
+  itemId: string;
+  purchaseToken: string;
+}
+
 interface DigitalGoodsService {
   getDetails(itemIds: string[]): Promise<DigitalGoodsItemDetails[]>;
+  listPurchases(): Promise<DigitalGoodsPurchaseDetails[]>;
   consume(purchaseToken: string): Promise<void>;
 }
 
@@ -145,15 +179,37 @@ export class PlayBillingDriver implements PaymentDriver {
         { total: { label: 'Total', amount: { currency: 'USD', value: '0' } } },
       );
       const response = await request.show();
-      const token = (response.details as { purchaseToken?: string }).purchaseToken;
+      const token = (response.details as { purchaseToken?: string }).purchaseToken ?? null;
+      // The payment has already happened at this point; `complete` only
+      // dismisses the sheet. Granting and consuming are the app's job, and
+      // `listPending` on the next boot covers anything that dies in between.
       await response.complete('success');
-      // All catalog items are consumables; consuming lets them be bought again.
-      if (token) await this.service.consume(token);
-      return { ok: true, productId: id };
+      return { ok: true, productId: id, token };
     } catch (err) {
       const cancelled = err instanceof DOMException && err.name === 'AbortError';
       return { ok: false, reason: cancelled ? 'cancelled' : 'failed' };
     }
+  }
+
+  async listPending(): Promise<PendingPurchase[]> {
+    if (!this.service) return [];
+    try {
+      const purchases = await this.service.listPurchases();
+      const out: PendingPurchase[] = [];
+      for (const p of purchases) {
+        if (isProductId(p.itemId) && p.purchaseToken) {
+          out.push({ productId: p.itemId, token: p.purchaseToken });
+        }
+      }
+      return out;
+    } catch {
+      return [];
+    }
+  }
+
+  async consume(token: string): Promise<void> {
+    if (!this.service) throw new Error('billing unavailable');
+    await this.service.consume(token);
   }
 }
 
@@ -169,7 +225,13 @@ export class SimulatedDriver implements PaymentDriver {
   }
   async purchase(id: ProductId): Promise<PurchaseResult> {
     await new Promise((r) => setTimeout(r, 650));
-    return { ok: true, productId: id };
+    return { ok: true, productId: id, token: `sim-${Date.now()}` };
+  }
+  async listPending(): Promise<PendingPurchase[]> {
+    return [];
+  }
+  async consume(): Promise<void> {
+    /* nothing to consume in the simulator */
   }
 }
 
@@ -183,6 +245,12 @@ class UnavailableDriver implements PaymentDriver {
   }
   async purchase(): Promise<PurchaseResult> {
     return { ok: false, reason: 'unavailable' };
+  }
+  async listPending(): Promise<PendingPurchase[]> {
+    return [];
+  }
+  async consume(): Promise<void> {
+    /* nothing to consume */
   }
 }
 
@@ -226,5 +294,21 @@ export class Payments {
   purchase(id: ProductId): Promise<PurchaseResult> {
     if (!this.ready) return Promise.resolve({ ok: false, reason: 'unavailable' });
     return this.driver.purchase(id);
+  }
+
+  listPending(): Promise<PendingPurchase[]> {
+    if (!this.ready) return Promise.resolve([]);
+    return this.driver.listPending();
+  }
+
+  /** Resolves false (never throws) if the store rejected the consume; retried next boot. */
+  async consume(token: string): Promise<boolean> {
+    if (!this.ready) return false;
+    try {
+      await this.driver.consume(token);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

@@ -1,0 +1,631 @@
+<title>ChromaFlask Audit</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #f6f4fb;
+    --bg-2: #eeebf6;
+    --ink: #1c1a30;
+    --ink-2: #4b4a66;
+    --ink-3: #7d7c99;
+    --rule: #d9d5ea;
+    --rule-2: #c3bedd;
+    --accent: #0e8fab;
+    --accent-ink: #ffffff;
+    --accent-soft: #d9f1f6;
+    --crit: #c1183a;   --crit-soft: #fbe3e8;
+    --high: #cf5a14;   --high-soft: #fde8db;
+    --med: #b3860f;    --med-soft: #faefd0;
+    --low: #6b6f8c;    --low-soft: #e6e6f0;
+    --info: #3a6ea8;   --info-soft: #dfe9f6;
+    --good: #1f8f5a;   --good-soft: #dcf3e6;
+    --grade-a: #1f8f5a; --grade-b: #0e8fab; --grade-c: #b3860f; --grade-d: #c1183a;
+    --code-bg: #ecebf4;
+    --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", "Segoe UI", Roboto, system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1030; --bg-2: #141743; --ink: #ebe9f7; --ink-2: #b6b4cf; --ink-3: #8482a3;
+      --rule: #272a55; --rule-2: #383c6b;
+      --accent: #35d6ee; --accent-ink: #062a33; --accent-soft: #10364a;
+      --crit: #ff6b88; --crit-soft: #3a1626; --high: #ff9a5c; --high-soft: #3a2314;
+      --med: #f2c14e; --med-soft: #3a3016; --low: #a3a6c4; --low-soft: #24274a;
+      --info: #7fb0ea; --info-soft: #172a45; --good: #5ad19a; --good-soft: #143529;
+      --grade-a: #5ad19a; --grade-b: #35d6ee; --grade-c: #f2c14e; --grade-d: #ff6b88;
+      --code-bg: #181b48;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1030; --bg-2: #141743; --ink: #ebe9f7; --ink-2: #b6b4cf; --ink-3: #8482a3;
+    --rule: #272a55; --rule-2: #383c6b;
+    --accent: #35d6ee; --accent-ink: #062a33; --accent-soft: #10364a;
+    --crit: #ff6b88; --crit-soft: #3a1626; --high: #ff9a5c; --high-soft: #3a2314;
+    --med: #f2c14e; --med-soft: #3a3016; --low: #a3a6c4; --low-soft: #24274a;
+    --info: #7fb0ea; --info-soft: #172a45; --good: #5ad19a; --good-soft: #143529;
+    --grade-a: #5ad19a; --grade-b: #35d6ee; --grade-c: #f2c14e; --grade-d: #ff6b88;
+    --code-bg: #181b48;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  h1, h2, h3, h4 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+  p { margin: 0; }
+  strong { font-weight: 600; }
+
+  .page { max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---- masthead ---- */
+  .mast { padding: 56px 0 36px; border-bottom: 1px solid var(--rule-2); }
+  .mast__kicker { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); display: flex; gap: 18px; flex-wrap: wrap; }
+  .mast h1 { font-size: clamp(38px, 6vw, 68px); font-weight: 800; margin-top: 14px; letter-spacing: -0.02em; }
+  .mast h1 span { color: var(--accent); }
+  .mast__lede { max-width: 66ch; margin-top: 18px; font-size: 18px; color: var(--ink-2); }
+  .mast__facts { margin-top: 26px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  .fact { padding: 14px 16px; border-right: 1px solid var(--rule); background: var(--bg-2); }
+  .fact:last-child { border-right: 0; }
+  .fact b { display: block; font-family: var(--font-mono); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .fact span { font-size: 12.5px; color: var(--ink-3); }
+
+  /* ---- layout ---- */
+  .body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px; margin-top: 40px; }
+  @media (max-width: 900px) { .body { grid-template-columns: 1fr; gap: 24px; } .toc { position: static !important; } }
+  .toc { position: sticky; top: 24px; align-self: start; font-size: 14px; }
+  .toc__label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px; }
+  .toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .toc a { display: block; color: var(--ink-2); padding: 5px 0 5px 12px; border-left: 2px solid var(--rule); }
+  .toc a:hover { color: var(--ink); border-left-color: var(--accent); text-decoration: none; }
+  .content { min-width: 0; max-width: 760px; }
+
+  section { padding: 8px 0 40px; }
+  section + section { border-top: 1px solid var(--rule); padding-top: 40px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; }
+  .sec-head h2 { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+  .sec-head .grade { font-family: var(--font-mono); font-size: 13px; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; }
+  .content p { margin-top: 12px; color: var(--ink-2); }
+  .content p.lead { color: var(--ink); font-size: 17px; }
+  h3 { font-size: 20px; font-weight: 700; margin-top: 28px; }
+  ul.plain { margin: 12px 0 0; padding-left: 20px; color: var(--ink-2); }
+  ul.plain li { margin-top: 6px; }
+  ul.plain li::marker { color: var(--accent); }
+
+  /* ---- scorecard ---- */
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; margin-top: 16px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
+  td.grade { font-family: var(--font-display); font-weight: 800; font-size: 20px; white-space: nowrap; width: 1%; }
+  .g-a { color: var(--grade-a); } .g-b { color: var(--grade-b); } .g-c { color: var(--grade-c); } .g-d { color: var(--grade-d); }
+  .table-wrap { overflow-x: auto; }
+  td .mono { font-variant-numeric: tabular-nums; }
+  td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+
+  /* ---- P0 list ---- */
+  .p0 { margin: 18px 0 0; padding: 0; list-style: none; counter-reset: p0; border-top: 2px solid var(--ink); }
+  .p0 li { counter-increment: p0; display: grid; grid-template-columns: 34px 1fr auto; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--rule); align-items: baseline; }
+  .p0 li::before { content: counter(p0); font-family: var(--font-display); font-weight: 800; font-size: 20px; color: var(--accent); }
+  .p0 li b { color: var(--ink); font-weight: 600; }
+  .p0 li .ref { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
+
+  /* ---- findings ---- */
+  .findings { margin-top: 18px; border-top: 1px solid var(--rule-2); }
+  .finding { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--rule); }
+  @media (max-width: 560px) { .finding { grid-template-columns: 1fr; gap: 8px; } }
+  .finding__id { font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--ink); padding-top: 2px; }
+  .finding h4 { font-size: 17px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .sev { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+  .sev-crit { background: var(--crit-soft); color: var(--crit); }
+  .sev-high { background: var(--high-soft); color: var(--high); }
+  .sev-med  { background: var(--med-soft);  color: var(--med); }
+  .sev-low  { background: var(--low-soft);  color: var(--low); }
+  .sev-info { background: var(--info-soft); color: var(--info); }
+  .finding p { margin-top: 8px; font-size: 15px; }
+  .finding .fix { padding-left: 12px; border-left: 2px solid var(--accent); color: var(--ink); }
+  .finding .fix b { color: var(--accent); font-weight: 600; margin-right: 4px; }
+
+  /* ---- strengths ---- */
+  .good-list { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .good-list li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; color: var(--ink-2); font-size: 15px; }
+  .good-list li::before { content: ""; width: 10px; height: 10px; margin-top: 8px; border-radius: 2px; background: var(--good); }
+
+  /* ---- roadmap ---- */
+  .roadmap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 18px; }
+  @media (max-width: 760px) { .roadmap { grid-template-columns: 1fr; } }
+  .phase { border: 1px solid var(--rule-2); border-radius: 10px; padding: 16px; background: var(--bg-2); }
+  .phase h3 { margin: 0; font-size: 17px; }
+  .phase .when { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-top: 4px; }
+  .phase ul { margin: 12px 0 0; padding-left: 0; list-style: none; font-size: 14px; color: var(--ink-2); }
+  .phase li { padding: 5px 0; border-top: 1px solid var(--rule); }
+  .phase li:first-child { border-top: 0; }
+  .phase li .ref { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-3); margin-right: 6px; }
+  .phase--p0 { border-color: var(--crit); }
+  .phase--p0 h3 { color: var(--crit); }
+
+  .note { margin-top: 14px; padding: 12px 14px; background: var(--accent-soft); border-radius: 8px; font-size: 14.5px; color: var(--ink); }
+  .foot { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--ink-3); }
+</style>
+
+<div class="page">
+  <header class="mast">
+    <div class="mast__kicker">
+      <span>Product &amp; engineering audit</span>
+      <span>2026‑09‑05</span>
+      <span>main @ 7d2dab3</span>
+    </div>
+    <h1>ChromaFlask, read as if a <span>million players</span> arrive tomorrow</h1>
+    <p class="mast__lede">The puzzle engine is best‑in‑class: every level is machine‑proven solvable with an optimal par, and a real test suite gates every deploy. What is not ready is everything around it, starting with the economy, a handful of player‑flow bugs, on‑device level generation, and platform plumbing.</p>
+    <div class="mast__facts">
+      <div class="fact"><b>3,672</b><span>core checks passing</span></div>
+      <div class="fact"><b>8 / 200</b><span>levels over 200 ms to generate (desktop)</span></div>
+      <div class="fact"><b>~200 KB</b><span>JS + CSS, gzipped</span></div>
+      <div class="fact"><b>712 KB</b><span>images preloaded before first frame</span></div>
+      <div class="fact"><b>16 min</b><span>to farm a $19.99 coin chest by replaying level 1</span></div>
+    </div>
+  </header>
+
+  <div class="body">
+    <nav class="toc" aria-label="Sections">
+      <div class="toc__label">Contents</div>
+      <ol>
+        <li><a href="#summary">Summary &amp; scorecard</a></li>
+        <li><a href="#logic">1 · Game logic</a></li>
+        <li><a href="#economy">2 · Economy</a></li>
+        <li><a href="#ux">3 · UI / UX</a></li>
+        <li><a href="#security">4 · Security &amp; compliance</a></li>
+        <li><a href="#perf">5 · Performance</a></li>
+        <li><a href="#ops">6 · Reliability &amp; ops</a></li>
+        <li><a href="#market">7 · Market comparison</a></li>
+        <li><a href="#roadmap">8 · Roadmap</a></li>
+        <li><a href="#verified">Appendix · Verified</a></li>
+      </ol>
+    </nav>
+
+    <main class="content">
+      <section id="summary">
+        <div class="sec-head"><h2>Summary</h2></div>
+        <p class="lead">The engineering foundation is unusually strong for a game at this stage. A pure, engine‑free rules core, deterministic boards, provably optimal par, driver seams for save, auth, analytics and payments, and genuine accessibility work. That is rare and it is the right base to scale from.</p>
+        <p>It is not yet ready for a large audience. The blockers are not in the puzzle engine. They are in the economy, in a few player flows, in how level generation behaves on a phone, in missing platform plumbing (Android back button, purchase restore, crash reporting), and in compliance documentation that no longer matches what the build does.</p>
+
+        <h3>Scorecard</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Area</th><th>Grade</th><th>In one line</th></tr></thead>
+          <tbody>
+            <tr><td>Puzzle logic &amp; solver</td><td class="grade g-a">A</td><td>Provably solvable, optimal par, audited by an independent BFS.</td></tr>
+            <tr><td>Level generation on device</td><td class="grade g-c">C</td><td>8 of 200 levels take 0.3–1.3 s on a fast desktop, synchronously on the main thread. Expect multi‑second freezes on mid‑range Android.</td></tr>
+            <tr><td>Difficulty curve</td><td class="grade g-b">B−</td><td>Good rhythm to level 55, then 145 levels with two knobs left. Free powerups flatten it entirely.</td></tr>
+            <tr><td>Economy &amp; monetisation</td><td class="grade g-d">D</td><td>Infinite coin farm via replay, very generous start, no rewarded ads, no purchase restore.</td></tr>
+            <tr><td>UI / UX</td><td class="grade g-b">B</td><td>Polished, coherent, accessible. Missing Android back, mid‑level resume, a retention loop, and one stranded‑player flow.</td></tr>
+            <tr><td>Security &amp; integrity</td><td class="grade g-b">B</td><td>Right threat model for single‑player. Sourcemaps leak the support secret; no CSP.</td></tr>
+            <tr><td>Privacy &amp; compliance</td><td class="grade g-c">C</td><td>PostHog analytics are live in production; the store docs still say “no data collected”.</td></tr>
+            <tr><td>Performance</td><td class="grade g-b">B−</td><td>Bundle is fine. 712 KB of preloaded images and a render loop that never pauses are not.</td></tr>
+            <tr><td>Reliability &amp; ops</td><td class="grade g-c">C+</td><td>Excellent CI gate, zero crash reporting.</td></tr>
+            <tr><td>Documentation</td><td class="grade g-a">A</td><td>STATUS, STORE‑RELEASE, WRAP‑ANDROID and support‑codes are exemplary. Keep them true.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Fix these before any real traffic</h3>
+        <ol class="p0">
+          <li><span><b>Coin farming.</b> Replaying a cleared level pays 50–125 coins every time, with no heart cost. Level 1 takes about ten seconds.</span><span class="ref">E1</span></li>
+          <li><span><b>Stranded after a win with zero hearts.</b> “Next level” opens the lives dialog over a solved board; closing it leaves the player there, and pressing back breaks their streak.</span><span class="ref">U3</span></li>
+          <li><span><b>Android back button exits the app</b> from every screen and every modal.</span><span class="ref">U1</span></li>
+          <li><span><b>Purchases can be paid for and never granted.</b> Nothing restores pending purchases on boot.</span><span class="ref">E4</span></li>
+          <li><span><b>Sourcemaps ship to production.</b> 2.7 MB that reproduce the support‑code secret in plain TypeScript.</span><span class="ref">S1</span></li>
+          <li><span><b>Privacy docs are wrong.</b> Analytics are live; the data‑safety forms and privacy policy must say so, and EU users likely need a consent toggle.</span><span class="ref">S2</span></li>
+          <li><span><b>No crash reporting.</b> At scale you are blind.</span><span class="ref">O1</span></li>
+        </ol>
+      </section>
+
+      <!-- ============================================================ LOGIC -->
+      <section id="logic">
+        <div class="sec-head"><h2>1 · Game logic</h2><span class="grade g-a">A for correctness</span></div>
+        <h3>What is excellent</h3>
+        <ul class="good-list">
+          <li>The rules engine is small, total and argued in comments; the <code>usefulMoves</code> pruning states its cauldron exceptions explicitly.</li>
+          <li>A* over tube‑order‑canonicalised states with two admissible, consistent heuristics. The comment explaining why the cauldron bound must be maxed, not summed, is proof‑in‑code.</li>
+          <li>Deterministic generation per level id, a cheap solvability gate before the exact solve, and a byte‑identical determinism check in CI.</li>
+          <li>No‑win detection is a <em>proof</em> of unwinnability. It removes the most common one‑star review in the genre: “level X is impossible”.</li>
+          <li>The Cauldron is a first‑class rule set. Hashing, pruning, heuristics and UI all understand it.</li>
+          <li>3,672 checks, including a brute‑force optimality audit under both rule sets and a round‑trip of real support codes.</li>
+        </ul>
+
+        <h3>Findings</h3>
+        <div class="findings">
+          <article class="finding"><div class="finding__id">L1</div><div>
+            <h4>Level generation runs on the main thread and is slow for about eight levels <span class="sev sev-high">High</span></h4>
+            <p>Measured on this desktop: 180 levels take 50 ms or less, 12 take 50–200 ms, and 8 exceed 200 ms. The worst are L192 at 1.29 s, L92 at 1.11 s, L172 at 0.86 s and L32 at 0.41 s. Mobile Chrome on a mid‑range Android is typically three to six times slower, so “Next level” into L92 or L192 will freeze the UI for several seconds with no feedback. The call is inline in <code>startLevel</code>.</p>
+            <p class="fix"><b>Fix</b> Precompute all 200 boards and solutions at build time into a JSON module (roughly 15 KB gzipped). Generation is deterministic, so the output is identical and the runtime cost drops to zero. It also lets you raise the exact‑solve budget offline so every par is truly optimal. Move whatever still runs at play time (hints, no‑win proofs, endless levels) into a Web Worker.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">L2</div><div>
+            <h4>“Par is genuinely optimal” is not always true <span class="sev sev-med">Medium</span></h4>
+            <p>Cauldron levels fall back to a weight‑1.25 search when the exact solve exceeds 60k nodes, and the solver’s <code>optimal</code> flag is never surfaced or asserted for the campaign. The star tolerance absorbs it in practice, but the README claim is stronger than the code.</p>
+            <p class="fix"><b>Fix</b> With precomputed levels the budget constraint disappears. Assert <code>optimal === true</code> for all 200 levels in the core test.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">L3</div><div>
+            <h4>Free powerups nullify the difficulty curve <span class="sev sev-med">Medium</span></h4>
+            <p>Every attempt grants three free undos, three hints and three bottles, and a bottle can add up to two tubes. A one‑empty squeeze becomes a three‑empty breather for free, and a hint returns the optimal move, so three stars are trivially reachable on any level. The curve you tuned is optional.</p>
+            <p class="fix"><b>Fix</b> See E2. Market norm is zero or one free hint per level and bottles behind coins or a rewarded ad.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">L4</div><div>
+            <h4>The curve runs out of knobs after level 55 <span class="sev sev-low">Low</span></h4>
+            <p>Colours cap at the palette’s eight from level 56 to 200; the remaining dials are minPar (+4 in total) and murky cadence. Players who reach L100 face a hundred near‑identical boards.</p>
+            <p class="fix"><b>Fix</b> Introduce one new idea every 30 levels, the way the cauldron and murk were introduced: five‑unit tubes on some bands, a ninth to twelfth colour (the glyph set has room), a locked tube that opens after N pours, a one‑way tube.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">L5</div><div>
+            <h4>Endless mode is free content you are not shipping <span class="sev sev-low">Low</span></h4>
+            <p>The seeded generator already works for any id. “More coming soon” should be an endless mode with a rotating spec, generated in the worker.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">L6</div><div>
+            <h4>Analytics semantics are off <span class="sev sev-low">Low</span></h4>
+            <p>The <code>attempt</code> counter is a global session counter, not per level, and <code>level_quit</code> also fires from the win modal’s Home button, polluting the quit funnel. Track attempts per level and emit a single exit event with a reason.</p>
+          </div></article>
+        </div>
+      </section>
+
+      <!-- ========================================================== ECONOMY -->
+      <section id="economy">
+        <div class="sec-head"><h2>2 · Economy &amp; monetisation</h2><span class="grade g-d">D</span></div>
+        <p class="lead">This is the largest business risk in the build. The game is fully playable for free, which is right, but there is currently no reason for anyone to pay and one strong reason never to.</p>
+        <div class="findings">
+          <article class="finding"><div class="finding__id">E1</div><div>
+            <h4>Infinite coin farm through replays <span class="sev sev-crit">Critical</span></h4>
+            <p>Every win pays 50 base plus 25 per star even for a level already cleared, and winning costs no heart. Level 1 has par 4 and takes about ten seconds including animations, paying 125 coins per replay. That is the 500‑coin heart refill in 40 seconds and the equivalent of the $19.99 chest (12,000 coins) in about 16 minutes. Any player who notices never buys anything.</p>
+            <p class="fix"><b>Fix</b> Replays pay nothing, or only the improvement (new stars × 25), or a small flat bounty capped per day.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">E2</div><div>
+            <h4>Too generous to create purchase intent <span class="sev sev-high">High</span></h4>
+            <p>1,000 starting coins, 175 per first clear, three free of each powerup per attempt, a hint three‑pack for 200. A player ends the campaign with thousands of coins and nothing to spend them on. Category benchmarks: 0–100 starting coins, one free hint per level, bottles never free.</p>
+            <p class="fix"><b>Fix</b> Start at 200 coins; free uses of one undo, one hint, no bottle (unlimited undo is defensible since it reduces frustration rather than selling anything); first clear 50 + 15 per star. Make <code>RemoteConfig</code> actually fetch so this can be tuned live. The seam already exists.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">E3</div><div>
+            <h4>No rewarded video <span class="sev sev-high">High</span></h4>
+            <p>For casual puzzle at scale, rewarded ads are typically the majority of revenue and the main free‑to‑play currency: watch for a hint, a bottle, a heart, double coins. The release checklist declares no ads. That is a legitimate choice, but hearts plus IAP‑only is the friction model of Candy Crush without its scale.</p>
+            <p class="fix"><b>Fix</b> Decide. If no ads, remove hearts (E6). If ads, put them behind an <code>AdsService</code> driver exactly like <code>Payments</code>, and redo the data‑safety forms.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">E4</div><div>
+            <h4>Purchases can be paid for and never granted <span class="sev sev-high">High</span></h4>
+            <p>The Play Billing driver completes the payment sheet and grants in the same call. If the app dies between the sheet closing and the coins landing, the player has paid, received nothing, and because the token was never consumed the SKU cannot be bought again. There is no <code>listPurchases()</code> on boot.</p>
+            <p class="fix"><b>Fix</b> On init, list purchases, grant every unconsumed token idempotently (persist granted tokens in the save), then consume. Reorder the live purchase to grant, persist token, consume, then complete. Mirror this in the future StoreKit driver.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">E5</div><div>
+            <h4>Receipt validation, and a cheap anti‑cheat you already own <span class="sev sev-med">Medium</span></h4>
+            <p>Client‑side grants are spoofable; a small verification endpoint is needed before revenue matters. Worth noting for the roadmap: because boards are deterministic, a server can verify any claimed solve by replaying the move list. That is exact, cheap anti‑cheat for a future leaderboard without trusting the client.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">E6</div><div>
+            <h4>Heart rules are harsh and inconsistent <span class="sev sev-med">Medium</span></h4>
+            <p>A heart is lost on quit, not only on failure, and on Restart from the stuck dialog, while the top‑bar restart button is free and stays available after a “no way to win” toast. The top water‑sort games generally have no lives at all.</p>
+            <p class="fix"><b>Fix</b> Either drop hearts and gate with ads or coins, or lose a heart only on failure and dead‑end restart, never on quit, with every restart path consistent.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">E7</div><div>
+            <h4>Heart regeneration trusts the device clock <span class="sev sev-low">Low</span></h4>
+            <p>Changing the system time refills hearts. Acceptable now; note it for the server milestone.</p>
+          </div></article>
+        </div>
+      </section>
+
+      <!-- =============================================================== UX -->
+      <section id="ux">
+        <div class="sec-head"><h2>3 · UI / UX</h2><span class="grade g-b">B</span></div>
+        <h3>What is excellent</h3>
+        <ul class="good-list">
+          <li>Coherent candy visual language; HUD in DOM for crisp text, Pixi only where it earns its cost.</li>
+          <li>The tutorial advances on real actions and the hand points at the solver’s actual next move.</li>
+          <li>Tapping a non‑target that could be a source switches selection instead of buzzing. Small, and exactly right.</li>
+          <li>Pour choreography: level liquid surface under tilt, parabolic stream, amount‑pitched audio, input reopening before the return arc.</li>
+          <li>Accessibility: colour‑blind glyphs, reduced motion, 44 px hit areas, dialog roles, focus moved into dialogs, live‑region toasts, safe‑area insets, desktop keyboard.</li>
+        </ul>
+
+        <h3>Findings</h3>
+        <div class="findings">
+          <article class="finding"><div class="finding__id">U1</div><div>
+            <h4>Android back button exits the app <span class="sev sev-high">High</span></h4>
+            <p>There is no history handling anywhere. In a Trusted Web Activity, back on the game screen, in the shop, or with a modal open closes the whole app.</p>
+            <p class="fix"><b>Fix</b> Push a history entry per screen and per modal; on <code>popstate</code> close the modal or return home; on home, let it exit. Web players get a working browser back for free.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">U2</div><div>
+            <h4>No mid‑level resume <span class="sev sev-high">High</span></h4>
+            <p>Closing the app mid‑level discards the board and history. Casual players background games constantly.</p>
+            <p class="fix"><b>Fix</b> Persist level id, board, history, hidden units, extra tubes, uses and start time on every move (writes are already coalesced) and offer “Continue level 47?” on launch.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">U3</div><div>
+            <h4>Stranded after a win with zero hearts <span class="sev sev-high">High</span></h4>
+            <p>Win, tap Next level, <code>startLevel</code> sees no hearts and opens the lives dialog over the solved board. Close it and the player is standing on a completed level with a live back button. Back then warns “You will also lose a heart” for a level already won, and the quit path calls <code>breakStreak</code> unconditionally, so the win streak is broken by winning. Restarting that board also re‑awards coins (E1).</p>
+            <p class="fix"><b>Fix</b> When the lives dialog closes without a retry on a resolved board, go home. Break the streak only when a heart is actually lost. Treat back on a resolved board as plain navigation.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">U4</div><div>
+            <h4>Every launch costs 1.6 seconds of splash <span class="sev sev-med">Medium</span></h4>
+            <p>The splash is a fixed‑duration animation that boot awaits, regardless of how fast boot actually was. Returning players should be on home well under a second.</p>
+            <p class="fix"><b>Fix</b> Drive the bar by real progress with a short minimum around half a second so it never flashes.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">U5</div><div>
+            <h4>No retention loop <span class="sev sev-med">Medium</span></h4>
+            <p>The only reason to come back is the heart timer. All of the following work without a server because boards are deterministic: a daily challenge seeded by the date with a streak calendar; a daily login reward and seven‑day chest; achievements built on the lifetime stats that already exist; a heart‑refill notification from the native wrapper.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">U6</div><div>
+            <h4>The level map is a flat 200‑node grid <span class="sev sev-med">Medium</span></h4>
+            <p>Competitors organise into themed chapters every 20–25 levels with a completion celebration and a change of scenery. The level names, palette and mechanic cadence already give natural chapter boundaries; this is mostly presentation.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">U7</div><div>
+            <h4>Music starts on the first tap anywhere <span class="sev sev-med">Medium</span></h4>
+            <p>Common, and a frequent cause of mutes and one‑star reviews. Consider fading music in after the tutorial’s first pour, or defaulting it off on the web while keeping it on in the installed app.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">U8</div><div>
+            <h4>Twist mechanics are introduced by a toast only <span class="sev sev-med">Medium</span></h4>
+            <p>A four‑second toast at the moment a new vessel appears is easy to miss on the first cauldron (L22) and first murky level (L36). Reuse the tutorial machinery for a two‑step guided intro on those levels.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">U9</div><div>
+            <h4>Accessibility gaps <span class="sev sev-low">Low</span></h4>
+            <p>Modals have no focus trap, so Tab escapes to the background. <code>user-scalable=no</code> with <code>maximum-scale=1</code> violates WCAG 1.4.4; consider allowing zoom on DOM‑only screens. Shop badges rely on colour alone.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">U10</div><div>
+            <h4>Every string is hard‑coded English <span class="sev sev-low">Low</span></h4>
+            <p>Roughly 120 strings across <code>main.ts</code>, <code>index.html</code> and the tutorial. Introduce a string table now; retrofitting later is far more expensive.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">U11</div><div>
+            <h4>Toasts have no queue or cap <span class="sev sev-low">Low</span></h4>
+            <p>The cauldron intro, a no‑win warning and the “Stuck? Try a hint” nudge can stack on the same board.</p>
+          </div></article>
+        </div>
+      </section>
+
+      <!-- ========================================================= SECURITY -->
+      <section id="security">
+        <div class="sec-head"><h2>4 · Security, integrity &amp; compliance</h2><span class="grade g-b">B</span></div>
+        <p class="lead">Threat model today: no backend, the client owns all state, players can only cheat themselves. That is the right model for single‑player, and it stops being adequate the moment anything competitive or paid depends on client state.</p>
+        <div class="findings">
+          <article class="finding"><div class="finding__id">S1</div><div>
+            <h4>Production sourcemaps <span class="sev sev-high">High</span></h4>
+            <p><code>sourcemap: true</code> ships 2.7 MB of maps that reconstruct every source file verbatim, including the support‑code HMAC secret. Forging a self‑targeted “coins 65535” or “level 200” code goes from reversing a minified bundle to reading a file.</p>
+            <p class="fix"><b>Fix</b> Set <code>sourcemap: false</code>, or <code>'hidden'</code> and upload maps only to your error tracker. It is also a bandwidth and cache win.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">S2</div><div>
+            <h4>Privacy and compliance drift <span class="sev sev-med">Medium</span></h4>
+            <p>The analytics module ships a live PostHog token and sends every event with the save’s support ID as the distinct id. The release checklist still says “no data collected, analytics are local/console today”, and the README says analytics log to the console in dev. For Play’s Data Safety form and Apple’s label this is app interactions plus device or other IDs, collected, not shared. For EU and UK users a pseudonymous analytics ID generally needs a disclosure and a lawful basis.</p>
+            <p class="fix"><b>Fix</b> Update both docs, write the privacy policy, add a “Share anonymous usage data” toggle in Settings, and restrict the PostHog project to your domains.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">S3</div><div>
+            <h4>No Content Security Policy <span class="sev sev-med">Medium</span></h4>
+            <p>GitHub Pages cannot set headers, but a meta CSP works and turns any future injected script into a no‑op. Cheap insurance for a game that will handle payments.</p>
+            <p class="fix"><b>Fix</b> <code>default-src 'self'; script-src 'self'; connect-src 'self' https://us.i.posthog.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:</code></p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">S4</div><div>
+            <h4>Supply chain hygiene <span class="sev sev-med">Medium</span></h4>
+            <p>Only two runtime dependencies, lockfile committed, <code>npm ci</code> in CI. Good. Add <code>npm audit --omit=dev</code> to the workflow, enable Dependabot, and pin the GitHub Actions to SHAs.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">S5</div><div>
+            <h4>Save data is trusted on load <span class="sev sev-low">Low</span></h4>
+            <p>Migration trusts shapes. A hand‑edited or corrupted record with a non‑numeric star count propagates NaN into the totals and the home screen. Validate numerically and drop bad entries.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">S6</div><div>
+            <h4>Payment completes before the grant <span class="sev sev-low">Low</span></h4>
+            <p>The Play sheet is completed with success before the grant and before consume; a throw after completion loses the purchase. Covered by the E4 reorder.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">S7</div><div>
+            <h4>XSS surface reviewed and clean <span class="sev sev-info">Info</span></h4>
+            <p>The only untrusted string is the profile name; it is escaped where <code>innerHTML</code> is used and set with <code>textContent</code> elsewhere. Dialog markup is app‑authored only. Support codes are fully validated before use.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">S8</div><div>
+            <h4>Support codes are proportionate <span class="sev sev-info">Info</span></h4>
+            <p>48‑bit truncated HMAC, device‑bound, single‑use, 14‑day expiry. The documented trade‑off of a client‑side secret is fine as long as S1 is fixed and codes never gate anything competitive.</p>
+          </div></article>
+        </div>
+      </section>
+
+      <!-- ======================================================= PERFORMANCE -->
+      <section id="perf">
+        <div class="sec-head"><h2>5 · Performance &amp; speed</h2><span class="grade g-b">B−</span></div>
+        <h3>Measured</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Asset</th><th style="text-align:right">Raw</th><th style="text-align:right">Gzip</th></tr></thead>
+          <tbody>
+            <tr><td>pixi chunk</td><td class="num">491 KB</td><td class="num">138 KB</td></tr>
+            <tr><td>gsap chunk</td><td class="num">70 KB</td><td class="num">27 KB</td></tr>
+            <tr><td>app chunk</td><td class="num">85 KB</td><td class="num">28 KB</td></tr>
+            <tr><td>CSS</td><td class="num">29 KB</td><td class="num">7 KB</td></tr>
+            <tr><td><strong>JS + CSS</strong></td><td class="num"><strong>675 KB</strong></td><td class="num"><strong>~200 KB</strong></td></tr>
+            <tr><td>Entry.webp (preload, high priority)</td><td class="num">230 KB</td><td class="num">—</td></tr>
+            <tr><td>logo.webp (preload, high priority)</td><td class="num">299 KB</td><td class="num">—</td></tr>
+            <tr><td>home.webp (preload)</td><td class="num">183 KB</td><td class="num">—</td></tr>
+            <tr><td><strong>Images on the critical path</strong></td><td class="num"><strong>712 KB</strong></td><td class="num">—</td></tr>
+          </tbody>
+        </table></div>
+        <p>Hint and no‑win checks from live, solvable positions cost under a millisecond even on the hardest levels; the weighted search finds a line immediately. The only expensive solver case is the proof of unwinnability, which is budget‑capped. Level generation is the real cost (L1).</p>
+
+        <div class="findings">
+          <article class="finding"><div class="finding__id">P1</div><div>
+            <h4>Main‑thread level generation <span class="sev sev-high">High</span></h4>
+            <p>Same finding as L1. Precompute plus a worker.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">P2</div><div>
+            <h4>About 0.9 MB before the first interactive frame <span class="sev sev-med">Medium</span></h4>
+            <p>Most of it is images preloaded at high priority. The logo is 299 KB for a slot at most 360 CSS pixels wide.</p>
+            <p class="fix"><b>Fix</b> Re‑encode the logo at quality around 75 (70–90 KB) or ship AVIF with WebP fallback; Entry can drop to about 120 KB. Defer the home art until the splash is showing. Consider lazy‑loading the Pixi chunk until the game screen, since splash, profile, home, map and shop are pure DOM.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">P3</div><div>
+            <h4>The render loop never pauses off the game screen <span class="sev sev-med">Medium</span></h4>
+            <p><code>setPaused</code> is only called on visibility change. On home, map and shop the canvas is hidden but the ticker still updates the starfield, particles and every bottle each frame. Pure battery and thermal cost, and the “modal pauses rendering” comment in <code>GameStage</code> is not true.</p>
+            <p class="fix"><b>Fix</b> Pause when the current screen is not the game and while a modal is open.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">P4</div><div>
+            <h4>Per‑frame Graphics rebuilds <span class="sev sev-low">Low</span></h4>
+            <p>Starfield and particles clear and rebuild a Graphics every frame. Fine at 90 stars and 420 particles; on low‑end GPUs a sprite starfield or a static scrolling texture is cheaper. Measure first.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">P5</div><div>
+            <h4>Antialiasing at resolution 2 <span class="sev sev-low">Low</span></h4>
+            <p>MSAA on a 2× buffer is the most expensive default Pixi offers on phones. At high DPR the glass edges are already smooth. Consider antialias only below DPR 2, and profile on a Pixel 4a or Galaxy A14 class device before submission.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">P6</div><div>
+            <h4>Backdrop blur on every dialog <span class="sev sev-low">Low</span></h4>
+            <p>A 7 px full‑screen blur on each modal open is a visible hitch on low‑end Android. Fall back to a solid tint under reduced motion, or drop the blur.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">P7</div><div>
+            <h4>Service worker cache grows forever <span class="sev sev-low">Low</span></h4>
+            <p>The cache version is constant and activation only deletes other cache names, so each deploy’s hashed assets accumulate. Inject the build hash at build time, or prune on activate to the precache plus the assets the current index references.</p>
+          </div></article>
+        </div>
+        <div class="note">Worth keeping: the transparent canvas over a CSS gradient, the delta clamp on resume, dirty‑flag liquid redraws, coalesced save writes with a flush on <code>pagehide</code>, manual chunking and module preloads.</div>
+      </section>
+
+      <!-- ============================================================== OPS -->
+      <section id="ops">
+        <div class="sec-head"><h2>6 · Reliability, observability &amp; ops</h2><span class="grade g-c">C+</span></div>
+        <div class="findings">
+          <article class="finding"><div class="finding__id">O1</div><div>
+            <h4>No error telemetry <span class="sev sev-high">High</span></h4>
+            <p>No <code>window.onerror</code>, no unhandled‑rejection handler, no exception capture. With millions of sessions you will meet WebGL context losses, storage quota errors, Pixi init failures on odd GPUs and unknown unknowns, and you will hear about them only in reviews.</p>
+            <p class="fix"><b>Fix</b> Global handlers that send renderer, level, save version, support ID and a stack to PostHog exception capture or Sentry, plus a friendly recovery UI.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">O2</div><div>
+            <h4>Boot failure leaves the splash at 100 % forever <span class="sev sev-med">Medium</span></h4>
+            <p>If the Pixi stage fails to initialise, boot rejects and nothing is shown. Catch it and offer Reload, or fall back to the canvas renderer.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">O3</div><div>
+            <h4>Analytics loses offline events <span class="sev sev-med">Medium</span></h4>
+            <p>Each event is a fire‑and‑forget fetch. Queue to storage, flush on reconnect, and batch.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">O4</div><div>
+            <h4>End‑to‑end tests do not run in CI <span class="sev sev-med">Medium</span></h4>
+            <p>The smoke test hard‑codes Edge on Windows. Switch to Playwright’s bundled Chromium so the flow test guards every deploy, and consider PR previews instead of deploying every push to main straight to production.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">O5</div><div>
+            <h4>Two tabs, one save <span class="sev sev-low">Low</span></h4>
+            <p>Last write wins silently. Listen for the storage event and reload or warn.</p>
+          </div></article>
+
+          <article class="finding"><div class="finding__id">O6</div><div>
+            <h4>No build version in the app <span class="sev sev-low">Low</span></h4>
+            <p>Inject the git SHA at build and show it in Settings. It is the first thing support needs.</p>
+          </div></article>
+        </div>
+      </section>
+
+      <!-- =========================================================== MARKET -->
+      <section id="market">
+        <div class="sec-head"><h2>7 · How this compares to the market</h2></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Capability</th><th>ChromaFlask</th><th>Category leaders</th></tr></thead>
+          <tbody>
+            <tr><td>Puzzle correctness</td><td>Proven solvable, optimal par</td><td>Mostly hand or random; “impossible level” complaints are common</td></tr>
+            <tr><td>Level count</td><td>200; endless is one flag away</td><td>Thousands plus endless</td></tr>
+            <tr><td>Lives</td><td>5 hearts, 30‑minute regen, lost on quit</td><td>Usually none</td></tr>
+            <tr><td>Monetisation</td><td>IAP only</td><td>Interstitial and rewarded ads plus IAP, often a remove‑ads purchase</td></tr>
+            <tr><td>Daily content</td><td>None</td><td>Daily challenge, login rewards, events</td></tr>
+            <tr><td>Meta and collection</td><td>Deferred</td><td>Themes, bottle skins, backgrounds</td></tr>
+            <tr><td>Social</td><td>None</td><td>Leaderboards, sometimes friends</td></tr>
+            <tr><td>Cloud save</td><td>None</td><td>Common via Play Games or Game Center</td></tr>
+            <tr><td>Localisation</td><td>English only</td><td>20+ languages</td></tr>
+            <tr><td>Accessibility</td><td>Colour‑blind glyphs, reduced motion</td><td>Usually none. A real differentiator for you.</td></tr>
+          </tbody>
+        </table></div>
+        <p>The differentiators you already have, correctness, the no‑win proof, accessibility, original assets and mechanics, are exactly the things the category is bad at. The gaps are all “operate at scale” items rather than “make the game good” items.</p>
+      </section>
+
+      <!-- ========================================================== ROADMAP -->
+      <section id="roadmap">
+        <div class="sec-head"><h2>8 · Prioritised roadmap</h2></div>
+        <div class="roadmap">
+          <div class="phase phase--p0">
+            <h3>P0</h3><div class="when">Before any real traffic · days</div>
+            <ul>
+              <li><span class="ref">E1</span>Replay coin farm</li>
+              <li><span class="ref">U3</span>Stranded‑after‑win flow</li>
+              <li><span class="ref">U1</span>Android back button</li>
+              <li><span class="ref">E4</span>Purchase restore and grant ordering</li>
+              <li><span class="ref">S1</span>Sourcemaps off</li>
+              <li><span class="ref">S2</span>Privacy docs and consent toggle</li>
+              <li><span class="ref">O1</span>Error telemetry</li>
+              <li><span class="ref">O2</span>Boot‑failure recovery UI</li>
+            </ul>
+          </div>
+          <div class="phase">
+            <h3>P1</h3><div class="when">First weeks · structural</div>
+            <ul>
+              <li><span class="ref">L1</span>Precompute levels, solver in a worker</li>
+              <li><span class="ref">U2</span>Mid‑level resume</li>
+              <li><span class="ref">P3</span>Pause the render loop off‑game</li>
+              <li><span class="ref">P2</span>Image re‑encode, lazy Pixi</li>
+              <li><span class="ref">E2</span>Economy rebalance behind live config</li>
+              <li><span class="ref">E6</span>One consistent heart rule, or none</li>
+              <li><span class="ref">S3</span>Content Security Policy</li>
+              <li><span class="ref">O4</span>End‑to‑end tests in CI</li>
+              <li><span class="ref">U4</span>Real splash progress</li>
+            </ul>
+          </div>
+          <div class="phase">
+            <h3>P2</h3><div class="when">Growth · weeks to months</div>
+            <ul>
+              <li><span class="ref">L5</span>Endless mode</li>
+              <li><span class="ref">U5</span>Daily challenge, login rewards, achievements</li>
+              <li><span class="ref">U6</span>Chapters on the map</li>
+              <li><span class="ref">L4</span>A new mechanic every ~30 levels</li>
+              <li><span class="ref">U10</span>Localisation</li>
+              <li><span class="ref">E3</span>Ads driver, if chosen</li>
+              <li><span class="ref">E5</span>Leaderboard with replay‑verified scores</li>
+              <li><span class="ref">—</span>Cloud save via platform services</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================= VERIFIED -->
+      <section id="verified">
+        <div class="sec-head"><h2>Appendix · What was verified</h2></div>
+        <ul class="plain">
+          <li>Every file in <code>src/</code>, <code>index.html</code>, <code>public/</code>, <code>scripts/</code>, <code>docs/</code> and the CI workflow was read in full.</li>
+          <li><code>npm run typecheck</code> and <code>npm run lint</code>: clean.</li>
+          <li><code>npm run test:core</code>: 3,672 checks passed; 200 levels generated in 8.1 s total; worst L192 at 1,368 ms.</li>
+          <li>Separate benchmark: generation distribution (180 ≤ 50 ms / 12 in 50–200 ms / 8 over 200 ms); hint and 30k‑node no‑win checks from mid‑solution positions on the 12 hardest levels, all under 1 ms.</li>
+          <li><code>dist/</code> inspected: chunk sizes raw and gzipped, sourcemaps present, CSS asset URLs correctly rewritten to relative paths, preload order.</li>
+          <li>Git history: the only secret‑like values are the public PostHog client token and the support HMAC secret, both by design.</li>
+          <li>Not run: <code>npm run test:e2e</code>, which needs Edge and a display.</li>
+        </ul>
+        <p class="foot">The same audit is committed to the repository as <code>docs/AUDIT.md</code>.</p>
+      </section>
+    </main>
+  </div>
+</div>

@@ -15,13 +15,29 @@ export interface EconomyConfig {
   readonly maxExtraTubes: number;
 }
 
+/**
+ * Tuned for a free-to-play audience, not a demo:
+ *
+ *  - Undo stays generous: it removes mis-tap frustration and sells nothing.
+ *  - One free hint per attempt is a taste; the second comes from the shop.
+ *  - Bottles are never free. A free extra tube turns every "squeeze" level
+ *    into a breather and erases the difficulty curve.
+ *  - A 3-star first clear pays 95 coins, so a hint 3-pack (200) is about two
+ *    levels of play and a bottle 3-pack (320) about three and a half. Replays
+ *    pay only for newly earned stars (see coinsFor).
+ *  - 200 starting coins buy exactly one hint pack: enough to learn what the
+ *    shop is for, not enough to never need it.
+ *
+ * All of this is meant to be retuned live through RemoteConfig once real
+ * funnel data exists.
+ */
 export const DEFAULT_ECONOMY: EconomyConfig = {
-  startingCoins: 1000,
-  freeUses: { undo: 3, hint: 3, bottle: 3 },
+  startingCoins: 200,
+  freeUses: { undo: 3, hint: 1, bottle: 0 },
   prices: { undo: 30, hint: 80, bottle: 120 },
-  rewardPerStar: 25,
+  rewardPerStar: 15,
   baseReward: 50,
-  firstClearBonus: 100,
+  firstClearBonus: 0,
   maxExtraTubes: 2,
 };
 
@@ -85,10 +101,23 @@ export function starsFor(moves: number, par: number): 1 | 2 | 3 {
   return 1;
 }
 
+/**
+ * Coins for a win. `prevStars` is the level's best star count before this
+ * win, or null on the first clear.
+ *
+ * A first clear pays base + stars + bonus. A replay pays only for stars the
+ * player did not have yet - so improving 1 -> 3 stars earns two stars' worth,
+ * and repeating an already-perfect level earns nothing. Anything else is an
+ * infinite coin farm: replaying level 1 (par 4, ~10 s) would otherwise pay
+ * 125 coins a time, i.e. the biggest coin pack in about a quarter of an hour.
+ */
 export function coinsFor(
   stars: number,
-  isFirstClear: boolean,
+  prevStars: number | null,
   cfg: EconomyConfig = DEFAULT_ECONOMY,
 ): number {
-  return cfg.baseReward + stars * cfg.rewardPerStar + (isFirstClear ? cfg.firstClearBonus : 0);
+  if (prevStars === null) {
+    return cfg.baseReward + stars * cfg.rewardPerStar + cfg.firstClearBonus;
+  }
+  return Math.max(0, stars - prevStars) * cfg.rewardPerStar;
 }

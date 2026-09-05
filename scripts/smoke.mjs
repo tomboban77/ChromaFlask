@@ -157,7 +157,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (afterWin.winCount !== 1) {
     problems.push(`[${label}] onWin fired ${afterWin.winCount} times, expected exactly 1`);
   }
-  const expectedGain = 50 + 3 * 25 + 100;
+  const expectedGain = 50 + 3 * 15; // baseReward + 3 stars * rewardPerStar (+ firstClearBonus 0)
   if (afterWin.coins - initial.coins !== expectedGain) {
     problems.push(
       `[${label}] coin reward was ${afterWin.coins - initial.coins}, expected ${expectedGain}`,
@@ -210,8 +210,26 @@ async function runViewport(browser, label, width, height, isMobile) {
     problems.push(`[${label}] undo did not reduce the move count`);
   }
 
+  // ---- bottles are never free: the first tap opens the shop, nothing is charged
   const tubesBefore = afterUndo.tubes;
+  await page.evaluate(() => window.__cf.addCoins(1000)); // fund the test account
+  const coinsBeforeBottle = (await page.evaluate(() => window.__cf.state())).coins;
   await page.click('#btn-bottle');
+  await page.waitForSelector('#screen-shop.screen--active', { timeout: 8000 });
+  const coinsAtShop = (await page.evaluate(() => window.__cf.state())).coins;
+  console.log(`  bottle (0 free) shop opened, coins ${coinsBeforeBottle} -> ${coinsAtShop}`);
+  if (coinsAtShop !== coinsBeforeBottle) {
+    problems.push(`[${label}] tapping Bottle with none in stock must open the shop, not charge coins`);
+  }
+  // buy a Bottle x3 pack (item order: hearts, undo, hint, bottle)
+  await page.locator('.shopitem .pricebtn').nth(3).click();
+  await sleep(400);
+  const afterBottlePack = (await page.evaluate(() => window.__cf.state())).coins;
+  console.log(`  coin purchase   bottle x3 for 320 (coins ${coinsAtShop} -> ${afterBottlePack})`);
+  if (afterBottlePack !== coinsAtShop - 320) problems.push(`[${label}] bottle pack should cost 320 coins`);
+  await page.click('#btn-shop-close');
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 8000 });
+  await page.click('#btn-bottle'); // consumes owned stock
   await sleep(700);
   const afterBottle = await page.evaluate(() => window.__cf.state());
   console.log(`  add bottle      ${tubesBefore} -> ${afterBottle.tubes} tubes`);
@@ -221,11 +239,8 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.screenshot({ path: `${SHOTS}/${label}-8-powerups.png` });
 
   // ---- out of a powerup -> the shop opens instead of charging coins
+  // (the single free hint was spent earlier in this level)
   const coinsBeforeEmpty = (await page.evaluate(() => window.__cf.state())).coins;
-  await page.click('#btn-hint');
-  await sleep(350);
-  await page.click('#btn-hint'); // free allowance (3) now exhausted incl. earlier use
-  await sleep(350);
   await page.click('#btn-hint');
   await page.waitForSelector('#screen-shop.screen--active', { timeout: 8000 });
   const coinsAfterEmpty = (await page.evaluate(() => window.__cf.state())).coins;
@@ -262,6 +277,34 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.locator('.modal button').last().click();
   await sleep(500);
   await page.screenshot({ path: `${SHOTS}/${label}-10-colorblind.png` });
+
+  // ---- replaying an already-perfect level must pay nothing (coin-farm guard)
+  const coinsBeforeReplay = (await page.evaluate(() => window.__cf.state())).coins;
+  await page.evaluate(() => window.__cf.start(1));
+  await sleep(900);
+  const replay = await page.evaluate(() => window.__cf.autoplay());
+  await page.waitForSelector('.modal', { timeout: 8000 });
+  const coinsAfterReplay = (await page.evaluate(() => window.__cf.state())).coins;
+  console.log(`  replay level 1  ${replay.moves} moves, coins ${coinsBeforeReplay} -> ${coinsAfterReplay}`);
+  if (coinsAfterReplay !== coinsBeforeReplay) {
+    problems.push(`[${label}] replaying a 3-star level paid ${coinsAfterReplay - coinsBeforeReplay} coins; must be 0`);
+  }
+  await page.locator('.modal button').last().click(); // Home
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+
+  // ---- back button: closes an open dialog, then returns from map to home
+  await page.click('#btn-settings-home');
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  await page.goBack();
+  await sleep(300);
+  const modalAfterBack = await page.locator('.modal').count();
+  console.log(`  back on dialog  ${modalAfterBack === 0 ? 'closed it' : 'did NOT close it'}`);
+  if (modalAfterBack !== 0) problems.push(`[${label}] back button did not close the settings dialog`);
+  await page.click('.bottomnav__tab[data-nav="map"]');
+  await page.waitForSelector('#screen-map.screen--active', { timeout: 8000 });
+  await page.goBack();
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 5000 });
+  console.log('  back on map     returned home');
 
   // ---- persistence across a reload (lands on home, then check the map)
   await page.reload({ waitUntil: 'load' });
