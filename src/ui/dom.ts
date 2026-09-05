@@ -156,7 +156,7 @@ export class ModalHost {
     this.current = modal;
 
     // Move focus in so keyboard and screen-reader users land inside the dialog.
-    window.setTimeout(() => modal.querySelector('button')?.focus(), 60);
+    window.setTimeout(() => modal.querySelector('button')?.focus({ preventScroll: true }), 60);
     this.onOpenChange?.(true);
     return modal;
   }
@@ -172,7 +172,7 @@ export class ModalHost {
     this.root.classList.remove('modal-root--open');
     const cb = this.onCloseCb;
     this.onCloseCb = null;
-    this.lastFocus?.focus?.();
+    this.lastFocus?.focus?.({ preventScroll: true });
     this.lastFocus = null;
     // Always run: onClose is a cleanup hook (timers etc.), and skipping it when
     // one dialog replaces another would leak whatever the first one started.

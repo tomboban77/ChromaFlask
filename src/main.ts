@@ -432,6 +432,14 @@ class App {
       $(`#screen-${name}`).classList.toggle('screen--active', name === id);
     }
     this.current = id;
+    // Every screen opens at the top. Scroll containers otherwise keep the
+    // position from the last visit (a shop left at the bottom reopens at the
+    // bottom), which reads as the app jumping around.
+    const screen = $(`#screen-${id}`);
+    screen.scrollTop = 0;
+    for (const scroller of Array.from(screen.querySelectorAll<HTMLElement>('.map, .shop'))) {
+      scroller.scrollTop = 0;
+    }
 
     const nav = $('#bottomnav');
     nav.hidden = !(id === 'home' || id === 'map');
@@ -713,15 +721,19 @@ class App {
     const done = this.save.campaignCleared(LEVEL_COUNT);
     const endless = this.save.endlessCleared(LEVEL_COUNT);
     const next = this.save.highestUnlocked(LEVEL_COUNT);
+    const stars = this.save.campaignStars(LEVEL_COUNT);
     const chapter = done >= LEVEL_COUNT ? null : chapterFor(next);
-    const progress = $('#home-progress');
-    progress.textContent =
-      t('home.progress', {
-        stars: this.save.campaignStars(LEVEL_COUNT), max: LEVEL_COUNT * 3, done, total: LEVEL_COUNT,
-      }) + (endless > 0 ? t('home.endlessSuffix', { n: endless }) : '');
-    if (chapter) {
-      progress.appendChild(el('small', '', t('home.chapter', { n: chapter.index, name: chapter.name })));
-    }
+    // Campaign card: chapter (or "complete" plus the endless tally), stars,
+    // and a bar of levels cleared with its count.
+    $('#home-chapter').textContent = chapter
+      ? t('home.chapter', { n: chapter.index, name: chapter.name })
+      : t('home.complete') + (endless > 0 ? t('home.endlessSuffix', { n: endless }) : '');
+    $('#home-stars').textContent = t('home.starsOf', { stars: formatNumber(stars), max: formatNumber(LEVEL_COUNT * 3) });
+    $('#home-levels').textContent = t('home.levelsOf', { done, total: LEVEL_COUNT });
+    $('#home-bar-fill').style.width = `${(100 * done) / LEVEL_COUNT}%`;
+    const bar = $('#home-bar');
+    bar.setAttribute('aria-valuenow', String(done));
+    bar.setAttribute('aria-label', t('home.progressAria', { done, total: LEVEL_COUNT, stars, max: LEVEL_COUNT * 3 }));
     this.renderDailyButton();
     const resume = this.save.inProgress;
     $('#btn-play').textContent = resume
@@ -884,10 +896,15 @@ class App {
       grid.appendChild(node);
     }
 
-    // 500 nodes is a long scroll: land the player on their current level.
+    // 500 nodes is a long scroll: open with the player's current chapter at the
+    // top of the list, so the map always starts at a "top" and the relevant
+    // levels are the first thing in view. Scrolled on the map's own container -
+    // scrollIntoView would also drag every scrollable ancestor.
     requestAnimationFrame(() => {
-      grid.querySelector('.node--next, .node:not(.node--locked):last-of-type')
-        ?.scrollIntoView({ block: 'center' });
+      const scroller = $('#screen-map .map');
+      const target = grid.querySelector<HTMLElement>('.node--next, .node:not(.node--locked):last-of-type');
+      const header = target ? this.chapterHeaderFor(target, grid) : null;
+      scroller.scrollTop = header ? Math.max(0, header.offsetTop - scroller.offsetTop - 8) : 0;
     });
 
     const endless = this.save.endlessCleared(LEVEL_COUNT);
@@ -900,6 +917,16 @@ class App {
   }
 
   /** Chapter number, name, stars earned of the chapter's 60, and a progress bar. */
+  /** The chapter header that precedes a level node in the map grid, if any. */
+  private chapterHeaderFor(node: HTMLElement, grid: HTMLElement): HTMLElement | null {
+    let cursor: Element | null = node;
+    while (cursor && cursor !== grid) {
+      if (cursor.classList.contains('chapter')) return cursor as HTMLElement;
+      cursor = cursor.previousElementSibling;
+    }
+    return null;
+  }
+
   private buildChapterHeader(chapter: Chapter, unlocked: number): HTMLElement {
     let stars = 0;
     let cleared = 0;
@@ -1962,7 +1989,7 @@ class App {
         content: box,
         buttons: [{ label: t('common.done'), kind: 'primary', onClick: () => this.quitToHome() }],
       });
-      box.focus();
+      box.focus({ preventScroll: true });
       box.select();
     }
   }
@@ -2722,7 +2749,7 @@ class App {
         },
       ],
     });
-    window.setTimeout(() => input.focus(), 80);
+    window.setTimeout(() => input.focus({ preventScroll: true }), 80);
   }
 
   /** A code may have changed coins, lives or unlocks under the open screen. */

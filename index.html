@@ -196,9 +196,18 @@
         </header>
 
         <div class="home">
-          <div class="home__progress" id="home-progress">★ 0/30 · 0 levels cleared</div>
-
-          <button class="btn btn--success btn--play" id="btn-play">Level 1</button>
+          <!-- Campaign card: where you are, how far you have come, and Play. -->
+          <div class="homecard">
+            <div class="homecard__row">
+              <span class="homecard__chapter" id="home-chapter">Chapter 1 · First Pour</span>
+              <span class="homecard__stars" id="home-stars">★ 0 / 1,500</span>
+            </div>
+            <div class="homecard__bar" id="home-bar" role="progressbar" aria-valuemin="0" aria-valuemax="500" aria-valuenow="0">
+              <i id="home-bar-fill"></i>
+              <span id="home-levels">0 / 500</span>
+            </div>
+            <button class="btn btn--success btn--play" id="btn-play">Level 1</button>
+          </div>
 
           <button class="btn btn--daily" id="btn-daily" aria-label="Daily challenge" data-i18n-aria="level.daily">
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-calendar" /></svg>

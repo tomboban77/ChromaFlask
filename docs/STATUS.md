@@ -147,7 +147,16 @@ _Last updated: 2026-09-05_
   450 ms floor so it never flashes; a returning player on a fast device is on
   the home screen in well under a second.
 - **Home** — full-bleed scene art, avatar → profile card, coins/hearts pills,
-  big play button, purple/gold bottom nav (Shop · Home · Levels).
+  a **campaign card** (chapter name, ★ stars / max, a progress bar of levels
+  cleared with its count, and the big Play button inside it) with the Daily
+  challenge button at the same width beneath, purple/gold bottom nav (Shop ·
+  Home · Levels). Once the campaign is done the card reads "Campaign complete
+  · n endless" with a full bar.
+- **Screens open at the top** — `show()` resets the screen and its scroll
+  containers (map, shop) to 0 on every entry; programmatic focus uses
+  `preventScroll`. The map then positions the player's current chapter header
+  at the top of the list using the map's own scroller (not scrollIntoView,
+  which drags every scrollable ancestor).
 - **Level map** — 500 nodes in **25 named chapters of 20**
   (`src/core/chapters.ts`: an alchemist's journey from "First Pour" to "The
   Grand Elixir"), each with a header in the chapter's accent colour showing
