@@ -102,6 +102,10 @@ export interface SaveData {
   daily: DailyState;
   /** Whether the locked-bottle mechanic has been introduced with a toast. */
   lockSeen: boolean;
+  /** Ids of achievements already awarded (their coins have been paid). */
+  achievements: string[];
+  /** Welcome-back reward: consecutive days claimed, and the last claimed day. */
+  login: { streak: number; lastDay: number };
 }
 
 /** Mutable save-side shape of the core's read-only DailyStreak, plus history. */
@@ -116,7 +120,7 @@ export interface DailyState {
 const _dailyStateIsStreak: (s: DailyState) => DailyStreak = (s) => s;
 void _dailyStateIsStreak;
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -160,6 +164,8 @@ export function defaultSave(startingCoins: number): SaveData {
     endlessSeen: false,
     daily: { records: {}, streak: 0, lastDay: -1, bestStreak: 0 },
     lockSeen: false,
+    achievements: [],
+    login: { streak: 0, lastDay: -1 },
   };
 }
 
@@ -267,7 +273,47 @@ export class SaveService {
       daily: { ...fallback.daily, ...(parsed.daily ?? {}), records: parsed.daily?.records ?? {} },
       // v9 saves predate the locked bottle.
       lockSeen: parsed.lockSeen ?? false,
+      // v10 saves predate achievements and the login reward.
+      achievements: Array.isArray(parsed.achievements) ? parsed.achievements : [],
+      login: { ...fallback.login, ...(parsed.login ?? {}) },
     };
+  }
+
+  // ----------------------------------------------------------- achievements
+  hasAchievement(id: string): boolean {
+    return this.data.achievements.includes(id);
+  }
+
+  /** Returns false if it was already awarded (so coins are never paid twice). */
+  awardAchievement(id: string): boolean {
+    if (this.hasAchievement(id)) return false;
+    this.update((d) => {
+      d.achievements.push(id);
+    });
+    return true;
+  }
+
+  // ----------------------------------------------------------- login reward
+  loginClaimedToday(today: number): boolean {
+    return this.data.login.lastDay === today;
+  }
+
+  /** The streak the next claim would have (today claimed counts as-is). */
+  loginStreakFor(today: number): number {
+    const l = this.data.login;
+    if (l.lastDay === today) return l.streak;
+    return advanceStreak(l, today).streak;
+  }
+
+  /** Mark today claimed; returns the resulting streak. No-op if already claimed. */
+  claimLogin(today: number): number {
+    if (this.data.login.lastDay === today) return this.data.login.streak;
+    const next = advanceStreak(this.data.login, today);
+    this.update((d) => {
+      d.login.streak = next.streak;
+      d.login.lastDay = next.lastDay;
+    });
+    return next.streak;
   }
 
   // ------------------------------------------------------------------ daily

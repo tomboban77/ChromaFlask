@@ -87,6 +87,22 @@ _Last updated: 2026-09-05_
 - Verified: core suite deals a week of dailies and round-trips day arithmetic
   across a DST boundary; smoke test starts today's daily through the worker.
 
+### Achievements & login reward
+- **Achievements** (`src/core/achievements.ts`) — 17 milestones over the
+  lifetime stats (first clear, perfect clears, chapters, stars, win streaks,
+  daily streaks, pours, endless). Evaluated after every win; each pays a
+  small coin reward once, ever, with a staggered "🏅 Name · +N coins" toast.
+  Profile card shows the count and opens the list (earned vs locked).
+- **Login reward** — first arrival at home each local day opens a "Daily
+  reward" dialog: a seven-tile track (20/30/40/50/60/80/150 coins, day 7 also
+  refills hearts), today highlighted, one Claim button. Consecutive days
+  advance the track; a missed day restarts it; after day 7 it repeats. Once
+  per day, never over another dialog. Tuning in `LOGIN_REWARDS`.
+- Save v11 (`achievements`, `login`). Core suite checks the cycle math and
+  that a fresh view earns nothing while a maxed view earns everything; the
+  smoke test claims the day-1 reward and separates achievement coins from the
+  win reward in its economy sums.
+
 ### Twist mechanics
 - **The Cauldron** (from level 22, every 10th) — gold-rimmed pot at tube 0:
   accepts **any** colour, but **must be empty to win**. First-class solver

@@ -1122,6 +1122,60 @@ body {
 }
 .node--endless .node__num { color: var(--gold-hi); font-size: 26px; line-height: 1; }
 
+/* ------------------------------------------------------ achievements list -- */
+.achv { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; text-align: left; }
+.achv__count { text-align: center; font-size: 12.5px; color: #cdb4f5; margin-bottom: 4px; }
+.achv__row {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(20, 8, 50, 0.35);
+  opacity: 0.62;
+}
+.achv__row--done {
+  opacity: 1;
+  background: linear-gradient(180deg, rgba(255, 197, 49, 0.18), rgba(255, 176, 32, 0.08));
+  border: 1.5px solid rgba(255, 210, 62, 0.45);
+}
+.achv__badge { font-size: 20px; line-height: 1; text-align: center; }
+.achv__name { font-size: 14px; font-weight: 800; }
+.achv__desc { font-size: 11.5px; color: #cdb4f5; }
+.achv__coins { font-size: 12px; font-weight: 800; color: var(--gold-hi); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------------------------------------------------- login reward dialog -- */
+.login { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.login__lead { font-size: 16px; font-weight: 800; color: var(--gold-hi); }
+.login__tiles {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+.login__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 2px;
+  border-radius: 10px;
+  background: rgba(20, 8, 50, 0.4);
+  border: 1.5px solid transparent;
+  font-variant-numeric: tabular-nums;
+}
+.login__tile small { font-size: 9.5px; color: #cdb4f5; text-transform: uppercase; letter-spacing: 0.04em; }
+.login__tile b { font-size: 13px; color: var(--gold-hi); }
+.login__tile--done { opacity: 0.55; }
+.login__tile--done b::after { content: ' ✓'; color: var(--success); }
+.login__tile--today {
+  border-color: var(--gold-hi);
+  background: linear-gradient(180deg, rgba(255, 197, 49, 0.28), rgba(255, 176, 32, 0.12));
+  transform: scale(1.06);
+}
+.login__heart svg { width: 14px; height: 14px; fill: var(--danger); }
+.login__hint { font-size: 12px; color: #cdb4f5; }
+
 /* ------------------------------------------------------ daily done dialog -- */
 .dailydone { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 16px; }
 .dailydone__stars {

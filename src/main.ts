@@ -7,9 +7,12 @@ import { getCampaignLevel } from '@/core/campaign';
 import { TUBE_CAPACITY } from '@/core/board';
 import { solverClient } from '@/services/SolverClient';
 import {
-  COIN_SHOP, LIVES_MAX, coinsFor, starThresholds, starsFor,
+  COIN_SHOP, LIVES_MAX, LOGIN_CYCLE, LOGIN_REWARDS, coinsFor, loginCycleDay, loginRewardFor,
+  starThresholds, starsFor,
   type CoinShopItem, type PowerupId,
 } from '@/core/progression';
+import { ACHIEVEMENTS, achievementById, unlockedAchievements } from '@/core/achievements';
+import { CHAPTERS } from '@/core/chapters';
 import type { GeneratedLevel } from '@/core/types';
 
 import { SAVE_VERSION, SaveService, type InProgressState } from '@/services/SaveService';
@@ -351,6 +354,7 @@ class App {
         tubes: this.board.tubeCount,
         selected: this.board.selectedIndex,
         coins: this.save.coins,
+        achievementCoins: this.achievementCoins,
         lives: this.save.lives.count,
         par: this.level?.par ?? null,
         modalOpen: this.modal.isOpen,
@@ -397,6 +401,7 @@ class App {
     this.stage.setPaused(id !== 'game' || document.hidden);
     this.updateTutorialHand();
     this.syncHistoryGuard();
+    if (id === 'home') this.maybeShowLoginReward();
   }
 
   // ---------------------------------------------------------- back button
@@ -1566,6 +1571,7 @@ class App {
     if (stars === 3) this.save.bumpStat('perfects');
     this.save.recordWinForStreak();
     const streak = this.save.snapshot.stats.streak;
+    this.checkAchievements();
 
     this.tutorial.finish();
     audio.duckMusic(2.2);
@@ -1599,6 +1605,141 @@ class App {
       }),
       620,
     );
+  }
+
+  // ---------------------------------------------------------- achievements
+  /** Coins paid by achievements this session; lets the smoke test keep its economy sums exact. */
+  private achievementCoins = 0;
+
+  private achievementView() {
+    const s = this.save.snapshot;
+    let chaptersDone = 0;
+    for (const c of CHAPTERS) {
+      let all = true;
+      for (let id = c.first; id <= c.last && all; id++) if (!this.save.levelRecord(id)) all = false;
+      if (all) chaptersDone += 1;
+    }
+    return {
+      wins: s.stats.wins,
+      perfects: s.stats.perfects,
+      pours: s.stats.pours,
+      bestWinStreak: s.stats.bestStreak,
+      bestDailyStreak: this.save.bestDailyStreak,
+      campaignCleared: this.save.campaignCleared(LEVEL_COUNT),
+      campaignStars: this.save.campaignStars(LEVEL_COUNT),
+      chaptersDone,
+      endlessCleared: this.save.endlessCleared(LEVEL_COUNT),
+      campaignSize: LEVEL_COUNT,
+    };
+  }
+
+  /** Award anything newly true. Each achievement pays once, ever. */
+  private checkAchievements(): void {
+    const fresh = unlockedAchievements(this.achievementView()).filter((id) => !this.save.hasAchievement(id));
+    fresh.forEach((id, i) => {
+      const a = achievementById(id);
+      if (!a || !this.save.awardAchievement(id)) return;
+      this.save.addCoins(a.coins);
+      this.achievementCoins += a.coins;
+      this.analytics.track({ type: 'achievement', id });
+      // Staggered so several landing on one win read as a list, not a pile.
+      window.setTimeout(() => {
+        this.toast.show(`🏅 ${a.name} · +${a.coins} coins`, 'info', 2600);
+        audio.play('coin');
+      }, 900 + i * 700);
+    });
+  }
+
+  private showAchievementsDialog(): void {
+    const view = this.achievementView();
+    const content = el('div', 'achv');
+    const done = ACHIEVEMENTS.filter((a) => this.save.hasAchievement(a.id)).length;
+    content.appendChild(el('div', 'achv__count', `${done} of ${ACHIEVEMENTS.length} earned`));
+    for (const a of ACHIEVEMENTS) {
+      const earned = this.save.hasAchievement(a.id);
+      const row = el('div', `achv__row${earned ? ' achv__row--done' : ''}`);
+      row.appendChild(el('span', 'achv__badge', earned ? '🏅' : '🔒'));
+      const text = el('div', 'achv__text');
+      text.appendChild(el('div', 'achv__name', a.name));
+      text.appendChild(el('div', 'achv__desc', a.desc));
+      row.appendChild(text);
+      row.appendChild(el('span', 'achv__coins', earned ? 'Earned' : `+${a.coins}`));
+      content.appendChild(row);
+    }
+    void view;
+    this.modal.open({
+      title: 'Achievements',
+      content,
+      closeButton: true,
+      buttons: [{ label: 'Back', kind: 'ghost', onClick: () => this.showProfileDialog() }],
+    });
+  }
+
+  // ---------------------------------------------------------- login reward
+  /**
+   * First arrival at home each local day: the welcome-back reward. Once per
+   * day, never over another dialog, never before a profile exists.
+   */
+  private maybeShowLoginReward(): void {
+    if (!this.save.snapshot.profile) return;
+    const today = todayDayNumber();
+    if (this.save.loginClaimedToday(today)) return;
+    window.setTimeout(() => {
+      if (this.current !== 'home' || this.modal.isOpen) return;
+      if (this.save.loginClaimedToday(today)) return;
+      this.showLoginRewardDialog(today);
+    }, 350);
+  }
+
+  private showLoginRewardDialog(today: number): void {
+    const streak = this.save.loginStreakFor(today);
+    const day = loginCycleDay(streak);
+    const reward = loginRewardFor(streak);
+
+    const content = el('div', 'login');
+    content.appendChild(
+      el('div', 'login__lead', streak > 1 ? `Day ${streak} in a row!` : 'Welcome back!'),
+    );
+    const tiles = el('div', 'login__tiles');
+    for (let d = 1; d <= LOGIN_CYCLE; d++) {
+      const tile = el('div', 'login__tile');
+      if (d < day) tile.classList.add('login__tile--done');
+      if (d === day) tile.classList.add('login__tile--today');
+      tile.appendChild(el('small', '', `Day ${d}`));
+      tile.appendChild(el('b', '', `+${LOGIN_REWARDS[d - 1]}`));
+      if (d === LOGIN_CYCLE) {
+        const heart = el('span', 'login__heart');
+        heart.innerHTML = `<svg viewBox="0 0 24 24"><use href="#cf-heart"/></svg>`;
+        tile.appendChild(heart);
+      }
+      tiles.appendChild(tile);
+    }
+    content.appendChild(tiles);
+    content.appendChild(
+      el('div', 'login__hint', 'Come back every day to move along the track. Miss a day and it starts over.'),
+    );
+
+    this.modal.open({
+      title: 'Daily reward',
+      content,
+      dismissable: false,
+      buttons: [
+        {
+          label: `Claim +${reward.coins} coins${reward.refillLives ? ' & full hearts' : ''}`,
+          kind: 'success',
+          onClick: () => {
+            this.save.claimLogin(today);
+            this.save.addCoins(reward.coins);
+            if (reward.refillLives) this.save.refillLives();
+            audio.play('coin');
+            haptic([12, 30, 20]);
+            this.confetti.burst(1);
+            this.analytics.track({ type: 'login_reward', day, coins: reward.coins });
+            this.renderHome();
+          },
+        },
+      ],
+    });
   }
 
   /**
@@ -1975,7 +2116,7 @@ class App {
       ['Perfect clears', String(stats.perfects)],
       ['Best win streak', String(stats.bestStreak)],
       ['Total pours', String(stats.pours)],
-      ['Hints used', String(stats.hintsUsed)],
+      ['Achievements', `${s.achievements.length} / ${ACHIEVEMENTS.length}`],
     ];
     for (const [label, value] of rows) {
       const cell = el('div', 'profdlg__stat');
@@ -1991,6 +2132,7 @@ class App {
       closeButton: true,
       buttons: [
         { label: 'Change look', kind: 'primary', onClick: () => this.editProfile() },
+        { label: 'Achievements', kind: 'ghost', onClick: () => this.showAchievementsDialog() },
         { label: 'How to play', kind: 'ghost', onClick: () => this.showHowTo() },
         { label: 'Settings', kind: 'ghost', onClick: () => this.openSettings() },
       ],

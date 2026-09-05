@@ -51,6 +51,25 @@ export const DEFAULT_ECONOMY: EconomyConfig = {
   maxExtraTubes: 2,
 };
 
+// ------------------------------------------------------------ login reward
+/**
+ * Seven-day welcome-back cycle. Day n of a run of consecutive days pays
+ * LOGIN_REWARDS[n-1]; day seven also refills hearts. A missed day restarts
+ * the cycle; after day seven it repeats.
+ */
+export const LOGIN_REWARDS: readonly number[] = [20, 30, 40, 50, 60, 80, 150];
+export const LOGIN_CYCLE = LOGIN_REWARDS.length;
+
+/** 1-based day within the cycle for a login streak of `streak` days. */
+export function loginCycleDay(streak: number): number {
+  return ((Math.max(1, streak) - 1) % LOGIN_CYCLE) + 1;
+}
+
+export function loginRewardFor(streak: number): { coins: number; refillLives: boolean } {
+  const day = loginCycleDay(streak);
+  return { coins: LOGIN_REWARDS[day - 1] as number, refillLives: day === LOGIN_CYCLE };
+}
+
 // ------------------------------------------------------------------- lives
 export const LIVES_MAX = 5;
 export const LIVES_REGEN_MS = 30 * 60 * 1000;

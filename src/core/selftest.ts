@@ -8,6 +8,7 @@ import {
   isDeadlocked, isSolved, legalMoves, lockActive, pourAmount, rulesFor, sealsRemaining, topRun,
   undoPour, usefulMoves,
 } from './board';
+import { ACHIEVEMENTS, unlockedAchievements } from './achievements';
 import { getCampaignLevel, isStoredOptimal, storedLevelCount } from './campaign';
 import { CHAPTERS, CHAPTER_SIZE, chapterFor, isChapterEnd } from './chapters';
 import {
@@ -16,7 +17,9 @@ import {
 } from './daily';
 import { generateLevel } from './generator';
 import { ENDLESS_START, LEVELS, endlessSpec, getLevelSpec, isEndless } from './levels';
-import { DEFAULT_ECONOMY, coinsFor, starsFor } from './progression';
+import {
+  DEFAULT_ECONOMY, LOGIN_CYCLE, LOGIN_REWARDS, coinsFor, loginCycleDay, loginRewardFor, starsFor,
+} from './progression';
 import { solvability, solve } from './solver';
 import type { Board, BoardRules, Move } from './types';
 
@@ -123,6 +126,27 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
   check('stars: par is 3 stars', starsFor(10, 10) === 3);
   check('stars: within tolerance is 3 stars', starsFor(12, 10) === 3);
   check('stars: well past par is 1 star', starsFor(40, 10) === 1);
+
+  // Login reward: seven-day cycle that repeats, day 7 refills hearts.
+  check('login: day 1 pays the first tile', loginRewardFor(1).coins === LOGIN_REWARDS[0] && !loginRewardFor(1).refillLives);
+  check('login: day 7 refills hearts', loginRewardFor(7).refillLives && loginRewardFor(7).coins === LOGIN_REWARDS[LOGIN_CYCLE - 1]);
+  check('login: day 8 wraps to day 1', loginCycleDay(8) === 1 && loginRewardFor(8).coins === LOGIN_REWARDS[0]);
+  check('login: streak 0 is treated as day 1', loginCycleDay(0) === 1);
+
+  // Achievements: unique ids, none for a fresh player, all for a maxed one.
+  check('achievements: ids unique', new Set(ACHIEVEMENTS.map((a) => a.id)).size === ACHIEVEMENTS.length);
+  const fresh = {
+    wins: 0, perfects: 0, pours: 0, bestWinStreak: 0, bestDailyStreak: 0, campaignCleared: 0,
+    campaignStars: 0, chaptersDone: 0, endlessCleared: 0, campaignSize: 500,
+  };
+  check('achievements: fresh player has none', unlockedAchievements(fresh).length === 0);
+  const maxed = {
+    wins: 9999, perfects: 999, pours: 99999, bestWinStreak: 99, bestDailyStreak: 99, campaignCleared: 500,
+    campaignStars: 1500, chaptersDone: 25, endlessCleared: 99, campaignSize: 500,
+  };
+  check('achievements: maxed player has all', unlockedAchievements(maxed).length === ACHIEVEMENTS.length);
+  check('achievements: first win earns exactly First Pour',
+    JSON.stringify(unlockedAchievements({ ...fresh, wins: 1 })) === JSON.stringify(['first_pour']));
 }
 
 // -------------------------------------------------------- cauldron rules

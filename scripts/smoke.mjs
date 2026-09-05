@@ -91,8 +91,17 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.fill('#name-input', 'Tester');
   await page.click('#btn-start-profile');
 
-  // ---- home
+  // ---- home, greeted by the day-1 login reward
   await page.waitForSelector('#screen-home.screen--active', { timeout: 10_000 });
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  const loginTitle = (await page.locator('.modal__title').textContent())?.trim();
+  console.log(`  login reward    "${loginTitle}"`);
+  if (loginTitle !== 'Daily reward') problems.push(`[${label}] expected the Daily reward dialog on first home visit, saw "${loginTitle}"`);
+  const coinsBeforeClaim = await page.evaluate(() => window.__cf.state().coins);
+  await page.locator('.modal button', { hasText: 'Claim' }).click();
+  await sleep(300);
+  const coinsAfterClaim = await page.evaluate(() => window.__cf.state().coins);
+  if (coinsAfterClaim !== coinsBeforeClaim + 20) problems.push(`[${label}] day-1 login reward should pay 20 coins (${coinsBeforeClaim} -> ${coinsAfterClaim})`);
   const playLabel = (await page.locator('#btn-play').textContent())?.trim();
   console.log(`  home screen     OK (play button: "${playLabel}")`);
   if (playLabel !== 'Level 1') problems.push(`[${label}] play button should read "Level 1", got "${playLabel}"`);
@@ -188,11 +197,16 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (afterWin.winCount !== 1) {
     problems.push(`[${label}] onWin fired ${afterWin.winCount} times, expected exactly 1`);
   }
+  // Achievements ("First Pour", "Precise") also pay on this win; count them separately.
   const expectedGain = 50 + 3 * 15; // baseReward + 3 stars * rewardPerStar (+ firstClearBonus 0)
-  if (afterWin.coins - initial.coins !== expectedGain) {
-    problems.push(
-      `[${label}] coin reward was ${afterWin.coins - initial.coins}, expected ${expectedGain}`,
-    );
+  const achievementGain = afterWin.achievementCoins - initial.achievementCoins;
+  const winGain = afterWin.coins - initial.coins - achievementGain;
+  console.log(`  coins           +${winGain} for the win, +${achievementGain} from achievements`);
+  if (winGain !== expectedGain) {
+    problems.push(`[${label}] coin reward was ${winGain}, expected ${expectedGain}`);
+  }
+  if (achievementGain !== 50) {
+    problems.push(`[${label}] first perfect win should unlock First Pour + Precise (+50), got +${achievementGain}`);
   }
 
   await page.waitForSelector('.modal', { timeout: 8000 });
@@ -310,15 +324,16 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.screenshot({ path: `${SHOTS}/${label}-10-colorblind.png` });
 
   // ---- replaying an already-perfect level must pay nothing (coin-farm guard)
-  const coinsBeforeReplay = (await page.evaluate(() => window.__cf.state())).coins;
+  const beforeReplay = await page.evaluate(() => window.__cf.state());
   await page.evaluate(() => window.__cf.start(1));
   await sleep(900);
   const replay = await page.evaluate(() => window.__cf.autoplay());
   await page.waitForSelector('.modal', { timeout: 8000 });
-  const coinsAfterReplay = (await page.evaluate(() => window.__cf.state())).coins;
-  console.log(`  replay level 1  ${replay.moves} moves, coins ${coinsBeforeReplay} -> ${coinsAfterReplay}`);
-  if (coinsAfterReplay !== coinsBeforeReplay) {
-    problems.push(`[${label}] replaying a 3-star level paid ${coinsAfterReplay - coinsBeforeReplay} coins; must be 0`);
+  const afterReplay = await page.evaluate(() => window.__cf.state());
+  const replayGain = (afterReplay.coins - beforeReplay.coins) - (afterReplay.achievementCoins - beforeReplay.achievementCoins);
+  console.log(`  replay level 1  ${replay.moves} moves, coins ${beforeReplay.coins} -> ${afterReplay.coins} (win share +${replayGain})`);
+  if (replayGain !== 0) {
+    problems.push(`[${label}] replaying a 3-star level paid ${replayGain} coins; must be 0`);
   }
   await page.locator('.modal button').last().click(); // Home
   await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
