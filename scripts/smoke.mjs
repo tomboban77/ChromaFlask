@@ -24,7 +24,8 @@ const EDGE_PATHS = [
 ];
 // Local Windows machines drive the installed Edge; anywhere else (CI) uses
 // Playwright's own Chromium, installed with `npx playwright-core install chromium`.
-const edge = EDGE_PATHS.find((p) => existsSync(p));
+// SMOKE_BROWSER=chromium forces Playwright's Chromium even where Edge exists - the CI path.
+const edge = process.env.SMOKE_BROWSER === 'chromium' ? undefined : EDGE_PATHS.find((p) => existsSync(p));
 console.log(edge ? `browser: Edge (${edge})` : 'browser: Playwright Chromium');
 
 mkdirSync(SHOTS, { recursive: true });

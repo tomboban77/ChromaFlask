@@ -55,8 +55,25 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright-core install --with-deps chromium
 
+      # Output is also written next to the screenshots so a failure can be read
+      # from the artifact without opening the run log.
       - name: End-to-end smoke test
-        run: npm run test:e2e
+        run: |
+          set -o pipefail
+          mkdir -p .tmp/shots
+          npm run test:e2e 2>&1 | tee .tmp/shots/smoke.log
+
+      # The smoke's verdict and problem list, readable on the run's Summary
+      # page without opening the step log or downloading the artifact.
+      - name: Smoke summary
+        if: always()
+        run: |
+          {
+            echo '### Smoke test'
+            echo '```'
+            tail -n 40 .tmp/shots/smoke.log 2>/dev/null || echo '(no smoke log)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Keep smoke screenshots
         if: always()
