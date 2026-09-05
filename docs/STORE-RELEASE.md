@@ -51,9 +51,12 @@ ChromaFlask uses **only original assets**, all authored in this repository:
 
 ## 3. Store listing requirements
 
-- [ ] **Privacy policy URL** (required by both stores). Draft:
-      [PRIVACY-POLICY.md](PRIVACY-POLICY.md) — host it at a public URL and
-      paste that URL into both consoles. What it must say, because it is what
+- [ ] **Privacy policy URL** (required by both stores). The page ships with
+      the build as `public/privacy.html` and is linked from the consent
+      checkbox and Settings; once deployed it lives at
+      `https://YOUR-DOMAIN/privacy.html` — paste that URL into both consoles.
+      **Fill in the three bracketed placeholders** (date, publisher name,
+      country) before release. What it must say, because it is what
       the build does: progress is stored on-device; **anonymous usage
       analytics are sent to PostHog (US)** keyed by the random support ID,
       with no name, email or device identifiers; the choice is shown as a

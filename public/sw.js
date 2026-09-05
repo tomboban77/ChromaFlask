@@ -14,6 +14,7 @@ const VERSION = 'chromaflask-v1';
 
 const PRECACHE = [
   './',
+  './privacy.html',
   './manifest.webmanifest',
   './Entry.webp',
   './home.webp',

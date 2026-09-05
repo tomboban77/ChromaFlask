@@ -1190,8 +1190,10 @@ class App {
     $('#game-coins').textContent = String(this.save.coins);
     $('#game-level-label').textContent = `Level ${this.levelId}`;
     const moves = this.board.moveCount;
+    // "Ideal" is the proven minimum pours for this level (par, in golf terms -
+    // but most players do not know the golf term).
     $('#game-move-label').textContent =
-      `${moves} ${moves === 1 ? 'move' : 'moves'} · par ${this.level?.par ?? '-'}`;
+      `${moves} ${moves === 1 ? 'move' : 'moves'} · ideal ${this.level?.par ?? '-'}`;
 
     for (const id of ['undo', 'hint', 'bottle'] as PowerupId[]) {
       const stock = this.remainingUses(id) + this.save.inventoryCount(id);
@@ -1429,7 +1431,7 @@ class App {
     const bestShown = w.prevBest === null ? w.moves : Math.min(w.prevBest, w.moves);
     stats.innerHTML = `
       <div><b>${w.moves}</b><span>Moves</span></div>
-      <div><b>${w.par}</b><span>Par</span></div>
+      <div><b>${w.par}</b><span>Ideal</span></div>
       <div><b>${time}</b><span>Time</span></div>
       <div class="${isNewBest ? 'statgrid__best' : ''}"><b>${bestShown}</b><span>${isNewBest ? 'New best!' : 'Best'}</span></div>`;
     content.appendChild(stats);
@@ -1713,6 +1715,7 @@ class App {
       closeButton: true,
       buttons: [
         { label: 'Change look', kind: 'primary', onClick: () => this.editProfile() },
+        { label: 'How to play', kind: 'ghost', onClick: () => this.showHowTo() },
         { label: 'Settings', kind: 'ghost', onClick: () => this.openSettings() },
       ],
     });
@@ -1833,6 +1836,10 @@ class App {
       this.openSupportCodeEntry(),
     );
 
+    supportRow('Privacy policy', 'What the game stores and sends', 'View', 'ghost', () => {
+      window.open('./privacy.html', '_blank', 'noopener');
+    });
+
     supportRow('Reset progress', 'Erase levels, coins and stats', 'Reset', 'danger', () =>
       this.confirmResetProgress(),
     );
@@ -1931,23 +1938,38 @@ class App {
   }
 
   private showHowTo(): void {
+    const eco = this.remote.current.economy;
     this.modal.open({
       title: 'How to play',
       bodyHtml: `
-        <p style="text-align:left;margin:0 0 10px">
-          Tap a bottle to lift its top colour, then tap another bottle to pour.
-        </p>
-        <p style="text-align:left;margin:0 0 10px">
-          You can only pour onto the <b>same colour</b>, or into an <b>empty bottle</b>.
-          The whole matching block moves at once, if there is room.
-        </p>
-        <p style="text-align:left;margin:0 0 10px">
-          Fill every bottle with a single colour to win. Match <b>par</b> for three stars.
-        </p>
-        <p style="text-align:left;margin:0">
-          Watch for twists: the gold-rimmed <b>Cauldron</b> accepts any colour but must be
-          emptied to win, and <b>murky potions</b> hide their colours until they surface.
-        </p>`,
+        <div class="howto">
+          <h3>Pouring</h3>
+          <p>Tap a bottle to lift its top colour, then tap another bottle to pour.
+             Liquid only pours onto the <b>same colour</b> or into an <b>empty bottle</b>,
+             and the whole matching block moves at once if there is room.</p>
+          <p>Fill a bottle with one colour and a cork seals it - that bottle is done.
+             Seal every colour to win.</p>
+
+          <h3>Stars and the ideal</h3>
+          <p>Every level has an <b>ideal</b>: the fewest pours that can solve it, worked out
+             exactly. Finish close to the ideal for <b>three stars</b>, a bit over for two.
+             The win screen tells you the exact count the next star needs, and replaying a
+             level earns coins for any stars you did not have yet.</p>
+
+          <h3>Hearts</h3>
+          <p>You lose a heart only when a level is truly <b>failed</b> - no pours left, or the
+             game has proven it cannot be won from here - and you restart or leave it.
+             Leaving or restarting a live level is free. Hearts refill one every 30 minutes.</p>
+
+          <h3>Boosters</h3>
+          <p>Each attempt starts with <b>${eco.freeUses.undo} free undos</b> and
+             <b>${eco.freeUses.hint} free hint</b>. Extra bottles and more hints or undos come
+             from the shop, bought with the coins you earn.</p>
+
+          <h3>Twists</h3>
+          <p>The gold-rimmed <b>Cauldron</b> accepts any colour on top but must be empty to win.
+             <b>Murky potions</b> hide their colours until they reach the surface.</p>
+        </div>`,
       buttons: [{ label: 'Got it', kind: 'primary' }],
     });
   }

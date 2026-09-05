@@ -1052,6 +1052,18 @@ body {
 }
 .statgrid__best span { color: var(--gold-hi); font-weight: 800; }
 
+/* ----------------------------------------------------------- how to play -- */
+.howto { text-align: left; }
+.howto h3 {
+  margin: 14px 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+}
+.howto h3:first-child { margin-top: 0; }
+.howto p { margin: 0 0 8px; }
+
 /* ------------------------------------------------------------ win screen -- */
 .win { display: flex; flex-direction: column; align-items: stretch; }
 
@@ -1752,6 +1764,13 @@ button.chip:active { transform: scale(0.94); }
   height: 20px;
   margin: 1px 0 0;
   accent-color: var(--accent);
+}
+
+.consent__link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  margin-left: 4px;
 }
 
 :focus-visible {

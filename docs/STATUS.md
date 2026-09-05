@@ -136,6 +136,14 @@ _Last updated: 2026-09-05_
   per session. A failed boot shows a Reload control instead of a stuck splash.
 - **Analytics consent** — Settings → "Share anonymous usage data" (default on)
   gates every event that leaves the device.
+- **Privacy policy page** — `public/privacy.html`, shipped with the build,
+  linked from the consent checkbox and Settings → Help & support, precached
+  by the service worker. Three bracketed placeholders (date, publisher,
+  country) to fill before release.
+- **How to play** — reachable from Settings *and* the profile card; covers
+  pouring and sealing, stars and the "ideal" (par is never shown to players
+  by that name), the heart rule, free boosters (read live from the economy),
+  and both twists.
 - **Content Security Policy** — injected as a `<meta>` tag at build time
   (`vite.config.ts`): scripts only from the bundle, connections only to
   PostHog, no eval. Pixi is loaded through `pixi.js/unsafe-eval` so its
