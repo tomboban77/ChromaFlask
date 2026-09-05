@@ -347,21 +347,21 @@ body {
 .btn--primary {
   background: linear-gradient(180deg, #3ee0f5 0%, #1ba7cc 100%);
   color: #04223a;
-  box-shadow: 0 5px 0 #10708c, var(--shadow-md);
+  box-shadow: inset 0 -4px 0 #10708c, var(--shadow-md);
 }
 
-.btn--primary:active { box-shadow: 0 2px 0 #10708c, var(--shadow-md); }
+.btn--primary:active { box-shadow: inset 0 -2px 0 #10708c, var(--shadow-md); }
 
 .btn--success {
   background: linear-gradient(180deg, var(--green-0) 0%, #4ec73a 45%, var(--green-1) 100%);
   color: #fff;
   text-shadow: 0 2px 0 rgba(20, 90, 10, 0.55);
   border: 2.5px solid var(--gold-hi);
-  box-shadow: 0 5px 0 var(--green-deep), var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 -4px 0 var(--green-deep), var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.45);
 }
 
 .btn--success:active {
-  box-shadow: 0 2px 0 var(--green-deep), var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 -2px 0 var(--green-deep), var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.45);
 }
 
 .btn--ghost {
@@ -375,10 +375,10 @@ body {
   background: linear-gradient(180deg, #f4636f 0%, #d0293e 100%);
   color: #fff;
   text-shadow: 0 1px 0 rgba(90, 8, 20, 0.5);
-  box-shadow: 0 5px 0 #8c1527, var(--shadow-md);
+  box-shadow: inset 0 -4px 0 #8c1527, var(--shadow-md);
 }
 
-.btn--danger:active { box-shadow: 0 2px 0 #8c1527, var(--shadow-md); }
+.btn--danger:active { box-shadow: inset 0 -2px 0 #8c1527, var(--shadow-md); }
 
 /* Row-sized action inside a settings line, next to the label. */
 .btn--compact {
@@ -396,7 +396,7 @@ body {
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  box-shadow: 0 3px 0 var(--purple-deep), var(--shadow-md);
+  box-shadow: inset 0 -3px 0 var(--purple-deep), var(--shadow-md);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -436,7 +436,7 @@ body {
   border-radius: var(--r-pill);
   background: linear-gradient(180deg, var(--ivory-0) 0%, var(--ivory-1) 100%);
   border: 2px solid var(--gold-line);
-  box-shadow: 0 3px 0 rgba(96, 56, 0, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 -3px 0 rgba(96, 56, 0, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.75);
   color: var(--brown);
   font-weight: 900;
   font-size: 15px;
@@ -522,7 +522,7 @@ body {
   border-radius: 14px;
   border: 2.5px solid var(--gold-hi);
   background: linear-gradient(180deg, #a06ae8, #6a38c2);
-  box-shadow: 0 3px 0 rgba(40, 10, 90, 0.6), var(--shadow-md);
+  box-shadow: inset 0 -3px 0 rgba(40, 10, 90, 0.6), var(--shadow-md);
   display: grid;
   place-items: center;
   font-size: 24px;
@@ -568,7 +568,7 @@ body {
   border-radius: var(--r-pill);
   background: linear-gradient(180deg, #7443cb, #5527a8);
   border: 2px solid var(--gold);
-  box-shadow: 0 3px 0 var(--purple-deep);
+  box-shadow: inset 0 -3px 0 var(--purple-deep);
   flex: 0 0 auto;
   white-space: nowrap;
 }
@@ -772,11 +772,11 @@ body {
   gap: 3px;
   cursor: pointer;
   font: inherit;
-  box-shadow: 0 5px 0 var(--purple-deep), var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 -4px 0 var(--purple-deep), var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.3);
   transition: transform 0.12s ease, filter 0.16s ease;
 }
 
-.power:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--purple-deep); }
+.power:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 var(--purple-deep); }
 .power:disabled { opacity: 0.45; cursor: default; transform: none; }
 
 /* A hint being solved in the worker: visibly thinking, not dead. */
@@ -886,7 +886,7 @@ body {
   border-radius: 28px;
   border: 3px solid var(--gold);
   background: linear-gradient(180deg, #8a56dd 0%, #6432bd 55%, #58289f 100%);
-  box-shadow: 0 6px 0 rgba(40, 10, 90, 0.55), var(--shadow-lg);
+  box-shadow: inset 0 -4px 0 rgba(40, 10, 90, 0.55), var(--shadow-lg);
   padding: 24px 20px calc(20px + var(--safe-b) / 2);
   text-align: center;
   animation: modalin 0.3s cubic-bezier(0.2, 1.1, 0.4, 1);
@@ -916,7 +916,7 @@ body {
   border-radius: 50%;
   border: 2px solid #ffd9a0;
   background: linear-gradient(180deg, #ff5d7d, #d81c46);
-  box-shadow: 0 3px 0 #8f0f2e, var(--shadow-md);
+  box-shadow: inset 0 -3px 0 #8f0f2e, var(--shadow-md);
   color: #fff;
   display: grid;
   place-items: center;
@@ -1020,7 +1020,7 @@ body {
   place-items: center;
   font-size: 34px;
   line-height: 1;
-  box-shadow: 0 3px 0 rgba(40, 10, 90, 0.6);
+  box-shadow: inset 0 -3px 0 rgba(40, 10, 90, 0.6);
 }
 
 .profdlg__who { text-align: left; min-width: 0; flex: 1 1 auto; }
@@ -1036,7 +1036,7 @@ body {
   border: 1.5px solid var(--gold);
   color: #fff;
   text-shadow: 0 1px 0 rgba(40, 10, 90, 0.6);
-  box-shadow: 0 2px 0 var(--purple-deep);
+  box-shadow: inset 0 -2px 0 var(--purple-deep);
 }
 .profdlg__head--compact .profdlg__avatar { width: 46px; height: 46px; border-radius: 12px; font-size: 24px; }
 .profdlg__head--compact .profdlg__name { font-size: 17px; }
@@ -1309,7 +1309,7 @@ body {
   font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.02em;
-  box-shadow: 0 3px 0 rgba(96, 56, 0, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 -3px 0 rgba(96, 56, 0, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.6);
   animation: perfectin 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 .win__chapter small {
@@ -1567,7 +1567,7 @@ body {
   text-align: center;
   background: linear-gradient(180deg, var(--ivory-0), var(--ivory-1));
   border: 2px solid var(--gold-line);
-  box-shadow: 0 3px 0 rgba(96, 56, 0, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 -3px 0 rgba(96, 56, 0, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.75);
 }
 
 /* Second line: where the player is in the story. */
@@ -1602,10 +1602,10 @@ body {
   background: linear-gradient(180deg, var(--purple-0) 0%, var(--purple-1) 100%);
   color: #f6efff;
   text-align: left;
-  box-shadow: 0 5px 0 var(--purple-deep), var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 -4px 0 var(--purple-deep), var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.3);
 }
 
-.btn--daily:active { box-shadow: 0 2px 0 var(--purple-deep), var(--shadow-md); }
+.btn--daily:active { box-shadow: inset 0 -2px 0 var(--purple-deep), var(--shadow-md); }
 
 .btn--daily svg {
   width: 26px;
@@ -1625,11 +1625,11 @@ body {
 
 @keyframes playpulse {
   0%, 100% {
-    box-shadow: 0 5px 0 var(--green-deep), 0 0 0 0 rgba(160, 255, 120, 0.5),
+    box-shadow: inset 0 -4px 0 var(--green-deep), 0 0 0 0 rgba(160, 255, 120, 0.5),
       var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.45);
   }
   50% {
-    box-shadow: 0 5px 0 var(--green-deep), 0 0 0 14px rgba(160, 255, 120, 0),
+    box-shadow: inset 0 -4px 0 var(--green-deep), 0 0 0 14px rgba(160, 255, 120, 0),
       var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.45);
   }
 }
@@ -1705,7 +1705,7 @@ button.chip:active { transform: scale(0.94); }
   font-size: 11px;
   font-weight: 900;
   cursor: pointer;
-  box-shadow: 0 3px 0 #341670;
+  box-shadow: inset 0 -3px 0 #341670;
   transition: transform 0.16s ease, background 0.16s ease, color 0.16s ease;
 }
 
@@ -1717,7 +1717,7 @@ button.chip:active { transform: scale(0.94); }
   background: linear-gradient(180deg, #a468f5, #6a38c2);
   border-color: var(--gold-hi);
   transform: translateY(-13px);
-  box-shadow: 0 5px 0 #341670, 0 12px 20px rgba(20, 5, 50, 0.5);
+  box-shadow: inset 0 -4px 0 #341670, 0 12px 20px rgba(20, 5, 50, 0.5);
   text-shadow: 0 1.5px 0 rgba(50, 15, 110, 0.7);
 }
 
@@ -1744,7 +1744,7 @@ button.chip:active { transform: scale(0.94); }
   background: linear-gradient(180deg, #ff5d7d, #d81c46);
   border-color: #ffd9a0;
   border-radius: 50%;
-  box-shadow: 0 3px 0 #8f0f2e, var(--shadow-md);
+  box-shadow: inset 0 -3px 0 #8f0f2e, var(--shadow-md);
   color: #fff;
 }
 
@@ -1799,13 +1799,13 @@ button.chip:active { transform: scale(0.94); }
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 5px 0 rgba(140, 60, 0, 0.5), var(--shadow-md);
+  box-shadow: inset 0 -4px 0 rgba(140, 60, 0, 0.5), var(--shadow-md);
 }
 
 .bundle--best {
   background: linear-gradient(180deg, var(--ivory-0) 0%, var(--ivory-1) 100%);
   color: var(--brown);
-  box-shadow: 0 5px 0 rgba(96, 56, 0, 0.4), var(--shadow-md);
+  box-shadow: inset 0 -4px 0 rgba(96, 56, 0, 0.4), var(--shadow-md);
 }
 
 .bundle__badge {
@@ -1898,7 +1898,7 @@ button.chip:active { transform: scale(0.94); }
   min-height: 44px;
   min-width: 92px;
   cursor: pointer;
-  box-shadow: 0 4px 0 var(--green-deep), var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 -4px 0 var(--green-deep), var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.45);
   transition: transform 0.12s ease;
   white-space: nowrap;
   display: inline-flex;
@@ -1907,7 +1907,7 @@ button.chip:active { transform: scale(0.94); }
   gap: 6px;
 }
 
-.pricebtn:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--green-deep), var(--shadow-md); }
+.pricebtn:active { transform: translateY(2px); box-shadow: inset 0 -2px 0 var(--green-deep), var(--shadow-md); }
 .pricebtn:disabled { opacity: 0.45; cursor: default; transform: none; }
 .pricebtn .chip__icon--coin { width: 16px; height: 16px; }
 
@@ -1929,7 +1929,7 @@ button.chip:active { transform: scale(0.94); }
   align-items: center;
   gap: 0;
   overflow: hidden;
-  box-shadow: 0 4px 0 rgba(96, 56, 0, 0.4), var(--shadow-md);
+  box-shadow: inset 0 -4px 0 rgba(96, 56, 0, 0.4), var(--shadow-md);
 }
 
 .pack__top {
@@ -1972,7 +1972,7 @@ button.chip:active { transform: scale(0.94); }
   background: linear-gradient(180deg, var(--ivory-0), var(--ivory-1));
   color: var(--brown);
   margin-bottom: 10px;
-  box-shadow: 0 3px 0 rgba(96, 56, 0, 0.35);
+  box-shadow: inset 0 -3px 0 rgba(96, 56, 0, 0.35);
 }
 
 .shopitem__icon {
@@ -1984,7 +1984,7 @@ button.chip:active { transform: scale(0.94); }
   display: grid;
   place-items: center;
   background: linear-gradient(180deg, var(--purple-0), var(--purple-1));
-  box-shadow: 0 2px 0 var(--purple-deep);
+  box-shadow: inset 0 -2px 0 var(--purple-deep);
 }
 
 .shopitem__icon svg { width: 24px; height: 24px; fill: currentColor; color: #fff; }
@@ -2011,12 +2011,12 @@ button.chip:active { transform: scale(0.94); }
   border: 2.5px solid #d8a83f;
   background: linear-gradient(180deg, var(--ivory-0), var(--ivory-1));
   color: var(--brown);
-  box-shadow: 0 3px 0 rgba(96, 56, 0, 0.35);
+  box-shadow: inset 0 -3px 0 rgba(96, 56, 0, 0.35);
   transition: transform 0.12s ease, border-color 0.12s ease;
 }
 
 .skin:active { transform: scale(0.96); }
-.skin--equipped { border-color: var(--green-1, #2fa42a); box-shadow: 0 3px 0 rgba(96, 56, 0, 0.35), 0 0 0 3px rgba(80, 200, 60, 0.35); }
+.skin--equipped { border-color: var(--green-1, #2fa42a); box-shadow: inset 0 -3px 0 rgba(96, 56, 0, 0.35), 0 0 0 3px rgba(80, 200, 60, 0.35); }
 
 .skin__preview {
   width: 46px;

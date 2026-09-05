@@ -165,6 +165,16 @@ _Last updated: 2026-09-05_
   by undo/new bottle). Kills the "this level is impossible" misread.
 - **Gentle onboarding** — levels 1-10 are all two-empty boards; single-empty
   squeeze boards start at level 18, after the player has the skills.
+- **Pour headroom** — the board layout reserves `pourRiseFor(bodyW)` (0.62
+  body widths + 14 px cork allowance, at least 38 px) of clear canvas above
+  the top row and solves the bottle size so rows *plus* headroom fit, so a
+  bottle lifted and tilted over a top-row target never leaves the frame; the
+  per-row cap is 96 px for a more compact board. Smoke test asserts the
+  headroom on the two-row endless board at both viewports.
+- **Button depth is inset** — every 3D "lip" (buttons, chips, power buttons,
+  nav tabs, cards, dialogs) is an inset shadow inside the border rather than
+  a drop shadow below it, capped at 4 px, so borders contain their controls
+  consistently across the UI.
 - **Sealed bottles** — completing a bottle rockets a cork up from behind the
   glass, over the mouth, and drops it into the neck with a squash and a pop
   (`BottleView.setCapped`). The cork stays as the "done" marker, comes off on

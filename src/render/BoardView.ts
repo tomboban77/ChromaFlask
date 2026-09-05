@@ -14,6 +14,15 @@ import { SKINS, bottleHeight, type GlassSkin } from './theme';
 
 const POUR_ANGLE = 0.92; // radians, about 53 degrees
 const LIFT = 26;
+/** How far above the target's mouth the pouring bottle's mouth sits, in body widths. */
+const POUR_RISE_FACTOR = 0.62;
+/** Extra clear canvas above the top row for the cork's seal overshoot. */
+const CAP_HEADROOM = 14;
+
+/** Clear canvas the top row needs above its mouths so a pour stays in frame. */
+function pourRiseFor(bodyW: number): number {
+  return Math.max(24, bodyW * POUR_RISE_FACTOR) + CAP_HEADROOM;
+}
 
 export interface BoardCallbacks {
   onMove?: (move: Move, moveCount: number) => void;
@@ -233,6 +242,20 @@ export class BoardView {
   }
 
   // ----------------------------------------------------------------- state
+  /** Mouth y of the top row; the smoke test checks the pour headroom above it. */
+  get topRowY(): number {
+    return this.slots.reduce((min, s) => Math.min(min, s.y), Number.POSITIVE_INFINITY);
+  }
+
+  get bodyWidth(): number {
+    return this.bodyW;
+  }
+
+  /** Clear canvas a pour needs above the top row at the current bottle size. */
+  get pourHeadroom(): number {
+    return pourRiseFor(this.bodyW);
+  }
+
   get moveCount(): number {
     return this.history.length;
   }
@@ -329,16 +352,21 @@ export class BoardView {
     const gapX = Math.min(Math.max(width * 0.028, 8), 22);
     const gapY = Math.min(Math.max(height * 0.06, 16), 46);
 
-    // Width-constrained size, then shrink further if the rows will not fit.
-    let bodyW = Math.min((width - gapX * (perRow + 1)) / perRow, 104);
-    let h = bottleHeight(bodyW);
-    const maxH = (height - gapY * (rows + 1)) / rows;
-    if (h > maxH) {
-      h = maxH;
-      bodyW = h / (bottleHeight(1));
-    }
+    // Width-constrained size (capped so a five-wide row stays compact), then
+    // shrink further if the rows plus the pour headroom will not fit.
+    const unitH = bottleHeight(1);
+    let bodyW = Math.min((width - gapX * (perRow + 1)) / perRow, 96);
+    // A pouring bottle rises `pourRise` above the target's mouth and the cork
+    // overshoots the mouth when it seals, so the top row needs that much clear
+    // canvas above it or the pour happens out of frame. Solve for the size
+    // where rows + headroom exactly fit, treating headroom as 0.62 body widths
+    // plus the cork allowance (it is at least 24 px, see pourRiseFor).
+    const avail = height - gapY * (rows + 1);
+    const fitted = (avail - CAP_HEADROOM) / (rows * unitH + POUR_RISE_FACTOR);
+    if (bottleHeight(bodyW) * rows + pourRiseFor(bodyW) > avail) bodyW = fitted;
     bodyW = Math.max(24, bodyW);
-    h = bottleHeight(bodyW);
+    const h = bottleHeight(bodyW);
+    const headroom = pourRiseFor(bodyW);
 
     if (Math.abs(bodyW - this.bodyW) > 0.5) {
       this.bodyW = bodyW;
@@ -346,7 +374,8 @@ export class BoardView {
     }
 
     const blockH = rows * h + (rows - 1) * gapY;
-    const startY = (height - blockH) / 2;
+    // Centre the block in what remains below the headroom, never above it.
+    const startY = headroom + Math.max(gapY, (height - headroom - blockH) / 2);
 
     this.slots = [];
     let placed = 0;
@@ -531,7 +560,8 @@ export class BoardView {
     const targetX = dstSlot.x - dir * this.bodyW * 0.34;
     // Lift well clear of the row: a bottle tilted this far sweeps a long arc,
     // and pouring *across* a neighbour instead of over it reads as a collision.
-    const targetY = dstSlot.y - Math.max(24, this.bodyW * 0.62);
+    // The layout reserves exactly this rise above the top row (pourRiseFor).
+    const targetY = dstSlot.y - Math.max(24, this.bodyW * POUR_RISE_FACTOR);
 
     src.zIndex = 100;
 

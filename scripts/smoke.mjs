@@ -430,6 +430,11 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (endlessLabel !== 'Endless #1') problems.push(`[${label}] HUD should read "Endless #1", got "${endlessLabel}"`);
   if (endless.tubes !== 10) problems.push(`[${label}] endless #1 should be 8 colours + 2 empties = 10 tubes, got ${endless.tubes}`);
   if (!(endless.par >= 22)) problems.push(`[${label}] endless #1 ideal should be >= 22, got ${endless.par}`);
+  // Two rows: the top row must leave room for a pouring bottle to rise and tilt in frame.
+  console.log(`  two-row layout  bodyW=${Math.round(endless.bodyW)} topRowY=${Math.round(endless.topRowY)} headroom needed=${Math.round(endless.pourHeadroom)}`);
+  if (!(endless.topRowY >= endless.pourHeadroom - 0.5)) {
+    problems.push(`[${label}] top row at y=${Math.round(endless.topRowY)} leaves less than the ${Math.round(endless.pourHeadroom)}px a pour needs above it`);
+  }
   await page.click('#btn-back'); // no moves made: straight home, no dialog
   await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
 
