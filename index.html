@@ -122,7 +122,7 @@
              spelled, crisp at any size) positioned over its blank banner. -->
         <div class="splash__logo" aria-hidden="true">
           <img src="/logo.webp" alt="" width="1170" height="1193" />
-          <span class="splash__logo-text"><b>Chroma</b><b>Flask</b></span>
+          <span class="splash__logo-text"><b><span>Chroma</span></b><b><span>Flask</span></b></span>
         </div>
         <div class="splash">
           <div class="splash__bar" role="progressbar" aria-label="Loading" data-i18n-aria="splash.loading">
@@ -177,12 +177,12 @@
             <span id="home-avatar">🐱</span>
           </button>
           <div class="topbar__spacer"></div>
-          <button class="chip chip--btn" id="home-coins-chip" aria-label="Coins - open shop" data-i18n-aria="home.coinsAria">
+          <button class="chip chip--btn chip--lead" id="home-coins-chip" aria-label="Coins - open shop" data-i18n-aria="home.coinsAria">
             <span class="chip__icon chip__icon--coin chip__icon--lead"></span>
             <span id="home-coins">0</span>
             <span class="chip__plus">+</span>
           </button>
-          <button class="chip chip--btn" id="home-lives-chip" aria-label="Hearts - open shop" data-i18n-aria="home.heartsAria">
+          <button class="chip chip--btn chip--lead" id="home-lives-chip" aria-label="Hearts - open shop" data-i18n-aria="home.heartsAria">
             <span class="heartbadge">
               <svg viewBox="0.5 3.6 23 18.2" aria-hidden="true"><use href="#cf-heart" /></svg>
               <b id="home-lives">5</b>
@@ -231,7 +231,7 @@
             <span class="chip__icon">★</span>
             <span id="map-stars">0</span>
           </div>
-          <div class="chip chip--stat" id="map-coins-chip">
+          <div class="chip chip--stat chip--lead" id="map-coins-chip">
             <span class="chip__icon chip__icon--coin chip__icon--lead"></span>
             <span id="map-coins">0</span>
           </div>
@@ -250,7 +250,7 @@
       <!-- ============================================================ SHOP -->
       <section class="screen" id="screen-shop">
         <header class="topbar">
-          <div class="chip chip--stat">
+          <div class="chip chip--stat chip--lead">
             <span class="chip__icon chip__icon--coin chip__icon--lead"></span>
             <span id="shop-coins">0</span>
           </div>
@@ -284,7 +284,7 @@
                 stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </button>
-          <button class="chip chip--stat chip--btn" id="game-coins-chip" aria-label="Coins - open shop" data-i18n-aria="home.coinsAria">
+          <button class="chip chip--stat chip--btn chip--lead" id="game-coins-chip" aria-label="Coins - open shop" data-i18n-aria="home.coinsAria">
             <span class="chip__icon chip__icon--coin chip__icon--lead"></span>
             <span id="game-coins">0</span>
             <span class="chip__plus">+</span>

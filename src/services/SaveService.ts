@@ -441,12 +441,44 @@ export class SaveService {
     }, 250);
   }
 
+  /** Called after every write to disk; the cloud layer hangs its upload off this. */
+  onFlush: (() => void) | null = null;
+
   flush(): void {
     try {
       this.driver.write(KEY, JSON.stringify(this.data));
     } catch (err) {
       console.warn('[save] write failed', err);
     }
+    this.onFlush?.();
+  }
+
+  // ------------------------------------------------------------------ cloud
+  /** The whole save as the cloud stores it. */
+  exportJson(): string {
+    return JSON.stringify(this.data);
+  }
+
+  /**
+   * Adopt a cloud copy of the save. It goes through the same migration as a
+   * disk load, so an older device's shape is fine. Device-bound state stays
+   * local: settings (language, sound, accessibility are per device), the
+   * support ID (support codes are minted against it), and the redeemed-code
+   * and granted-purchase ledgers are unioned so nothing can be claimed twice.
+   */
+  replaceFromCloud(incoming: Partial<SaveData>): void {
+    const local = this.data;
+    const merged = this.migrate(incoming, defaultSave(this.startingCoins));
+    merged.settings = local.settings;
+    merged.supportId = local.supportId;
+    merged.redeemedCodes = Array.from(new Set([...local.redeemedCodes, ...merged.redeemedCodes]));
+    merged.grantedPurchaseTokens = Array.from(
+      new Set([...local.grantedPurchaseTokens, ...merged.grantedPurchaseTokens]),
+    );
+    // A half-played level from another device makes no sense here.
+    merged.inProgress = null;
+    this.data = merged;
+    this.flush();
   }
 
   // ------------------------------------------------------------ accessors

@@ -35,6 +35,15 @@ ChromaFlask uses **only original assets**, all authored in this repository:
   `PlayBillingDriver` picks them up automatically and shows localized prices.
 - **iOS**: wrap with Capacitor and implement a `StoreKitDriver` conforming to
   `PaymentDriver`; create matching product ids in App Store Connect.
+  Set the Xcode deployment target to **iOS 15.4 or later** (Capacitor's
+  default is 14.0): the stylesheet relies on `inset`, flex `gap`,
+  `aspect-ratio` and unprefixed `appearance`, and on 14.0 the layout
+  collapses entirely. Set `ios.scrollEnabled: false` in `capacitor.config`
+  so the web view itself never rubber-bands; the map, shop and dialogs scroll
+  internally.
+- **Android**: the CSS floor is Chrome 105 (`:has()` is gone, but
+  `aspect-ratio`/`inset` still need 88+). Chrome auto-updates, so this only
+  matters for devices with updates disabled.
 - **Server-side receipt validation** is strongly recommended before granting
   large coin packs at scale — plan a small backend endpoint before revenue
   grows (client-only grants are acceptable for launch, but are spoofable).
@@ -101,5 +110,11 @@ ChromaFlask uses **only original assets**, all authored in this repository:
 - [ ] TWA: verify `assetlinks.json` digital asset links, offline behaviour,
       and that the Digital Goods API returns the five SKUs.
 - [ ] iOS wrapper: audio unlock on first gesture, safe-area insets, StoreKit
-      sandbox purchase of each product.
+      sandbox purchase of each product. Confirm buttons show their pressed
+      state, and that the splash wordmark and PERFECT banner render as
+      gradient text (not solid boxes).
+- [ ] Android: set the system font size to Largest and check the HUD pills,
+      power buttons and bottom nav do not overflow (Chrome scales px text
+      with the OS setting; iOS does not). Test once on a Samsung device,
+      whose `system-ui` font is wider than Roboto.
 - [ ] Version bump in `package.json` + store build numbers.

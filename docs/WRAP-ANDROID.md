@@ -1,5 +1,12 @@
 # Wrapping ChromaFlask for Google Play (TWA)
 
+> **Superseded for the store build.** Cloud save needs a native bridge that a
+> Trusted Web Activity cannot provide, and iOS needs a WKWebView wrapper in
+> any case, so both stores ship the same **Capacitor** wrapper - see
+> [CLOUD-SAVE.md](CLOUD-SAVE.md). This guide remains valid for a web-only
+> Android listing without cloud save, and its Play Console prerequisites
+> (merchant profile, signing key, SKUs) still apply.
+
 The Android build is a **Trusted Web Activity**: the real Chrome engine
 rendering our deployed web app full-screen, packaged as a normal Play Store
 app. The code is already prepared — manifest, icon set, offline service

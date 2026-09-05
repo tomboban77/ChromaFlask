@@ -213,6 +213,21 @@ _Last updated: 2026-09-05_
   shop-bought stock → **shop opens** (never silently charged to coins; empty
   badge becomes a green "+"). Bottles are deliberately never free: a free
   extra tube erases the difficulty curve.
+- **Cloud save** (`services/CloudSave.ts`, [CLOUD-SAVE.md](CLOUD-SAVE.md)) —
+  whole-save backup to the player's platform account with no server of ours:
+  Play Games Saved Games on Android, iCloud key-value store on iOS, reached
+  through one Capacitor plugin (`native/capacitor-cloudsave`, written to the
+  documented APIs but not yet compiled). Conflicts resolve by *progress*
+  (clears, then stars, then pours - never coins or the clock): a fresh device
+  restores silently, a device with real progress is asked which copy to keep.
+  Automatic uploads hang off every save flush (debounced, flushed on
+  pagehide). "Reset progress" never uploads the wipe and is never silently
+  undone: it forces the ask on the next sync. Restore keeps device-bound
+  state (settings, support ID, redeemed/granted ledgers unioned). Settings →
+  Cloud save row (status, Sign in / Sync now, Sign out); web reads "Available
+  in the Android and iOS apps". `cloud_sync` analytics. The smoke test runs
+  the simulated driver (`?cloud=sim`): sign-in uploads, Reset → "Cloud save
+  found" → Use cloud save → same level, skin and coins back.
 - **Bottle looks** (`SKINS` in `render/theme.ts`, shop section "Bottle
   looks") — six glass skins as a long-term coin sink: Classic (free), Frosted
   300, Rose quartz 400, Amber 500, Emerald 600, Obsidian 800. A skin tints

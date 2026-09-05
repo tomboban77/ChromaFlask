@@ -94,7 +94,8 @@ async function runViewport(browser, label, width, height, isMobile) {
     }
   });
 
-  await page.goto(URL, { waitUntil: 'load' });
+  // ?cloud=sim selects the simulated cloud driver (dev only) so the sync paths are testable.
+  await page.goto(URL + '?cloud=sim', { waitUntil: 'load' });
 
   // ---- boot -> profile
   await page.waitForSelector('#screen-profile.screen--active', { timeout: 15_000 });
@@ -577,6 +578,42 @@ async function runViewport(browser, label, width, height, isMobile) {
     problems.push(`[${label}] levels 1-3 should be open after clearing 1 and skipping 2 (locked=${unlockedAfter})`);
   }
   if (skippedAfter !== 1) problems.push(`[${label}] the skipped level 2 should show as skipped on the map (got ${skippedAfter})`);
+
+  // ---- cloud save (simulated driver via ?cloud=sim): sign in uploads; a wiped
+  //      device restores silently on boot and comes back with the same progress
+  await page.click('.bottomnav__tab[data-nav="home"]');
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+  const cloudBefore = await page.evaluate(() => window.__cf.cloud());
+  const signIn = await page.evaluate(() => window.__cf.cloudSignIn());
+  const cloudAfter = await page.evaluate(() => window.__cf.cloud());
+  console.log(`  cloud sign-in   driver=${cloudBefore.driver} account=${cloudAfter.account} -> ${signIn.action}`);
+  if (cloudBefore.driver !== 'simulated') problems.push(`[${label}] smoke should run with the simulated cloud driver (got ${cloudBefore.driver})`);
+  if (signIn.action !== 'uploaded') problems.push(`[${label}] first sign-in should upload the local save, got ${signIn.action}`);
+  const playBeforeWipe = (await page.locator('#btn-play').textContent())?.trim();
+  // Wipe this device: Settings -> Help & support -> Reset progress -> confirm (reloads).
+  await page.click('#btn-settings-home');
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  await page.locator('.modal .setting button', { hasText: 'Reset' }).click();
+  await page.waitForSelector('.modal__title:has-text("Reset progress?")', { timeout: 5000 });
+  await page.locator('.modal button', { hasText: 'Reset' }).last().click();
+  // The wiped device reloads onto first-run setup. The boot sync finds the
+  // cloud ahead - but this device was reset on purpose, so instead of undoing
+  // that silently it asks. Choosing the cloud restores and reloads to home
+  // with the old profile and level 3 up next.
+  await page.waitForSelector('.modal__title:has-text("Cloud save found")', { timeout: 20_000 });
+  const conflictBody = (await page.locator('.modal__body').textContent()) ?? '';
+  if (!/Level 3/.test(conflictBody)) problems.push(`[${label}] the cloud-save dialog should describe the cloud copy at level 3, got "${conflictBody.slice(0, 120)}"`);
+  await page.locator('.modal button', { hasText: 'Use cloud save' }).click();
+  await page.waitForFunction(
+    () => document.querySelector('#screen-home.screen--active') && document.querySelector('#btn-play')?.textContent?.trim() === 'Level 3',
+    null, { timeout: 25_000 },
+  );
+  const restored = await page.evaluate(() => window.__cf.state());
+  const restoredName = (await page.locator('#home-avatar').textContent())?.trim();
+  console.log(`  cloud restore   play "${playBeforeWipe}" -> wiped -> "Level 3" again, skin=${restored.skin}, coins=${restored.coins}`);
+  if (restored.skin !== 'frost') problems.push(`[${label}] cloud restore should bring the bought skin back (got ${restored.skin})`);
+  if (playBeforeWipe !== 'Level 3') problems.push(`[${label}] expected level 3 to be the next level before the wipe, got "${playBeforeWipe}"`);
+  void restoredName;
   await shot('11-reloaded');
 
   await context.close();

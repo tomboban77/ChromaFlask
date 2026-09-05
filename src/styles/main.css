@@ -79,11 +79,11 @@ body {
     radial-gradient(100% 70% at 95% 10%, rgba(20, 150, 190, 0.28), transparent 55%),
     radial-gradient(140% 90% at 50% 115%, rgba(120, 40, 170, 0.4), transparent 60%),
     linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 55%, #04061a 100%);
-  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none; /* iOS: no preview/share sheet on long-press */
   touch-action: manipulation;
 }
 
@@ -170,20 +170,27 @@ body {
   white-space: nowrap;
 }
 
-.splash__logo-text b {
+/* WebKit can paint `background-clip: text` as a solid rectangle when the same
+   element also carries a `filter`, so the shadow sits on the <b> and the
+   gradient clip on the inner <span>. */
+.splash__logo-text b span {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .splash__logo-text b:first-child {
-  background-image: linear-gradient(180deg, #ffe9a0 15%, #ffb020 80%);
   filter: drop-shadow(0 2px 0 #7a3d00) drop-shadow(0 4px 6px rgba(40, 10, 80, 0.6));
+}
+.splash__logo-text b:first-child span {
+  background-image: linear-gradient(180deg, #ffe9a0 15%, #ffb020 80%);
 }
 
 .splash__logo-text b:last-child {
-  background-image: linear-gradient(180deg, #a8e6ff 15%, #2196e8 80%);
   filter: drop-shadow(0 2px 0 #123d7a) drop-shadow(0 4px 6px rgba(40, 10, 80, 0.6));
+}
+.splash__logo-text b:last-child span {
+  background-image: linear-gradient(180deg, #a8e6ff 15%, #2196e8 80%);
 }
 
 .splash {
@@ -305,6 +312,7 @@ body {
 /* Native <select> styled like a text field: custom chevron, room for it, and
    dark option list where the browser honours color-scheme. */
 .field__input--select {
+  -webkit-appearance: none; /* iOS < 15.4 only knows the prefixed form */
   appearance: none;
   padding-right: 44px;
   cursor: pointer;
@@ -320,7 +328,7 @@ body {
   max-width: 55%;
   flex: 0 0 auto;
   padding: 9px 36px 9px 12px;
-  font-size: 14px;
+  font-size: 16px; /* < 16px makes iOS zoom the page on focus */
   background-position: right 12px center;
 }
 
@@ -472,9 +480,9 @@ body {
   color: rgba(160, 90, 0, 0.55);
 }
 
-/* Chips whose icon pokes past the left edge need room outside the pill. */
-.chip:has(.chip__icon--lead),
-.chip:has(.heartbadge) { margin-left: 12px; }
+/* Chips whose icon pokes past the left edge need room outside the pill.
+   A plain class rather than `:has()`, which needs iOS 15.4 / Chrome 105. */
+.chip--lead { margin-left: 12px; }
 
 /* Sized and shaded to match the lead coin on the neighbouring chip: same
    32px footprint, same overlap past the pill edge, same bevel and shadow. */
@@ -591,6 +599,7 @@ body {
 .map {
   flex: 1 1 auto;
   overflow-y: auto;
+  overscroll-behavior: contain; /* stop the scroll chaining into the web view */
   -webkit-overflow-scrolling: touch;
   padding: 4px 18px calc(26px + var(--safe-b));
 }
@@ -710,12 +719,23 @@ body {
 .node--next {
   border-color: var(--accent);
   background: linear-gradient(180deg, rgba(34, 211, 238, 0.28), rgba(28, 34, 88, 0.8));
+}
+
+/* The pulsing ring is a pseudo-element animating transform/opacity: those run
+   on the compositor, whereas animating box-shadow repaints every frame. */
+.node--next::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 5px solid rgba(34, 211, 238, 0.36);
+  pointer-events: none;
   animation: pulse 2.2s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.36), var(--shadow-md); }
-  50% { box-shadow: 0 0 0 9px rgba(34, 211, 238, 0), var(--shadow-md); }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.14); opacity: 0; }
 }
 
 .node--done { border-color: rgba(43, 217, 124, 0.5); }
@@ -883,6 +903,7 @@ body {
   width: min(400px, 100%);
   max-height: calc(100% - 20px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: 28px;
   border: 3px solid var(--gold);
   background: linear-gradient(180deg, #8a56dd 0%, #6432bd 55%, #58289f 100%);
@@ -1418,7 +1439,7 @@ body {
 }
 
 .win__actions { display: flex; flex-direction: column; gap: 10px; }
-.win__next { font-size: 18px; min-height: 58px; animation: playpulse 2.2s ease-in-out 1.4s infinite; }
+.win__next { font-size: 18px; min-height: 58px; }
 .win__actions .modal__row .btn { min-height: 44px; padding: 10px 14px; font-size: 14px; }
 
 /* Manual-copy fallback for the daily share: the text, selected, nothing else. */
@@ -1427,7 +1448,7 @@ body {
   resize: none;
   text-align: left;
   line-height: 1.5;
-  font-size: 14px;
+  font-size: 16px; /* < 16px makes iOS zoom the page on focus */
   margin-bottom: 14px;
 }
 
@@ -1625,8 +1646,21 @@ body {
   min-height: 60px;
   border-radius: 16px;
   border-width: 3px;
+}
+
+/* Glow rings on the Play buttons: static shadow on a pseudo-element, animated
+   with transform/opacity so the home screen does not repaint every frame. */
+.btn--play::after,
+.win__next::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 10px rgba(160, 255, 120, 0.5);
+  pointer-events: none;
   animation: playpulse 2.4s ease-in-out infinite;
 }
+.win__next::after { animation-delay: 1.4s; }
 
 /* Daily challenge: purple companion to the green Play button. */
 .btn--daily {
@@ -1663,14 +1697,8 @@ body {
 }
 
 @keyframes playpulse {
-  0%, 100% {
-    box-shadow: inset 0 -4px 0 var(--green-deep), 0 0 0 0 rgba(160, 255, 120, 0.5),
-      var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.45);
-  }
-  50% {
-    box-shadow: inset 0 -4px 0 var(--green-deep), 0 0 0 14px rgba(160, 255, 120, 0),
-      var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.45);
-  }
+  0%, 100% { transform: scale(0.98); opacity: 0; }
+  50% { transform: scale(1.04); opacity: 1; }
 }
 
 /* chips that act as buttons (coins / hearts open the shop) */
@@ -1791,6 +1819,7 @@ button.chip:active { transform: scale(0.94); }
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 8px 16px calc(30px + var(--safe-b));
   max-width: 480px;
@@ -2130,18 +2159,22 @@ button.chip:active { transform: scale(0.94); }
 }
 
 /* "PERFECT!" banner in the win dialog */
+/* Filter and animation on the wrapper, gradient clip on the inner span: see
+   the splash wordmark note on WebKit and `background-clip: text`. */
 .perfect {
   margin: 2px 0 10px;
   font-size: 36px;
   font-weight: 900;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+  filter: drop-shadow(0 2px 0 rgba(122, 61, 0, 0.5)) drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+  animation: perfectin 0.55s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.perfect span {
   background: linear-gradient(180deg, #ffe08a 25%, #ff9a1f 85%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 2px 0 rgba(122, 61, 0, 0.5)) drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
-  animation: perfectin 0.55s cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 
 @keyframes perfectin {

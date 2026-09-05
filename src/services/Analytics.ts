@@ -32,7 +32,8 @@ export type AnalyticsEvent =
   | { type: 'out_of_lives'; level: number }
   | { type: 'support_email_open'; level: number }
   | { type: 'support_code_redeemed'; action: string }
-  | { type: 'progress_reset'; source: 'settings' | 'support_code' };
+  | { type: 'progress_reset'; source: 'settings' | 'support_code' }
+  | { type: 'cloud_sync'; reason: 'boot' | 'signin' | 'manual' | 'choice'; result: string };
 
 export interface AnalyticsDriver {
   track(event: AnalyticsEvent): void;

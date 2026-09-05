@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The wrapper app's manifest must carry the Play Games project id:
+
+    <meta-data
+      android:name="com.google.android.gms.games.APP_ID"
+      android:value="@string/game_services_project_id" />
+
+  with `game_services_project_id` in res/values/strings.xml set to the numeric
+  Game ID from Play Console -> Play Games Services -> Configuration.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

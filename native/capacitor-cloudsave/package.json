@@ -1,0 +1,30 @@
+{
+  "name": "capacitor-cloudsave",
+  "version": "0.1.0",
+  "description": "ChromaFlask cloud save: Play Games Saved Games on Android, iCloud key-value store on iOS",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "android/src/main/",
+    "android/build.gradle",
+    "dist/",
+    "ios/Plugin/",
+    "CapacitorCloudsave.podspec"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/core": "^6.0.0",
+    "typescript": "^5.5.0"
+  },
+  "capacitor": {
+    "ios": { "src": "ios" },
+    "android": { "src": "android" }
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

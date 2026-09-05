@@ -16,6 +16,9 @@ import { CHAPTERS } from '@/core/chapters';
 import type { GeneratedLevel } from '@/core/types';
 
 import { SAVE_VERSION, SaveService, type InProgressState } from '@/services/SaveService';
+import {
+  CloudSaveService, deviceLabel, pickCloudDriver, type ProgressSummary, type SyncOutcome,
+} from '@/services/CloudSave';
 import { AuthService } from '@/services/AuthService';
 import { Analytics, POSTHOG_KEY, PostHogDriver } from '@/services/Analytics';
 import { RemoteConfig } from '@/services/RemoteConfig';
@@ -134,6 +137,7 @@ class App {
 
   private readonly stage = new GameStage();
   private board!: BoardView;
+  private cloud!: CloudSaveService;
   private toast!: ToastHost;
   private modal!: ModalHost;
   private tutorial!: Tutorial;
@@ -174,6 +178,10 @@ class App {
     // stamped once here; everything dynamic goes through t() as it renders.
     await setLocale(resolveLocale(this.save.snapshot.settings.language, navigator.languages));
     applyStaticText();
+    // Cloud save: platform storage through the native bridge (simulated in
+    // dev). Probed after the first screen is up so it never delays boot.
+    this.cloud = new CloudSaveService(this.save, pickCloudDriver(), deviceLabel());
+    this.cloud.onConflict = (cloud, local) => this.showCloudConflict(cloud, local);
     // Off the boot path. Once the store is reachable, settle anything that was
     // paid for but never delivered (see Payments.ts lifecycle notes).
     void this.payments.init().then(() => this.restorePurchases());
@@ -277,6 +285,7 @@ class App {
     } else {
       this.show('profile');
     }
+    void this.cloud.init().then((outcome) => this.afterCloudOutcome(outcome, 'boot'));
   }
 
   // ----------------------------------------------------------------- splash
@@ -406,6 +415,9 @@ class App {
         winCount: this.winCount,
       }),
       lastShare: () => this.lastShareText,
+      cloud: () => ({ ...this.cloud.state, driver: this.cloud.driver.id }),
+      cloudSignIn: () => this.cloud.signIn(),
+      cloudSync: () => this.cloud.sync('manual'),
       /** Plays the generated winning line, waiting for each pour to land. */
       autoplay: async (): Promise<{ moves: number; log: string[] }> => {
         const solution = this.level?.solution ?? [];
@@ -548,6 +560,10 @@ class App {
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
 
+    // iOS WebKit only applies `:active` to touches when a touch listener exists
+    // somewhere on the page. Without this, no button shows its pressed state.
+    document.addEventListener('touchstart', () => {}, { passive: true });
+
     document.addEventListener('visibilitychange', () => {
       const hidden = document.hidden;
       this.stage.setPaused(hidden || this.current !== 'game');
@@ -559,7 +575,10 @@ class App {
       }
     });
 
-    window.addEventListener('pagehide', () => this.save.flush());
+    window.addEventListener('pagehide', () => {
+      this.save.flush();
+      void this.cloud.flushUpload();
+    });
 
     this.wireHistory();
 
@@ -2030,7 +2049,11 @@ class App {
 
     // Verdict: celebrate a perfect, otherwise say exactly what the next star needs.
     if (w.stars === 3) {
-      content.appendChild(el('div', 'perfect', t('win.perfect')));
+      // Inner span carries the gradient text clip; the wrapper carries the filter
+      // (WebKit paints the two on one element as a solid box).
+      const perfect = el('div', 'perfect');
+      perfect.appendChild(el('span', undefined, t('win.perfect')));
+      content.appendChild(perfect);
     } else {
       const th = starThresholds(w.par);
       const need = w.stars === 2 ? th.three : th.two;
@@ -2538,6 +2561,9 @@ class App {
       ),
     );
 
+    content.appendChild(el('div', 'modal__subhead', t('cloud.head')));
+    for (const row of this.buildCloudRows()) content.appendChild(row);
+
     content.appendChild(el('div', 'modal__subhead', t('support.head')));
     content.appendChild(
       this.actionRow(t('support.head'), t('support.rowDesc'), t('support.open'), 'ghost', () =>
@@ -2636,6 +2662,127 @@ class App {
     });
   }
 
+  // ------------------------------------------------------------ cloud save
+  private buildCloudRows(): HTMLElement[] {
+    const s = this.cloud.state;
+    if (!s.available) {
+      const row = el('div', 'setting');
+      const text = el('div');
+      text.appendChild(el('div', 'setting__label', t('cloud.title')));
+      text.appendChild(el('div', 'setting__desc', t('cloud.unavailable')));
+      row.appendChild(text);
+      return [row];
+    }
+    const signedIn = s.account !== null;
+    const desc = s.busy
+      ? t('cloud.syncing')
+      : !signedIn
+        ? t('cloud.signedOut')
+        : s.lastError
+          ? t('cloud.error')
+          : t('cloud.synced', { when: this.relativeTime(s.lastSyncAt), account: s.account ?? '' });
+    const main = this.actionRow(
+      t('cloud.title'), desc, signedIn ? t('cloud.syncNow') : t('cloud.signIn'), 'ghost',
+      () => {
+        const run = signedIn ? this.cloud.sync('manual') : this.cloud.signIn();
+        void run.then((outcome) => {
+          this.afterCloudOutcome(outcome, signedIn ? 'manual' : 'signin');
+          if (this.current !== 'game' || this.modal.isOpen) this.openSettings();
+        });
+      },
+    );
+    if (s.busy) main.querySelector('button')?.setAttribute('disabled', '');
+    const rows = [main];
+    if (signedIn) {
+      rows.push(
+        this.actionRow(t('cloud.signOut'), t('cloud.signOutDesc'), t('cloud.signOut'), 'ghost', () => {
+          void this.cloud.signOut().then(() => {
+            this.toast.show(t('cloud.signedOutToast'));
+            this.openSettings();
+          });
+        }),
+      );
+    }
+    return rows;
+  }
+
+  /** Toasts, analytics and the post-restore reload for any sync result. */
+  private afterCloudOutcome(outcome: SyncOutcome, reason: 'boot' | 'signin' | 'manual' | 'choice'): void {
+    if (outcome.action !== 'unavailable' && outcome.action !== 'signed-out') {
+      this.analytics.track({ type: 'cloud_sync', reason, result: outcome.action });
+    }
+    switch (outcome.action) {
+      case 'uploaded':
+        if (reason !== 'boot') this.toast.show(t('cloud.uploaded'));
+        break;
+      case 'noop':
+        if (reason === 'manual') this.toast.show(t('cloud.upToDate'));
+        break;
+      case 'failed':
+        if (reason !== 'boot') this.toast.show(t('cloud.error'), 'warn');
+        break;
+      case 'restored':
+        // Every screen holds rendered state; a reload is the honest way to show the restored save.
+        this.save.flush();
+        this.toast.show(t('cloud.restored'), 'info', 1400);
+        window.setTimeout(() => window.location.reload(), 900);
+        break;
+      default:
+        break;
+    }
+  }
+
+  /** Cloud ahead of real local progress: the player picks which copy survives. */
+  private showCloudConflict(cloud: ProgressSummary, local: ProgressSummary): void {
+    // Never over another dialog (login reward, win screen): wait for a quiet moment.
+    if (this.modal.isOpen) {
+      window.setTimeout(() => this.showCloudConflict(cloud, local), 800);
+      return;
+    }
+    this.modal.open({
+      title: t('cloud.found.title'),
+      bodyHtml: t('cloud.found.body', {
+        device: escapeHtml(cloud.device),
+        cloud: escapeHtml(this.progressText(cloud)),
+        local: escapeHtml(this.progressText(local)),
+      }),
+      dismissable: false,
+      buttons: [
+        {
+          label: t('cloud.useCloud'),
+          kind: 'primary',
+          onClick: () => {
+            void this.cloud.restoreFromCloud().then((o) => this.afterCloudOutcome(o, 'choice'));
+          },
+        },
+        {
+          label: t('cloud.keepDevice'),
+          kind: 'ghost',
+          onClick: () => {
+            void this.cloud.keepLocal().then((o) => this.afterCloudOutcome(o, 'choice'));
+          },
+        },
+      ],
+    });
+  }
+
+  private progressText(p: ProgressSummary): string {
+    return t('cloud.summary', {
+      level: p.level, stars: formatNumber(p.stars), coins: formatNumber(p.coins),
+      date: formatLongDate(new Date(p.updatedAt)),
+    });
+  }
+
+  private relativeTime(at: number): string {
+    if (!at) return t('cloud.justNow');
+    const minutes = Math.round((Date.now() - at) / 60_000);
+    if (minutes < 1) return t('cloud.justNow');
+    if (minutes < 60) return tp('cloud.minutesAgo', minutes);
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return tp('cloud.hoursAgo', hours);
+    return formatLongDate(new Date(at));
+  }
+
   /** A settings row whose control is a compact button rather than a switch. */
   private actionRow(
     label: string,
@@ -2717,6 +2864,8 @@ class App {
         haptic([12, 40, 12]);
         return;
       }
+      // A support-code reset is a deliberate wipe too: hold cloud uploads until the player decides.
+      if (result.code.action === 'reset') this.cloud.markLocalReset();
       const applied = applySupportCode(result.code, this.save, LEVEL_COUNT);
       this.analytics.track({ type: 'support_code_redeemed', action: result.code.action });
       if (result.code.action === 'reset') {
@@ -2771,6 +2920,9 @@ class App {
           kind: 'danger',
           onClick: () => {
             this.analytics.track({ type: 'progress_reset', source: 'settings' });
+            // The cloud copy is not touched by a reset; the next sync asks
+            // which one to keep rather than uploading the wipe or undoing it.
+            this.cloud.markLocalReset();
             this.save.resetProgress();
             window.location.reload();
           },
