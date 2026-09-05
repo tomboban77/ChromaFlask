@@ -1,25 +1,26 @@
-name: Build and deploy
+name: CI
 
+# Quality gate on every push to main. Hosting is Vercel, which builds and
+# deploys from the same commits on its own; this workflow only proves the
+# commit is sound - lint, types, the rules/solver suite, a production build
+# and the browser smoke test against the built game.
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
-# Required by actions/deploy-pages: id-token is used to prove the deployment
-# came from this workflow run.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# Never let two deploys race; queue them instead of cancelling a live one.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -37,8 +38,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Locale parity
+        run: npm run i18n:check
+
       # Rules engine, solver optimality and level generation. No browser needed,
-      # so this is a genuine quality gate on every deploy.
+      # so this is a genuine quality gate on every push.
       - name: Core tests
         run: npm run test:core
 
@@ -46,29 +50,19 @@ jobs:
         run: npx vite build
 
       # Drives the real game in headless Chromium: full flows, economy
-      # assertions, tutorial, back button, persistence. Non-blocking until it
-      # has been seen green on this runner; then drop continue-on-error so a
-      # broken flow can never deploy.
+      # assertions, tutorial, back button, persistence, skip, share, skins.
+      # Blocking: it has been green on this runner since the perf pass.
       - name: Install Playwright Chromium
         run: npx playwright-core install --with-deps chromium
-        continue-on-error: true
 
       - name: End-to-end smoke test
         run: npm run test:e2e
-        continue-on-error: true
 
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
+      - name: Keep smoke screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          name: smoke-screenshots
+          path: .tmp/shots
+          if-no-files-found: ignore
+          retention-days: 7

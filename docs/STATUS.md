@@ -327,9 +327,14 @@ _Last updated: 2026-09-05_
 - **Art budget** — `optimize-art.mjs` carries per-image quality/width
   settings; critical-path images went from 712 KB to 547 KB; home art
   preloads at low priority.
-- **E2E in CI** — `smoke.mjs` uses Edge when present, otherwise Playwright's
-  Chromium; the deploy workflow runs it non-blocking until it has been seen
-  green on the runner (then drop `continue-on-error`).
+- **CI** (`.github/workflows/deploy.yml`, workflow name "CI") — on every push
+  to main and every pull request: lint, typecheck, locale parity, core tests,
+  production build, then the browser smoke test in Playwright's Chromium,
+  now **blocking** (it has been green on the runner since the perf pass);
+  smoke screenshots are kept as a 7-day artifact. Hosting is Vercel, which
+  builds and deploys the same commits itself. The workflow used to also push
+  to GitHub Pages and failed on `configure-pages` every run because Pages was
+  never enabled on the repo; that job is gone.
 - **Art pipeline** — drop PNG sources in `art/`, run
   `node scripts/optimize-art.mjs` → optimized WebP in `public/` (preloaded).
 - **PWA / store-wrap readiness** — full icon set (192/512 + maskable variants
