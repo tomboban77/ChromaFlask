@@ -5,6 +5,7 @@
  * writing one new driver - not touching game code.
  */
 
+import { advanceStreak, currentStreak, type DailyStreak } from '@/core/daily';
 import { LIVES_MAX, LIVES_REGEN_MS, type PowerupId } from '@/core/progression';
 import type { Board, Move } from '@/core/types';
 
@@ -97,9 +98,23 @@ export interface SaveData {
   inProgress: InProgressState | null;
   /** Whether endless mode has been introduced with a toast. */
   endlessSeen: boolean;
+  /** Daily challenge records (keyed by day number) and streak. */
+  daily: DailyState;
 }
 
-export const SAVE_VERSION = 8;
+/** Mutable save-side shape of the core's read-only DailyStreak, plus history. */
+export interface DailyState {
+  records: Record<string, LevelRecord>;
+  streak: number;
+  lastDay: number;
+  bestStreak: number;
+}
+
+// Compile-time guard: the save shape must satisfy the core streak type.
+const _dailyStateIsStreak: (s: DailyState) => DailyStreak = (s) => s;
+void _dailyStateIsStreak;
+
+export const SAVE_VERSION = 9;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -141,6 +156,7 @@ export function defaultSave(startingCoins: number): SaveData {
     grantedPurchaseTokens: [],
     inProgress: null,
     endlessSeen: false,
+    daily: { records: {}, streak: 0, lastDay: -1, bestStreak: 0 },
   };
 }
 
@@ -244,7 +260,51 @@ export class SaveService {
       inProgress: parsed.inProgress ?? null,
       // v7 saves predate endless mode.
       endlessSeen: parsed.endlessSeen ?? false,
+      // v8 saves predate the daily challenge.
+      daily: { ...fallback.daily, ...(parsed.daily ?? {}), records: parsed.daily?.records ?? {} },
     };
+  }
+
+  // ------------------------------------------------------------------ daily
+  dailyRecord(day: number): LevelRecord | undefined {
+    return this.data.daily.records[String(day)];
+  }
+
+  /** The streak as shown today (lapses if yesterday was missed). */
+  dailyStreak(today: number): number {
+    return currentStreak(this.data.daily, today);
+  }
+
+  get bestDailyStreak(): number {
+    return this.data.daily.bestStreak;
+  }
+
+  /** Record a daily clear; the streak only moves on the first clear of a day. */
+  recordDailyClear(
+    day: number, stars: number, moves: number,
+  ): { isFirstClear: boolean; prevStars: number | null; streak: number } {
+    const key = String(day);
+    const prev = this.data.daily.records[key];
+    const isFirstClear = !prev;
+    this.update((d) => {
+      d.daily.records[key] = {
+        stars: Math.max(stars, prev?.stars ?? 0),
+        bestMoves: prev ? Math.min(prev.bestMoves, moves) : moves,
+        clearedAt: Date.now(),
+      };
+      if (isFirstClear) {
+        const next = advanceStreak(d.daily, day);
+        d.daily.streak = next.streak;
+        d.daily.lastDay = next.lastDay;
+        d.daily.bestStreak = Math.max(d.daily.bestStreak, next.streak);
+      }
+      // Keep the last ~4 months; older days are only history.
+      const keys = Object.keys(d.daily.records).map(Number).sort((a, b) => a - b);
+      for (const old of keys.slice(0, Math.max(0, keys.length - 120))) {
+        delete d.daily.records[String(old)];
+      }
+    });
+    return { isFirstClear, prevStars: prev ? prev.stars : null, streak: this.data.daily.streak };
   }
 
   // ----------------------------------------------------------- in progress

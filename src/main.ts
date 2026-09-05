@@ -2,6 +2,7 @@ import './styles/main.css';
 
 import { LEVELS, LEVEL_COUNT, endlessIndex, getLevelSpec, isEndless } from '@/core/levels';
 import { CHAPTER_SIZE, chapterFor, isChapterEnd, type Chapter } from '@/core/chapters';
+import { dailyId, dateFromDay, dayFromDailyId, isDaily, todayDayNumber } from '@/core/daily';
 import { getCampaignLevel } from '@/core/campaign';
 import { TUBE_CAPACITY } from '@/core/board';
 import { solverClient } from '@/services/SolverClient';
@@ -32,6 +33,7 @@ import { Tutorial } from '@/ui/Tutorial';
 import { Confetti } from '@/ui/Confetti';
 
 type ScreenId = 'boot' | 'profile' | 'home' | 'map' | 'shop' | 'game';
+type WinMode = 'campaign' | 'endless' | 'daily';
 const SCREENS: readonly ScreenId[] = ['boot', 'profile', 'home', 'map', 'shop', 'game'];
 
 const AVATARS = ['🐱', '🦊', '🐼', '🐸', '🦉', '🐙', '🦄', '🐧'];
@@ -586,6 +588,12 @@ class App {
       }
     });
 
+    $('#btn-daily').addEventListener('click', () => {
+      audio.play('button');
+      haptic(10);
+      void this.startLevel(dailyId(todayDayNumber()));
+    });
+
     for (const tab of Array.from(document.querySelectorAll<HTMLElement>('.bottomnav__tab'))) {
       tab.addEventListener('click', () => {
         audio.play('button');
@@ -621,6 +629,7 @@ class App {
     if (chapter) {
       progress.appendChild(el('small', '', `Chapter ${chapter.index} · ${chapter.name}`));
     }
+    this.renderDailyButton();
     const resume = this.save.inProgress;
     $('#btn-play').textContent = resume
       ? `Continue ${this.levelLabel(resume.levelId).toLowerCase()}`
@@ -629,9 +638,27 @@ class App {
         : `Level ${next}`;
   }
 
-  /** "Level 12" inside the campaign, "Endless #7" beyond it. */
+  /** "Level 12" inside the campaign, "Endless #7" beyond it, or the daily. */
   private levelLabel(id: number): string {
+    if (isDaily(id)) return 'Daily challenge';
     return isEndless(id) ? `Endless #${endlessIndex(id)}` : `Level ${id}`;
+  }
+
+  /** The daily button's second line: today's state and the streak. */
+  private renderDailyButton(): void {
+    const today = todayDayNumber();
+    const record = this.save.dailyRecord(today);
+    const streak = this.save.dailyStreak(today);
+    const sub = $('#daily-sub');
+    if (record) {
+      sub.textContent =
+        `Done today ${'★'.repeat(record.stars)}${'☆'.repeat(3 - record.stars)}` +
+        (streak > 1 ? ` · 🔥 ${streak}-day streak` : '');
+    } else if (streak > 0) {
+      sub.textContent = `🔥 ${streak}-day streak · play today to keep it`;
+    } else {
+      sub.textContent = 'A new potion every day';
+    }
   }
 
   private renderLivesChip(): void {
@@ -1083,7 +1110,7 @@ class App {
     this.nudged = false;
 
     try {
-      if (isEndless(id)) {
+      if (isEndless(id) || isDaily(id)) {
         // Generated on demand in the worker; usually well under a second, but a
         // cauldron deal on a slow phone can take a few, so say so.
         this.starting = true;
@@ -1433,18 +1460,30 @@ class App {
     const moves = this.board.moveCount;
     const seconds = Math.round((Date.now() - this.attemptStartedAt) / 1000);
     const stars = starsFor(moves, level.par);
-    const before = this.save.levelRecord(this.levelId);
+    const eco = this.remote.current.economy;
+    const daily = isDaily(this.levelId);
+    const day = daily ? dayFromDailyId(this.levelId) : 0;
+    const before = daily ? this.save.dailyRecord(day) : this.save.levelRecord(this.levelId);
     // Support unlocks store a sentinel; treat those as "no real best yet".
     const prevBest = before && before.bestMoves < 100_000 ? before.bestMoves : null;
-    const { prevStars, isFirstClear } = this.save.recordClear(this.levelId, stars, moves);
+    // Daily clears are recorded in their own section, never in the campaign map.
+    const cleared = daily
+      ? this.save.recordDailyClear(day, stars, moves)
+      : this.save.recordClear(this.levelId, stars, moves);
+    const { prevStars, isFirstClear } = cleared;
     // Replays only pay for newly earned stars - see coinsFor.
-    let reward = coinsFor(stars, prevStars, this.remote.current.economy);
+    let reward = coinsFor(stars, prevStars, eco);
     // First clear of a chapter's last level: the chapter is complete.
-    const chapterDone = isFirstClear && isChapterEnd(this.levelId) ? chapterFor(this.levelId) : null;
-    const chapterBonus = chapterDone ? this.remote.current.economy.chapterBonus : 0;
-    reward += chapterBonus;
+    const chapterDone =
+      !daily && isFirstClear && isChapterEnd(this.levelId) ? chapterFor(this.levelId) : null;
+    const chapterBonus = chapterDone ? eco.chapterBonus : 0;
+    // First clear of today's challenge: the daily bonus, and the streak moves.
+    const dailyBonus = daily && isFirstClear ? eco.dailyBonus : 0;
+    const dailyStreak = daily ? this.save.dailyStreak(todayDayNumber()) : 0;
+    reward += chapterBonus + dailyBonus;
     this.save.addCoins(reward);
     if (chapterDone) this.analytics.track({ type: 'chapter_complete', chapter: chapterDone.index });
+    if (daily && isFirstClear) this.analytics.track({ type: 'daily_complete', streak: dailyStreak });
     this.save.bumpStat('wins');
     if (stars === 3) this.save.bumpStat('perfects');
     this.save.recordWinForStreak();
@@ -1468,13 +1507,17 @@ class App {
     // Finishing the last campaign level is the finale; the door to endless opens.
     const isLast = this.levelId === LEVEL_COUNT;
     const chapter = chapterFor(this.levelId);
-    const eyebrow = chapter
-      ? `Chapter ${chapter.index} · ${chapter.name}`
-      : `Endless · ${level.spec.name}`;
+    const mode: WinMode = daily ? 'daily' : chapter ? 'campaign' : 'endless';
+    const eyebrow = daily
+      ? new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+          .format(dateFromDay(day))
+      : chapter
+        ? `Chapter ${chapter.index} · ${chapter.name}`
+        : `Endless · ${level.spec.name}`;
     window.setTimeout(
       () => this.showWinModal({
         stars, moves, seconds, reward, isLast, prevStars, prevBest, streak,
-        par: level.par, eyebrow, chapterDone, chapterBonus,
+        par: level.par, eyebrow, chapterDone, chapterBonus, mode, dailyBonus, dailyStreak,
       }),
       620,
     );
@@ -1491,6 +1534,7 @@ class App {
     stars: number; moves: number; seconds: number; reward: number; isLast: boolean;
     prevStars: number | null; prevBest: number | null; streak: number;
     par: number; eyebrow: string; chapterDone: Chapter | null; chapterBonus: number;
+    mode: WinMode; dailyBonus: number; dailyStreak: number;
   }): void {
     const eco = this.remote.current.economy;
     const reduced =
@@ -1544,9 +1588,12 @@ class App {
         if (eco.firstClearBonus > 0) parts.push(`First clear +${eco.firstClearBonus}`);
       } else {
         const gained = Math.max(0, w.stars - w.prevStars);
-        parts.push(`${gained} new star${gained === 1 ? '' : 's'} +${w.reward - w.chapterBonus}`);
+        parts.push(
+          `${gained} new star${gained === 1 ? '' : 's'} +${w.reward - w.chapterBonus - w.dailyBonus}`,
+        );
       }
       if (w.chapterBonus > 0) parts.push(`Chapter complete +${w.chapterBonus}`);
+      if (w.dailyBonus > 0) parts.push(`Daily bonus +${w.dailyBonus}`);
       card.appendChild(el('div', 'win__breakdown', parts.join(' · ')));
       content.appendChild(card);
       const counter = big.querySelector('b') as HTMLElement;
@@ -1573,17 +1620,24 @@ class App {
     // Progress through the campaign (or the endless tally), plus the streak
     // when there is one worth showing.
     const meta = el('div', 'win__meta');
-    const endless = isEndless(this.levelId);
-    const cleared = endless
-      ? this.save.endlessCleared(LEVEL_COUNT)
-      : this.save.campaignCleared(LEVEL_COUNT);
-    const progress = el('div', 'win__progress');
-    progress.innerHTML = endless
-      ? `<span class="win__progress-label">${cleared} endless ${cleared === 1 ? 'level' : 'levels'} cleared</span>`
-      : `<span class="win__progress-track"><i style="width:${Math.round((cleared / LEVEL_COUNT) * 100)}%"></i></span>` +
-        `<span class="win__progress-label">${cleared} / ${LEVEL_COUNT} levels</span>`;
-    meta.appendChild(progress);
-    if (w.streak >= 2) meta.appendChild(el('span', 'win__streak', `🔥 ${w.streak} in a row`));
+    if (w.mode === 'daily') {
+      // The daily's progress *is* the streak.
+      meta.appendChild(
+        el('span', 'win__streak', w.dailyStreak > 1 ? `🔥 ${w.dailyStreak}-day streak` : '🔥 Streak started'),
+      );
+    } else {
+      const endless = w.mode === 'endless';
+      const cleared = endless
+        ? this.save.endlessCleared(LEVEL_COUNT)
+        : this.save.campaignCleared(LEVEL_COUNT);
+      const progress = el('div', 'win__progress');
+      progress.innerHTML = endless
+        ? `<span class="win__progress-label">${cleared} endless ${cleared === 1 ? 'level' : 'levels'} cleared</span>`
+        : `<span class="win__progress-track"><i style="width:${Math.round((cleared / LEVEL_COUNT) * 100)}%"></i></span>` +
+          `<span class="win__progress-label">${cleared} / ${LEVEL_COUNT} levels</span>`;
+      meta.appendChild(progress);
+      if (w.streak >= 2) meta.appendChild(el('span', 'win__streak', `🔥 ${w.streak} in a row`));
+    }
     content.appendChild(meta);
 
     // Actions: one obvious next step, two quiet alternatives.
@@ -1597,17 +1651,25 @@ class App {
       });
       return b;
     };
-    // The campaign finale leads into endless mode; everything else leads to the next level.
-    const nextLabel = w.isLast ? 'Start endless mode' : 'Next level';
-    actions.appendChild(
-      act(nextLabel, 'btn btn--success btn--wide win__next', () => {
-        void this.startLevel(this.levelId + 1);
-      }),
-    );
-    const row = el('div', 'modal__row');
-    row.appendChild(act('Replay', 'btn btn--ghost', () => this.restartLevel()));
-    row.appendChild(act('Home', 'btn btn--ghost', () => this.quitToHome()));
-    actions.appendChild(row);
+    if (w.mode === 'daily') {
+      // There is no "next" daily until tomorrow: home is the way on.
+      actions.appendChild(act('Home', 'btn btn--success btn--wide win__next', () => this.quitToHome()));
+      const row = el('div', 'modal__row');
+      row.appendChild(act('Replay', 'btn btn--ghost', () => this.restartLevel()));
+      actions.appendChild(row);
+    } else {
+      // The campaign finale leads into endless mode; everything else leads to the next level.
+      const nextLabel = w.isLast ? 'Start endless mode' : 'Next level';
+      actions.appendChild(
+        act(nextLabel, 'btn btn--success btn--wide win__next', () => {
+          void this.startLevel(this.levelId + 1);
+        }),
+      );
+      const row = el('div', 'modal__row');
+      row.appendChild(act('Replay', 'btn btn--ghost', () => this.restartLevel()));
+      row.appendChild(act('Home', 'btn btn--ghost', () => this.quitToHome()));
+      actions.appendChild(row);
+    }
     content.appendChild(actions);
 
     this.modal.open({
@@ -1831,6 +1893,7 @@ class App {
       ['Levels cleared', `${this.save.campaignCleared(LEVEL_COUNT)} / ${LEVEL_COUNT}`],
       ['Stars', `${this.save.campaignStars(LEVEL_COUNT)} / ${LEVEL_COUNT * 3}`],
       ['Endless cleared', String(this.save.endlessCleared(LEVEL_COUNT))],
+      ['Daily streak', `${this.save.dailyStreak(todayDayNumber())} (best ${this.save.bestDailyStreak})`],
       ['Perfect clears', String(stats.perfects)],
       ['Best win streak', String(stats.bestStreak)],
       ['Total pours', String(stats.pours)],

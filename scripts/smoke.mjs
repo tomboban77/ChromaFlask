@@ -100,6 +100,20 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (livesShown !== '5') problems.push(`[${label}] fresh profile should have 5 hearts, got "${livesShown}"`);
   await page.screenshot({ path: `${SHOTS}/${label}-1b-home.png` });
 
+  // ---- daily challenge: today's board is generated in the worker
+  const dailySub = (await page.locator('#daily-sub').textContent())?.trim();
+  console.log(`  daily button    "${dailySub}"`);
+  if (dailySub !== 'A new potion every day') problems.push(`[${label}] fresh profile daily sub-line wrong: "${dailySub}"`);
+  await page.click('#btn-daily');
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
+  await page.waitForFunction(() => window.__cf.state().tubes > 0, null, { timeout: 15_000 });
+  await sleep(500);
+  const dailyLabel = (await page.locator('#game-level-label').textContent())?.trim();
+  console.log(`  daily level     "${dailyLabel}"`);
+  if (dailyLabel !== 'Daily challenge') problems.push(`[${label}] HUD should read "Daily challenge", got "${dailyLabel}"`);
+  await page.click('#btn-back'); // no moves: straight home
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+
   // ---- shop (open from the bottom nav, then close)
   await page.click('.bottomnav__tab[data-nav="shop"]');
   await page.waitForSelector('#screen-shop.screen--active', { timeout: 8000 });

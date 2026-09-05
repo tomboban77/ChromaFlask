@@ -69,6 +69,24 @@ _Last updated: 2026-09-05_
 - `test:core` generates a ten-level sample at both ends of the ramp (worst
   ~0.8 s desktop); `test:e2e` starts Endless #1 through the worker.
 
+### Daily challenge
+- One board per **local** calendar day, seeded from the date
+  (`src/core/daily.ts`: id = 1,000,000 + day number, far above campaign and
+  endless ids), generated in the worker. Five shapes rotate at mid-campaign
+  depth so any player finds it a fair single sitting; murk alternates.
+- Home has a Daily challenge button under Play whose second line reads the
+  state: "A new potion every day" / "🔥 3-day streak · play today to keep it"
+  / "Done today ★★☆ · 🔥 3-day streak".
+- First clear of the day pays the normal reward plus `dailyBonus` (50) and
+  advances the streak; replaying the same day pays nothing new. The streak
+  extends only from yesterday, lapses after a missed day, and is unit-tested
+  (`advanceStreak`, `currentStreak`). Records live in their own save section
+  (v9), capped at 120 days; campaign counters are untouched.
+- Win screen: date as the eyebrow, "🔥 n-day streak" pill, Home as the
+  primary action. Profile shows current and best daily streak.
+- Verified: core suite deals a week of dailies and round-trips day arithmetic
+  across a DST boundary; smoke test starts today's daily through the worker.
+
 ### Twist mechanics
 - **The Cauldron** (from level 22, every 10th) — gold-rimmed pot at tube 0:
   accepts **any** colour, but **must be empty to win**. First-class solver

@@ -13,6 +13,8 @@ export interface EconomyConfig {
   readonly firstClearBonus: number;
   /** Paid once, on the first clear of a chapter's last level. */
   readonly chapterBonus: number;
+  /** Paid once per calendar day, on the first clear of that day's challenge. */
+  readonly dailyBonus: number;
   /** Extra empty tubes the Add Bottle powerup may add per attempt. */
   readonly maxExtraTubes: number;
 }
@@ -43,6 +45,9 @@ export const DEFAULT_ECONOMY: EconomyConfig = {
   // Roughly one level's worth of coins every twenty levels: a moment, not a
   // second income stream.
   chapterBonus: 100,
+  // Half a level's worth on top of the normal reward: a reason to come back
+  // daily, not a reason to skip the campaign.
+  dailyBonus: 50,
   maxExtraTubes: 2,
 };
 

@@ -1,3 +1,4 @@
+import { DAILY_BASE, dailySpec, isDaily } from './daily';
 import type { LevelSpec } from './types';
 
 /**
@@ -158,7 +159,7 @@ export const LEVELS: readonly LevelSpec[] = [
 export const ENDLESS_START = LEVEL_COUNT + 1;
 
 export function isEndless(id: number): boolean {
-  return id > LEVEL_COUNT;
+  return id > LEVEL_COUNT && id < DAILY_BASE;
 }
 
 /** 1-based position within endless mode ("Endless #7"). */
@@ -202,6 +203,7 @@ export function endlessSpec(id: number): LevelSpec {
 
 export function getLevelSpec(id: number): LevelSpec {
   if (!Number.isInteger(id) || id < 1) throw new Error(`No level ${id}`);
+  if (isDaily(id)) return dailySpec(id);
   if (isEndless(id)) return endlessSpec(id);
   const spec = LEVELS[id - 1];
   if (!spec) throw new Error(`No level ${id}`);

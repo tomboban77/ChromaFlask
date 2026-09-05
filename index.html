@@ -92,6 +92,9 @@
         <path id="cf-house" d="M12 3.2 21 11h-2.6v8.6a1.2 1.2 0 0 1-1.2 1.2h-3.4v-6h-3.6v6H6.8
           a1.2 1.2 0 0 1-1.2-1.2V11H3l9-7.8Z" />
         <path id="cf-grid" d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" />
+        <path id="cf-calendar" d="M7 2.5v3M17 2.5v3M4 9h16M6 4.5h12a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2H6
+          a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2Zm2 8h3v3H8v-3Z" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
         <path id="cf-gear" d="M19.14 12.94c.04-.31.06-.62.06-.94 0-.32-.02-.63-.06-.94l2.03-1.58
           a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94
           l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.62.94
@@ -192,6 +195,14 @@
           <div class="home__progress" id="home-progress">★ 0/30 · 0 levels cleared</div>
 
           <button class="btn btn--success btn--play" id="btn-play">Level 1</button>
+
+          <button class="btn btn--daily" id="btn-daily" aria-label="Daily challenge">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-calendar" /></svg>
+            <span class="btn--daily__text">
+              <b>Daily challenge</b>
+              <small id="daily-sub">A new potion every day</small>
+            </span>
+          </button>
         </div>
       </section>
 

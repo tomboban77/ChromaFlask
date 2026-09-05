@@ -10,6 +10,10 @@ import {
 } from './board';
 import { getCampaignLevel, isStoredOptimal, storedLevelCount } from './campaign';
 import { CHAPTERS, CHAPTER_SIZE, chapterFor, isChapterEnd } from './chapters';
+import {
+  DAILY_BASE, advanceStreak, currentStreak, dailyId, dailySpec, dateFromDay, dayFromDailyId,
+  dayNumberFromDate, isDaily,
+} from './daily';
 import { generateLevel } from './generator';
 import { ENDLESS_START, LEVELS, endlessSpec, getLevelSpec, isEndless } from './levels';
 import { DEFAULT_ECONOMY, coinsFor, starsFor } from './progression';
@@ -324,6 +328,51 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
   check('chapters: endless ids have no chapter', chapterFor(LEVELS.length + 1) === null);
   check('chapters: last level of each chapter is a chapter end',
     CHAPTERS.every((c) => isChapterEnd(c.last) && !isChapterEnd(c.first)));
+}
+
+// ---------------------------------------------------------------- daily --
+{
+  // Day arithmetic round-trips in the local calendar, including across DST.
+  const d = new Date(2026, 2, 29, 23, 30); // 29 March 2026, late evening
+  const day = dayNumberFromDate(d);
+  const back = dateFromDay(day);
+  check('daily: day number round-trips the local date',
+    back.getFullYear() === 2026 && back.getMonth() === 2 && back.getDate() === 29);
+  check('daily: consecutive dates are consecutive days',
+    dayNumberFromDate(new Date(2026, 2, 30, 0, 5)) === day + 1);
+  check('daily: id round-trips', dayFromDailyId(dailyId(day)) === day && isDaily(dailyId(day)));
+  check('daily: campaign and endless ids are not daily', !isDaily(1) && !isDaily(LEVELS.length + 1));
+  check('daily: getLevelSpec resolves daily ids', getLevelSpec(dailyId(day)).name === 'Daily challenge');
+  check('daily: not endless', !isEndless(dailyId(day)));
+
+  // Streak rules: same day twice is a no-op; a gap resets; yesterday extends.
+  let s = advanceStreak({ streak: 0, lastDay: -1 }, 100);
+  check('daily: first clear starts a streak of 1', s.streak === 1 && s.lastDay === 100);
+  s = advanceStreak(s, 100);
+  check('daily: same day again does not change the streak', s.streak === 1);
+  s = advanceStreak(s, 101);
+  check('daily: next day extends', s.streak === 2);
+  check('daily: streak shows while alive', currentStreak(s, 101) === 2 && currentStreak(s, 102) === 2);
+  check('daily: streak lapses after a missed day', currentStreak(s, 103) === 0);
+  s = advanceStreak(s, 105);
+  check('daily: a gap resets to 1', s.streak === 1 && s.lastDay === 105);
+
+  // A week of dailies deals, solves and stays deterministic.
+  const today = dayNumberFromDate(new Date());
+  let worst = 0;
+  for (let i = 0; i < 7; i++) {
+    const spec = dailySpec(dailyId(today + i));
+    const t0 = performance.now();
+    const gen = generateLevel(spec);
+    worst = Math.max(worst, performance.now() - t0);
+    const rules = rulesFor(spec);
+    check(`daily ${i}: solution wins`, isSolved(replay(gen.board, gen.solution, rules), rules));
+    check(`daily ${i}: meets minPar`, gen.par >= spec.minPar);
+    check(`daily ${i}: deterministic`,
+      JSON.stringify(generateLevel(spec).board) === JSON.stringify(gen.board));
+  }
+  check('daily: a week generates under 3s each', worst < 3000, `${worst.toFixed(0)}ms`);
+  check('daily: base is clear of endless ids', DAILY_BASE > LEVELS.length + 100_000);
 }
 
 // -------------------------------------------------------------- endless --
