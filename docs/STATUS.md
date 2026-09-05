@@ -271,7 +271,28 @@ _Last updated: 2026-09-05_
   PostHog, no eval. Pixi is loaded through `pixi.js/unsafe-eval` so its
   shader uniform sync works without `new Function`.
 - **Render loop pauses off the game screen** — home, map and shop no longer
-  draw starfield and bottles into a hidden canvas every frame.
+  draw starfield and bottles into a hidden canvas every frame. It also pauses
+  while the win dialog is up: that moment otherwise ran two full-screen
+  canvases (board celebration + confetti) under the dialog's backdrop blur,
+  the heaviest frame in the game on a phone.
+- **Performance pass (Sep 2026)** — measured with `npm run perf -- <level>
+  [--headed]` (CPU profile + long tasks + frame times of a real level, the
+  win screen, home, map and shop; `--headed` uses the real GPU, headless uses
+  software GL which is ~10x slower and useful as a "slow phone" stand-in).
+  Findings and fixes: (1) the largest steady per-frame JS cost was Pixi
+  Graphics re-tessellation for the starfield and particles - both are now
+  pools of tinted sprites over one shared 64x32 texture; (2) an adaptive
+  render-resolution watchdog in `GameStage` drops 2 → 1.5 → 1 device pixels
+  per CSS pixel when frames average over 22 ms for two consecutive 2 s
+  windows, never steps back up, and is driven by measured frames rather than
+  device sniffing (fires under software GL, never on a desktop GPU); (3) the
+  service worker's navigation fetch now races a 2.5 s timeout against the
+  cached shell, so a weak signal can no longer hold the app on the splash for
+  tens of seconds; (4) the Hint button pulses while the worker is solving and
+  a second tap cannot spend a second hint. Desktop GPU gameplay frames are a
+  flat 6 ms median / 12 ms max; production cold boot 1.5 s (461 ms script
+  evaluation), warm 1.0 s. The synchronous solver is only used by the tutorial
+  hand; all hints and no-win proofs run in the worker.
 - **Art budget** — `optimize-art.mjs` carries per-image quality/width
   settings; critical-path images went from 712 KB to 547 KB; home art
   preloads at low priority.

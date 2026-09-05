@@ -1,5 +1,36 @@
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import { colorOf } from './theme';
+
+/**
+ * Two white shapes on one tiny canvas - a disc and a square - shared by every
+ * particle and star as tinted sprites. Sprites cost the GPU a quad each and
+ * the CPU a few property writes; rebuilding a Graphics every frame costs a
+ * full re-tessellation and buffer upload, which the profiler showed as the
+ * largest steady per-frame JS cost in the game.
+ */
+let shapes: { circle: Texture; square: Texture } | null = null;
+function shapeTextures(): { circle: Texture; square: Texture } {
+  if (shapes) return shapes;
+  const S = 32;
+  const canvas = document.createElement('canvas');
+  canvas.width = S * 2;
+  canvas.height = S;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(S / 2, S / 2, S / 2 - 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(S, 0, S, S);
+  }
+  const sheet = Texture.from(canvas);
+  shapes = {
+    circle: new Texture({ source: sheet.source, frame: new Rectangle(0, 0, S, S) }),
+    square: new Texture({ source: sheet.source, frame: new Rectangle(S, 0, S, S) }),
+  };
+  return shapes;
+}
+const SHAPE_PX = 32;
 
 /**
  * The falling column of liquid between a tilted bottle and its target.
@@ -122,19 +153,18 @@ interface Particle {
 }
 
 /**
- * Lightweight particle system drawn into a single Graphics per frame.
- *
- * At the few-hundred-particle scale this game needs, one batched Graphics
- * rebuild is cheaper than managing hundreds of sprite objects.
+ * Lightweight particle system: a pool of tinted sprites over two shared
+ * textures. Per frame the work is integrating positions and writing sprite
+ * properties; nothing is tessellated or uploaded.
  */
 export class ParticleField extends Container {
-  private readonly gfx = new Graphics();
   private readonly particles: Particle[] = [];
   private readonly max = 420;
+  /** Sprite pool, grown on demand up to `max`; unused sprites stay invisible. */
+  private readonly pool: Sprite[] = [];
 
   constructor() {
     super();
-    this.addChild(this.gfx);
     this.eventMode = 'none';
   }
 
@@ -145,6 +175,17 @@ export class ParticleField extends Container {
   private spawn(p: Particle): void {
     if (this.particles.length >= this.max) this.particles.shift();
     this.particles.push(p);
+  }
+
+  private spriteAt(i: number): Sprite {
+    let s = this.pool[i];
+    if (!s) {
+      s = new Sprite(shapeTextures().circle);
+      s.anchor.set(0.5);
+      this.addChild(s);
+      this.pool[i] = s;
+    }
+    return s;
   }
 
   /** Droplets kicked up where the stream meets the surface. */
@@ -220,12 +261,15 @@ export class ParticleField extends Container {
 
   clear(): void {
     this.particles.length = 0;
-    this.gfx.clear();
+    for (const s of this.pool) s.visible = false;
   }
 
   update(dt: number): void {
     const list = this.particles;
-    if (list.length === 0) return;
+    if (list.length === 0) {
+      if (this.pool.length && this.pool[0]?.visible) for (const s of this.pool) s.visible = false;
+      return;
+    }
 
     // integrate, compacting dead particles out in one pass
     let write = 0;
@@ -253,39 +297,41 @@ export class ParticleField extends Container {
   }
 
   private redraw(): void {
-    const g = this.gfx;
-    g.clear();
-    for (const p of this.particles) {
-      if (p.shape === 'circle') {
-        g.circle(p.x, p.y, p.size / 2).fill({ color: p.color, alpha: p.alpha });
-      } else {
-        // Graphics has no per-shape rotation, so emit the rotated quad directly.
-        const c = Math.cos(p.rot);
-        const s = Math.sin(p.rot);
-        const hw = p.size / 2;
-        const hh = p.size / 3;
-        g.poly([
-          p.x + (-hw * c - -hh * s), p.y + (-hw * s + -hh * c),
-          p.x + (hw * c - -hh * s), p.y + (hw * s + -hh * c),
-          p.x + (hw * c - hh * s), p.y + (hw * s + hh * c),
-          p.x + (-hw * c - hh * s), p.y + (-hw * s + hh * c),
-        ]).fill({ color: p.color, alpha: p.alpha });
-      }
+    const tex = shapeTextures();
+    const list = this.particles;
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i] as Particle;
+      const s = this.spriteAt(i);
+      s.visible = true;
+      s.texture = p.shape === 'circle' ? tex.circle : tex.square;
+      s.position.set(p.x, p.y);
+      s.rotation = p.rot;
+      s.tint = p.color;
+      s.alpha = p.alpha;
+      // Same footprints as the old Graphics: a disc of diameter `size`, a
+      // rectangle `size` wide by two thirds of that tall.
+      const w = p.size / SHAPE_PX;
+      s.scale.set(w, p.shape === 'circle' ? w : w * (2 / 3));
+    }
+    for (let i = list.length; i < this.pool.length; i++) {
+      const s = this.pool[i];
+      if (s && s.visible) s.visible = false;
     }
   }
 }
 
-/** Slow drifting starfield behind the board. */
+/**
+ * Slow drifting starfield behind the board: one tinted sprite per star, so a
+ * frame costs ninety position/alpha writes and no geometry work.
+ */
 export class Starfield extends Container {
-  private readonly gfx = new Graphics();
-  private stars: Array<{ x: number; y: number; r: number; a: number; tw: number; sp: number }> = [];
+  private stars: Array<{ sprite: Sprite; a: number; tw: number; sp: number }> = [];
   private t = 0;
   private w = 0;
   private h = 0;
 
   constructor() {
     super();
-    this.addChild(this.gfx);
     this.eventMode = 'none';
   }
 
@@ -293,29 +339,44 @@ export class Starfield extends Container {
     this.w = width;
     this.h = height;
     const count = Math.round(Math.min(90, (width * height) / 12000));
-    this.stars = Array.from({ length: count }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      r: 0.6 + Math.random() * 1.8,
-      a: 0.25 + Math.random() * 0.5,
-      tw: Math.random() * Math.PI * 2,
-      sp: 0.4 + Math.random() * 1.4,
-    }));
+    // Grow or shrink the sprite set to the new count; keep the survivors.
+    while (this.stars.length > count) {
+      const gone = this.stars.pop();
+      gone?.sprite.destroy();
+    }
+    const circle = shapeTextures().circle;
+    while (this.stars.length < count) {
+      const sprite = new Sprite(circle);
+      sprite.anchor.set(0.5);
+      sprite.tint = 0xbfd8ff;
+      const r = 0.6 + Math.random() * 1.8;
+      sprite.scale.set((r * 2) / SHAPE_PX);
+      sprite.position.set(Math.random() * width, Math.random() * height);
+      this.addChild(sprite);
+      this.stars.push({
+        sprite,
+        a: 0.25 + Math.random() * 0.5,
+        tw: Math.random() * Math.PI * 2,
+        sp: 0.4 + Math.random() * 1.4,
+      });
+    }
+    for (const s of this.stars) {
+      if (s.sprite.x > width) s.sprite.x = Math.random() * width;
+      if (s.sprite.y > height) s.sprite.y = Math.random() * height;
+    }
   }
 
   update(dt: number): void {
     if (this.stars.length === 0) return;
     this.t += dt;
-    const g = this.gfx;
-    g.clear();
     for (const s of this.stars) {
-      s.y += s.sp * dt * 6;
-      if (s.y > this.h + 4) {
-        s.y = -4;
-        s.x = Math.random() * this.w;
+      const sp = s.sprite;
+      sp.y += s.sp * dt * 6;
+      if (sp.y > this.h + 4) {
+        sp.y = -4;
+        sp.x = Math.random() * this.w;
       }
-      const twinkle = 0.6 + 0.4 * Math.sin(this.t * 2 + s.tw);
-      g.circle(s.x, s.y, s.r).fill({ color: 0xbfd8ff, alpha: s.a * twinkle });
+      sp.alpha = s.a * (0.6 + 0.4 * Math.sin(this.t * 2 + s.tw));
     }
   }
 }

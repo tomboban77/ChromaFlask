@@ -163,3 +163,11 @@ in-game digital goods. Details and remaining launch work: [docs/STATUS.md](docs/
 - Custom Pixi v8 filters need both a `glProgram` and a `gpuProgram` to survive a
   WebGPU fallback. All effects here are geometry-based instead, so they render
   identically on WebGL and WebGPU with no shader maintenance.
+- **Never rebuild a Pixi `Graphics` every frame for many small shapes.** Each
+  rebuild re-tessellates and re-uploads; that was the largest steady per-frame
+  JS cost in the game until the starfield and particles became tinted sprites
+  over one shared texture. `npm run perf -- <level> [--headed]` profiles a
+  real level (long tasks, frame times, hottest functions) so a regression like
+  that shows up as numbers rather than a feeling.
+- **`npm run test:core` empties `.tmp/`** (it is Vite's SSR output dir), so
+  nothing you want to keep belongs there.

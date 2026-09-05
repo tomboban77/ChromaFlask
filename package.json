@@ -14,7 +14,8 @@
     "levels:sweep": "vite build --ssr src/core/sweep.ts --outDir .tmp --logLevel error && node .tmp/sweep.js",
     "test:core": "vite build --ssr src/core/selftest.ts --outDir .tmp --logLevel error && node .tmp/selftest.js",
     "test:e2e": "node scripts/smoke.mjs",
-    "i18n:check": "node scripts/i18n-check.mjs"
+    "i18n:check": "node scripts/i18n-check.mjs",
+    "perf": "node scripts/profile.mjs"
   },
   "dependencies": {
     "gsap": "^3.15.0",

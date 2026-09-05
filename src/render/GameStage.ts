@@ -53,6 +53,7 @@ export class GameStage {
       // Clamp: a backgrounded tab resumes with a huge delta that would teleport
       // every animation.
       const dt = Math.min(ticker.deltaMS / 1000, 1 / 20);
+      this.watchFrameRate(ticker.deltaMS, host);
       this.starfield.update(dt);
       this.stream.update(dt);
       this.particles.update(dt);
@@ -64,6 +65,45 @@ export class GameStage {
 
   get rendererType(): string {
     return this.app.renderer.name;
+  }
+
+  // ------------------------------------------------- adaptive resolution
+  /** Current canvas resolution (device pixels per CSS pixel). */
+  get currentResolution(): number {
+    return this.app.renderer.resolution;
+  }
+
+  private frameAccumMs = 0;
+  private frameCount = 0;
+  private slowWindows = 0;
+
+  /**
+   * Fill rate is the cost that scales with the phone, not the puzzle: a
+   * 2x-density, antialiased canvas is four times the pixels of a 1x one. If
+   * frames stay slow for two consecutive two-second windows, drop one step
+   * (2 -> 1.5 -> 1) and never go back up, so there is no oscillation. Frames
+   * are measured, not devices guessed; a fast phone never sees this fire.
+   */
+  private watchFrameRate(deltaMS: number, host: HTMLElement): void {
+    // Ignore the first frame after a pause/resume (huge delta) and idle frames.
+    if (deltaMS > 250) return;
+    this.frameAccumMs += deltaMS;
+    this.frameCount += 1;
+    if (this.frameAccumMs < 2000) return;
+    const avg = this.frameAccumMs / this.frameCount;
+    this.frameAccumMs = 0;
+    this.frameCount = 0;
+    // 45 fps on a 60 Hz display; comfortably below "smooth", clearly above noise.
+    this.slowWindows = avg > 22 ? this.slowWindows + 1 : 0;
+    if (this.slowWindows < 2) return;
+    this.slowWindows = 0;
+    const current = this.app.renderer.resolution;
+    if (current <= 1) return;
+    const next = Math.max(1, Math.round((current - 0.5) * 2) / 2);
+    this.app.renderer.resize(host.clientWidth, host.clientHeight, next);
+    this.starfield.resize(this.width, this.height);
+    this.onLayout?.(this.width, this.height);
+    console.info(`[stage] frames averaging ${avg.toFixed(0)} ms; render resolution ${current} -> ${next}`);
   }
 
   get width(): number {

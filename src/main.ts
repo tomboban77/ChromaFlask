@@ -391,6 +391,7 @@ class App {
         ),
         level: this.levelId,
         skin: this.save.snapshot.cosmetics.skin,
+        renderScale: this.stage.currentResolution,
         moves: this.board.moveCount,
         tubes: this.board.tubeCount,
         selected: this.board.selectedIndex,
@@ -1558,6 +1559,8 @@ class App {
 
   private async usePowerup(id: PowerupId): Promise<void> {
     if (this.board.isBusy) return;
+    // A hint already being solved: a second tap must not spend another use.
+    if (id === 'hint' && this.hintPending) return;
 
     // Spend order: free allowance, then shop-bought stock. Out of both means
     // the shop opens - powerups are never silently charged to coins.
@@ -1579,13 +1582,24 @@ class App {
         applied = this.board.undo();
         if (!applied) this.toast.show(t('powerup.nothingToUndo'), 'info', 1400);
         break;
-      case 'hint':
+      case 'hint': {
         // Solved in the worker; the board may move on meanwhile, in which
-        // case showHint resolves false and the use is refunded below.
-        applied = await this.board.showHint();
+        // case showHint resolves false and the use is refunded below. A deep
+        // board can take a second or more on a phone, so the button shows it
+        // is thinking rather than looking dead.
+        const button = $<HTMLButtonElement>('#btn-hint');
+        this.hintPending = true;
+        button.classList.add('power--busy');
+        try {
+          applied = await this.board.showHint();
+        } finally {
+          this.hintPending = false;
+          button.classList.remove('power--busy');
+        }
         if (applied) this.save.bumpStat('hintsUsed');
         else this.toast.show(t('powerup.noHint'), 'warn', 3000);
         break;
+      }
       case 'bottle':
         applied = this.board.addTube(this.save.snapshot.settings.colorblind);
         if (applied) this.extraTubes += 1;
@@ -1885,6 +1899,9 @@ class App {
   /** The last share text built, for the smoke test (clipboard reads are unreliable headless). */
   private lastShareText = '';
 
+  /** A hint request is in the worker; guards against double-spending on a second tap. */
+  private hintPending = false;
+
   private async shareDailyResult(w: { stars: number; moves: number; par: number; dailyStreak: number }): Promise<void> {
     const text = this.dailyShareText(w);
     this.lastShareText = text;
@@ -2071,7 +2088,13 @@ class App {
         : t('win.title', { label: this.levelLabel(this.levelId) }),
       content,
       dismissable: false,
+      // The board is finished and blurred behind the dialog; stop rendering
+      // it. The win moment otherwise runs two full-screen canvases (board +
+      // confetti) under a backdrop blur - the heaviest frame in the game on a
+      // phone. Whatever screen comes next decides whether the loop resumes.
+      onClose: () => this.stage.setPaused(this.current !== 'game' || document.hidden),
     });
+    this.stage.setPaused(true);
 
     // Confetti rains over the dialog itself; a perfect run or a finished
     // chapter gets the big burst.

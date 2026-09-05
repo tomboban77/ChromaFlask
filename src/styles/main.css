@@ -778,6 +778,14 @@ body {
 
 .power:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--purple-deep); }
 .power:disabled { opacity: 0.45; cursor: default; transform: none; }
+
+/* A hint being solved in the worker: visibly thinking, not dead. */
+.power--busy { animation: powerthink 0.9s ease-in-out infinite; pointer-events: none; }
+@keyframes powerthink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) { .power--busy { animation: none; opacity: 0.7; } }
 .power svg { width: 25px; height: 25px; }
 .power__label { font-size: 11px; font-weight: 800; color: #e4d6ff; }
 
