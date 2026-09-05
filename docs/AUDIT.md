@@ -40,9 +40,10 @@ were benchmarked separately on this machine (Node 22, desktop).
 > rises monotonically to 27), all pars proven optimal offline (134 KB /
 > 28 KB gz). U6 chapters shipped: 25 named chapters with map headers,
 > progress and a completion bonus. U5 daily challenge shipped (local-day
-> seed, streak, bonus). L4 first new mechanic shipped: the Locked Bottle,
-> every tenth late-tier level and one endless shape in six, with a
-> brute-force optimality audit under lock rules.
+> seed, streak, bonus). L4 two new mechanics shipped: the Locked Bottle
+> (from 205) and the One-Way Flask (from 267), each every tenth late-tier
+> level and one endless shape, each with a brute-force optimality audit.
+> Achievements and a seven-day login reward shipped.
 >
 > **Decisions taken with the owner's go-ahead (same day):** E2 economy
 > rebalanced (200 start, free 3 undo / 1 hint / 0 bottle, 50 + 15/star);

@@ -414,6 +414,20 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.locator('.modal button', { hasText: 'Got it' }).click();
   await sleep(200);
 
+  // ---- one-way flask (level 267): the flask is the last tube and never a source
+  await page.evaluate(() => window.__cf.start(267));
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
+  await sleep(1500);
+  const owState = await page.evaluate(() => window.__cf.state());
+  await page.evaluate(() => window.__cf.tap(9)); // 8 colours + 1 empty + the flask = tube 9
+  await sleep(300);
+  const afterFlaskTap = await page.evaluate(() => window.__cf.state());
+  console.log(`  one-way flask   tubes=${owState.tubes}, tap flask -> selected=${afterFlaskTap.selected}`);
+  if (owState.tubes !== 10) problems.push(`[${label}] level 267 should have 10 tubes incl. the flask, got ${owState.tubes}`);
+  if (afterFlaskTap.selected !== null) problems.push(`[${label}] the one-way flask must never be selectable as a source`);
+  await page.click('#btn-back');
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+
   // ---- back button: closes an open dialog, then returns from map to home
   await page.click('#btn-settings-home');
   await page.waitForSelector('.modal', { timeout: 5000 });

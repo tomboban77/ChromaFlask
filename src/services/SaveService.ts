@@ -102,6 +102,8 @@ export interface SaveData {
   daily: DailyState;
   /** Whether the locked-bottle mechanic has been introduced with a toast. */
   lockSeen: boolean;
+  /** Whether the one-way flask has been introduced with a toast. */
+  oneWaySeen: boolean;
   /** Ids of achievements already awarded (their coins have been paid). */
   achievements: string[];
   /** Welcome-back reward: consecutive days claimed, and the last claimed day. */
@@ -120,7 +122,7 @@ export interface DailyState {
 const _dailyStateIsStreak: (s: DailyState) => DailyStreak = (s) => s;
 void _dailyStateIsStreak;
 
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -164,6 +166,7 @@ export function defaultSave(startingCoins: number): SaveData {
     endlessSeen: false,
     daily: { records: {}, streak: 0, lastDay: -1, bestStreak: 0 },
     lockSeen: false,
+    oneWaySeen: false,
     achievements: [],
     login: { streak: 0, lastDay: -1 },
   };
@@ -271,8 +274,9 @@ export class SaveService {
       endlessSeen: parsed.endlessSeen ?? false,
       // v8 saves predate the daily challenge.
       daily: { ...fallback.daily, ...(parsed.daily ?? {}), records: parsed.daily?.records ?? {} },
-      // v9 saves predate the locked bottle.
+      // v9 saves predate the locked bottle; v11 the one-way flask.
       lockSeen: parsed.lockSeen ?? false,
+      oneWaySeen: parsed.oneWaySeen ?? false,
       // v10 saves predate achievements and the login reward.
       achievements: Array.isArray(parsed.achievements) ? parsed.achievements : [],
       login: { ...fallback.login, ...(parsed.login ?? {}) },

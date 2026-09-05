@@ -55,6 +55,13 @@ export interface LevelSpec {
    * on legal moves, so every existing solver bound stays admissible.
    */
   readonly lock?: { readonly seals: number };
+  /**
+   * The One-Way Flask: an extra, initially empty vessel (always the last
+   * tube) that can be poured into but never out of - and must be full to
+   * win. A commitment: whatever goes in stays, so one colour has to be
+   * chosen for it and delivered in order.
+   */
+  readonly oneWay?: boolean;
 }
 
 /** Rule variations that change what the engine considers legal or solved. */
@@ -63,6 +70,8 @@ export interface BoardRules {
   readonly cauldron: boolean;
   /** When set, tube `index` is padlocked until `seals` ordinary bottles are complete. */
   readonly lock?: { readonly index: number; readonly seals: number };
+  /** When set, tube `index` is the One-Way Flask: pour in only, must end full. */
+  readonly oneWay?: { readonly index: number };
 }
 
 /** A generated, verified-solvable puzzle. */

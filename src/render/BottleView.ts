@@ -471,8 +471,10 @@ export class BottleView extends Container {
       .rect(g.ix, g.iy, g.iw, g.ih - g.bottomR)
       .fill(0xffffff);
 
-    // --- glass (or, for the cauldron, gold-trimmed enchanted metal)
+    // --- glass (or, for the cauldron, gold-trimmed enchanted metal; for the
+    //     one-way flask, teal-rimmed glass with a funnel mark)
     const isCauldron = this.variant === 'cauldron';
+    const isOneWay = this.variant === 'oneway';
     const gl = this.glass;
     gl.clear();
 
@@ -489,23 +491,44 @@ export class BottleView extends Container {
     // faint fill over the whole silhouette so the vessel has body
     this.outline(gl, 0);
     gl.fill(
-      isCauldron ? { color: 0x352a5e, alpha: 0.45 } : { color: 0x9ec7e8, alpha: 0.06 },
+      isCauldron
+        ? { color: 0x352a5e, alpha: 0.45 }
+        : isOneWay
+          ? { color: 0x0f4c45, alpha: 0.3 }
+          : { color: 0x9ec7e8, alpha: 0.06 },
     );
     this.outline(gl, 0);
     gl.stroke({
-      width: isCauldron ? 3.4 : 2.4,
-      color: isCauldron ? 0xf0b43c : GLASS.rim,
-      alpha: isCauldron ? 0.95 : GLASS.rimAlpha,
+      width: isCauldron ? 3.4 : isOneWay ? 3 : 2.4,
+      color: isCauldron ? 0xf0b43c : isOneWay ? 0x5eead4 : GLASS.rim,
+      alpha: isCauldron || isOneWay ? 0.95 : GLASS.rimAlpha,
       alignment: 0.5,
     });
 
-    // collar ring - bright glass on bottles, a solid gold rim on the cauldron
+    // collar ring - bright glass on bottles, a solid gold rim on the cauldron,
+    // teal on the one-way flask
     gl.roundRect(
       -g.collarW / 2, 0, g.collarW, g.yCollar,
       Math.min(vesselSpec(this.variant).collarRadius * g.bodyW, g.yCollar / 2),
     ).fill(
-      isCauldron ? { color: 0xffc531, alpha: 0.9 } : { color: 0xbcdcf5, alpha: 0.2 },
+      isCauldron
+        ? { color: 0xffc531, alpha: 0.9 }
+        : isOneWay
+          ? { color: 0x5eead4, alpha: 0.55 }
+          : { color: 0xbcdcf5, alpha: 0.2 },
     );
+
+    // one-way mark: a gold arrow pointing down into the body, sitting in the
+    // shoulder where no liquid is drawn (the cavity starts at yBody)
+    if (isOneWay) {
+      const aw = g.neckW * 0.9;
+      const top = g.yNeck + t * 0.5;
+      const bottom = g.yBody - t * 0.5;
+      gl.moveTo(-aw / 2, top).lineTo(aw / 2, top).lineTo(0, bottom).closePath()
+        .fill({ color: 0xffc531, alpha: 0.95 });
+      gl.rect(-aw * 0.16, g.yCollar + t * 0.4, aw * 0.32, top - g.yCollar - t * 0.2)
+        .fill({ color: 0xffc531, alpha: 0.95 });
+    }
 
     // highlight riding over the shoulder curve
     gl.moveTo(-g.bodyW / 2 + t, g.yBody)

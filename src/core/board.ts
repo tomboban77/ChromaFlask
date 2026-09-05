@@ -8,18 +8,34 @@ export const DEFAULT_RULES: BoardRules = { cauldron: false };
 
 /**
  * The rules a level spec plays under. The cauldron, when present, is tube 0;
- * the locked bottle is the first *filled* tube (index 1 with a cauldron, else 0).
+ * the locked bottle is the first *filled* tube (index 1 with a cauldron, else
+ * 0); the one-way flask is the last tube, after the ordinary empties.
  */
-export function rulesFor(spec: Pick<LevelSpec, 'cauldron' | 'lock'>): BoardRules {
-  if (!spec.cauldron && !spec.lock) return DEFAULT_RULES;
-  const rules: { cauldron: boolean; lock?: BoardRules['lock'] } = { cauldron: !!spec.cauldron };
+export function rulesFor(
+  spec: Pick<LevelSpec, 'cauldron' | 'lock' | 'oneWay'> & Partial<Pick<LevelSpec, 'colors' | 'empties'>>,
+): BoardRules {
+  if (!spec.cauldron && !spec.lock && !spec.oneWay) return DEFAULT_RULES;
+  const rules: { cauldron: boolean; lock?: BoardRules['lock']; oneWay?: BoardRules['oneWay'] } = {
+    cauldron: !!spec.cauldron,
+  };
   if (spec.lock) rules.lock = { index: spec.cauldron ? 1 : 0, seals: spec.lock.seals };
+  if (spec.oneWay) {
+    if (spec.colors === undefined || spec.empties === undefined) {
+      throw new Error('one-way flask rules need colors and empties to place the flask');
+    }
+    rules.oneWay = { index: spec.colors + spec.empties + (spec.cauldron ? 1 : 0) };
+  }
   return rules;
 }
 
 /** Index of the cauldron under these rules, or -1 when there is none. */
 function cauldronIndex(rules: BoardRules): number {
   return rules.cauldron ? 0 : -1;
+}
+
+/** Index of the one-way flask under these rules, or -1 when there is none. */
+export function oneWayIndex(rules: BoardRules): number {
+  return rules.oneWay ? rules.oneWay.index : -1;
 }
 
 /** Index of the locked bottle under these rules, or -1 when there is none. */
@@ -105,6 +121,8 @@ export function canPour(
   if (!src || !dst) return false;
   if (src.length === 0) return false;
   if (dst.length >= TUBE_CAPACITY) return false;
+  // Nothing ever leaves the one-way flask.
+  if (rules.oneWay && from === rules.oneWay.index) return false;
   // A padlocked bottle takes part in nothing until the lock opens.
   if (rules.lock && (from === rules.lock.index || to === rules.lock.index) && lockActive(board, rules)) {
     return false;
@@ -155,6 +173,8 @@ export function undoPour(board: Board, move: Move): void {
 export function isSolved(board: Board, rules: BoardRules = DEFAULT_RULES): boolean {
   const ci = cauldronIndex(rules);
   if (ci >= 0 && (board[ci] as Tube).length > 0) return false;
+  // The one-way flask must be filled, not merely left alone.
+  if (rules.oneWay && (board[rules.oneWay.index] as Tube).length !== TUBE_CAPACITY) return false;
   for (const tube of board) {
     if (tube.length === 0) continue;
     if (!isComplete(tube)) return false;
@@ -194,12 +214,14 @@ export function isDeadlocked(board: Board, rules: BoardRules = DEFAULT_RULES): b
  */
 export function usefulMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Move[] {
   const ci = cauldronIndex(rules);
+  const ow = oneWayIndex(rules);
   // While the padlock holds, the locked bottle is simply not on the board.
   const li = rules.lock && lockActive(board, rules) ? rules.lock.index : -1;
   const moves: Move[] = [];
   let firstEmpty = -1;
   for (let i = 0; i < board.length; i++) {
-    if (i === ci) continue;
+    // Neither the cauldron nor the one-way flask is an interchangeable empty.
+    if (i === ci || i === ow) continue;
     if ((board[i] as Tube).length === 0) {
       firstEmpty = i;
       break;
@@ -207,7 +229,7 @@ export function usefulMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Mo
   }
 
   for (let from = 0; from < board.length; from++) {
-    if (from === li) continue;
+    if (from === li || from === ow) continue;
     const src = board[from] as Tube;
     if (src.length === 0) continue;
     if (from !== ci && isComplete(src)) continue;
@@ -219,8 +241,11 @@ export function usefulMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Mo
       if (to === from || to === li) continue;
       const dst = board[to] as Tube;
       if (dst.length === 0) {
-        if (srcUniform && from !== ci) continue;
-        if (to !== firstEmpty && to !== ci) continue;
+        // Moving a whole uniform tube into ordinary empty space is pure
+        // relabelling - but into the empty one-way flask it is a real choice
+        // (it commits that colour and frees an ordinary tube), so allow it.
+        if (srcUniform && from !== ci && to !== ow) continue;
+        if (to !== firstEmpty && to !== ci && to !== ow) continue;
       }
       const count = pourAmount(board, from, to, rules);
       if (count > 0) moves.push({ from, to, count, color: run.color });
@@ -240,14 +265,17 @@ export function usefulMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Mo
  */
 export function canonicalKey(board: Board, rules: BoardRules = DEFAULT_RULES): string {
   const ci = cauldronIndex(rules);
+  const ow = oneWayIndex(rules);
   const li = rules.lock && lockActive(board, rules) ? rules.lock.index : -1;
   const parts: string[] = [];
   for (let i = 0; i < board.length; i++) {
-    if (i === ci || i === li) continue;
+    if (i === ci || i === li || i === ow) continue;
     parts.push((board[i] as Tube).join(','));
   }
   parts.sort();
   let key = parts.join('|');
+  // The one-way flask is never interchangeable: its contents can never leave.
+  if (ow >= 0) key = `W${(board[ow] as Tube).join(',')}#${key}`;
   if (li >= 0) key = `L${(board[li] as Tube).join(',')}#${key}`;
   if (ci >= 0) key = `${(board[ci] as Tube).join(',')}#${key}`;
   return key;

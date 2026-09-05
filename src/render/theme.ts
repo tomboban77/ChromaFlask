@@ -99,10 +99,25 @@ export const CAULDRON: VesselSpec = {
   collarRadius: 0.07,
 } as const;
 
-export type VesselVariant = 'bottle' | 'cauldron';
+/**
+ * The One-Way Flask: bottle proportions with a wider, funnel-like collar so
+ * it reads as "things go in here" before any glyph is drawn.
+ */
+export const ONE_WAY: VesselSpec = {
+  collarW: 0.62,
+  collarH: 0.16,
+  neckW: 0.34,
+  neckH: 0.12,
+  shoulderH: 0.26,
+  bodyH: 2.40,
+  bottomRadius: 0.30,
+  collarRadius: 0.06,
+} as const;
+
+export type VesselVariant = 'bottle' | 'cauldron' | 'oneway';
 
 export function vesselSpec(variant: VesselVariant): VesselSpec {
-  return variant === 'cauldron' ? CAULDRON : BOTTLE;
+  return variant === 'cauldron' ? CAULDRON : variant === 'oneway' ? ONE_WAY : BOTTLE;
 }
 
 export function vesselHeight(bodyWidth: number, variant: VesselVariant): number {

@@ -22,6 +22,8 @@ function deal(spec: LevelSpec, attempt: number): Board {
     board.push(units.slice(t * TUBE_CAPACITY, (t + 1) * TUBE_CAPACITY));
   }
   for (let e = 0; e < spec.empties; e++) board.push([]);
+  // The one-way flask is an extra empty vessel, always last.
+  if (spec.oneWay) board.push([]);
   return board;
 }
 

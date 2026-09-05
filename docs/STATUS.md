@@ -122,7 +122,16 @@ _Last updated: 2026-09-05_
   tube again. Rendered as a dark plate with a gold padlock and one dot per
   seal still needed; opening swells and fades the plate with a sparkle and
   the unlock chime. Tapping it explains why (throttled toast).
-- All three introduced by one-time toasts, staggered so players meet one idea
+- **The One-Way Flask** (levels 267, 277, … 497, and one endless shape in
+  seven) — an extra, teal-rimmed vessel with a funnel arrow, always the last
+  tube: pours go in but never out, and the level is only won once it is
+  **full**. A commitment mechanic: choose a colour, deliver it in order.
+  Pure restriction plus a stricter win test, so every solver bound stays
+  admissible; the flask is always fingerprinted separately (its contents can
+  never leave); moving a whole uniform tube into the empty flask is allowed
+  as a useful move because it is a real choice, not relabelling. Audited
+  against brute force. Tapping it as a source explains why (throttled toast).
+- All four introduced by one-time toasts, staggered so players meet one idea
   at a time; all documented in "How to play".
 
 ### Screens & flow

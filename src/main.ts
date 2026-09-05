@@ -178,6 +178,7 @@ class App {
       onTubeComplete: () => haptic(18),
       onInvalid: () => haptic([12, 40, 12]),
       onLockedTap: (left) => this.explainLock(left),
+      onOneWayTap: () => this.explainOneWay(),
       onUnlocked: () => {
         audio.play('unlock');
         haptic([10, 30, 20]);
@@ -1228,6 +1229,16 @@ class App {
       );
     }
 
+    if (this.level.spec.oneWay && !this.save.snapshot.oneWaySeen) {
+      this.save.update((d) => {
+        d.oneWaySeen = true;
+      });
+      this.toast.show(
+        'The One-Way Flask: pour in, never out. Pick one colour for it - it must be full to win.',
+        'info', 4800,
+      );
+    }
+
     if (isEndless(id) && !this.save.snapshot.endlessSeen) {
       this.save.update((d) => {
         d.endlessSeen = true;
@@ -1390,6 +1401,14 @@ class App {
       sealsLeft === 1 ? 'Locked - seal one more bottle to open it' : `Locked - seal ${sealsLeft} more bottles to open it`,
       'warn', 2200,
     );
+  }
+
+  private oneWayToastAt = 0;
+  private explainOneWay(): void {
+    const now = performance.now();
+    if (now - this.oneWayToastAt < 2500) return;
+    this.oneWayToastAt = now;
+    this.toast.show('One-way flask: pours go in, never out - and it must be full to win', 'warn', 2600);
   }
 
   private onMove(count: number): void {
@@ -2388,7 +2407,9 @@ class App {
           <p>The gold-rimmed <b>Cauldron</b> accepts any colour on top but must be empty to win.
              <b>Murky potions</b> hide their colours until they reach the surface.
              A <b>locked bottle</b> cannot be poured into or out of until you have sealed
-             the number of other bottles shown by the dots under its padlock.</p>
+             the number of other bottles shown by the dots under its padlock.
+             The teal <b>one-way flask</b> takes pours but never gives them back, and the
+             level is only won once it is full - choose its colour with care.</p>
         </div>`,
       buttons: [{ label: 'Got it', kind: 'primary' }],
     });

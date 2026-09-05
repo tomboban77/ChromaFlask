@@ -134,6 +134,18 @@ function specFor(id: number): LevelSpec {
     };
   }
 
+  // The One-Way Flask, every 10 levels from the second late tier: a full
+  // eight-colour board with a single ordinary empty plus the flask, which
+  // takes pours but never gives them back and must be full to win. The
+  // player has to choose a colour to commit and deliver it in order.
+  if (tier >= 2 && id % 10 === 7) {
+    return {
+      id, colors: 8, empties: 1, oneWay: true,
+      minPar: Math.min(25, 20 + tier),
+      name: nameFor(id), murky: isMurky(id),
+    };
+  }
+
   // Squeeze every 10 levels: one empty tube. Colours are capped because
   // single-empty boards get vanishingly rare to deal beyond six colours.
   // From the third late tier a second squeeze joins each block of ten.
@@ -197,7 +209,7 @@ export function endlessSpec(id: number): LevelSpec {
   const name = nameFor(id);
   // Floors start where the campaign's final tier left them, so endless is
   // never a step down, and cap where the precompute proved deals stay fast.
-  switch ((n - 1) % 6) {
+  switch ((n - 1) % 7) {
     case 0:
       return { id, colors: 8, empties: 2, minPar: Math.min(28, 27 + tier), name, murky };
     case 1:
@@ -210,8 +222,10 @@ export function endlessSpec(id: number): LevelSpec {
       return { id, colors: 6, empties: 1, minPar: 19, name, murky };
     case 4:
       return { id, colors: 7, empties: 3, minPar: 17, name, murky: true };
-    default:
+    case 5:
       return { id, colors: 8, empties: 2, minPar: 27, lock: { seals: 2 }, name, murky };
+    default:
+      return { id, colors: 8, empties: 1, minPar: 25, oneWay: true, name, murky };
   }
 }
 

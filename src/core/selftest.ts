@@ -5,8 +5,8 @@
  */
 import {
   DEFAULT_RULES, TUBE_CAPACITY, applyPour, canPour, canonicalKey, cloneBoard,
-  isDeadlocked, isSolved, legalMoves, lockActive, pourAmount, rulesFor, sealsRemaining, topRun,
-  undoPour, usefulMoves,
+  isDeadlocked, isSolved, legalMoves, lockActive, oneWayIndex, pourAmount, rulesFor, sealsRemaining,
+  topRun, undoPour, usefulMoves,
 } from './board';
 import { ACHIEVEMENTS, unlockedAchievements } from './achievements';
 import { getCampaignLevel, isStoredOptimal, isStoredValid, storedLevelCount } from './campaign';
@@ -239,6 +239,51 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
   check('lock optimality audit ran', audited >= 4, `audited=${audited}`);
 }
 
+// --------------------------------------------------------- one-way flask
+{
+  // Two colours, one ordinary empty, and the flask as the last tube (index 3).
+  const R = rulesFor({ colors: 2, empties: 1, oneWay: true });
+  check('oneway: flask is the last tube', oneWayIndex(R) === 3);
+  const b: Board = [[0, 1], [1, 0], [], []];
+  check('oneway: pouring in is allowed', canPour(b, 0, 3, R));
+  const after = cloneBoard(b);
+  applyPour(after, 0, 3, R);
+  check('oneway: nothing ever pours out', !canPour(after, 3, 2, R) && !canPour(after, 3, 0, R));
+  check('oneway: solver never pours out of it', usefulMoves(after, R).every((m) => m.from !== 3));
+  check('oneway: matching colour may follow', canPour([[0], [1, 1], [], [1]], 2 - 1, 3, R));
+  check('oneway: wrong colour may not follow', !canPour([[0], [1, 1], [], [1]], 0, 3, R));
+
+  // Winning needs the flask full, not merely untouched.
+  check('oneway: not solved while the flask is empty', !isSolved([[0, 0, 0, 0], [1, 1, 1, 1], [], []], R));
+  check('oneway: not solved while the flask is partial', !isSolved([[0, 0, 0, 0], [1, 1], [], [1, 1]], R));
+  check('oneway: solved once the flask is full', isSolved([[0, 0, 0, 0], [], [], [1, 1, 1, 1]], R));
+
+  // A whole uniform tube may move into the empty flask (that is a real choice).
+  const uni: Board = [[0, 0], [1, 1, 0, 0], [1, 1], []];
+  check('oneway: uniform tube into the empty flask is a useful move',
+    usefulMoves(uni, R).some((m) => m.from === 0 && m.to === 3));
+  check('oneway: flask is position-sensitive in the key',
+    canonicalKey([[0], [], [], [1]], R) !== canonicalKey([[1], [], [], [0]], R));
+
+  // Generated flask levels solve, never pour out of the flask, and match brute force.
+  let audited = 0;
+  for (let seed = 0; seed < 6; seed++) {
+    const spec = { id: 700 + seed, colors: 3, empties: 1, minPar: 1, name: 'audit', oneWay: true };
+    const gen = generateLevel(spec);
+    const rules = rulesFor(spec);
+    check(`oneway audit ${seed}: solution wins`, isSolved(replay(gen.board, gen.solution, rules), rules));
+    check(`oneway audit ${seed}: flask ends full`,
+      replay(gen.board, gen.solution, rules)[oneWayIndex(rules)]?.length === TUBE_CAPACITY);
+    check(`oneway audit ${seed}: nothing leaves the flask`,
+      gen.solution.every((m) => m.from !== oneWayIndex(rules)));
+    const bfs = bfsOptimal(gen.board, rules);
+    if (bfs === null) continue;
+    audited++;
+    check(`oneway audit ${seed}: A* par is optimal`, gen.par === bfs, `A*=${gen.par} bfs=${bfs}`);
+  }
+  check('oneway optimality audit ran', audited >= 4, `audited=${audited}`);
+}
+
 // --------------------------------------------------------------- solver
 {
   const trivial: Board = [[0, 0, 0], [0], []];
@@ -314,8 +359,9 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
     }
 
     const rules = rulesFor(spec);
-    const tubes = spec.colors + spec.empties + (spec.cauldron ? 1 : 0);
-    const flags = `${spec.cauldron ? 'C' : '·'}${spec.murky ? 'M' : '·'}${spec.lock ? 'L' : '·'}`;
+    const tubes = spec.colors + spec.empties + (spec.cauldron ? 1 : 0) + (spec.oneWay ? 1 : 0);
+    const flags =
+      `${spec.cauldron ? 'C' : '·'}${spec.murky ? 'M' : '·'}${spec.lock ? 'L' : '·'}${spec.oneWay ? 'W' : '·'}`;
     // 200 rows would drown the signal: print band edges and anything slow.
     if (spec.id - lastPrinted >= 10 || spec.id <= 10 || ms > 300) {
       lastPrinted = spec.id;
@@ -461,10 +507,10 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
 {
   check('endless: ids past the campaign', isEndless(ENDLESS_START) && !isEndless(LEVELS.length));
   check('endless: getLevelSpec resolves endless ids', getLevelSpec(ENDLESS_START).id === ENDLESS_START);
-  // Six per end: one full cycle of the six endless shapes.
+  // Seven per end: one full cycle of the seven endless shapes.
   const sample = [
-    ...Array.from({ length: 6 }, (_, i) => ENDLESS_START + i),
-    ...Array.from({ length: 6 }, (_, i) => ENDLESS_START + 120 + i),
+    ...Array.from({ length: 7 }, (_, i) => ENDLESS_START + i),
+    ...Array.from({ length: 7 }, (_, i) => ENDLESS_START + 120 + i),
   ];
   let worst = 0;
   for (const id of sample) {

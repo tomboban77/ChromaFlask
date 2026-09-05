@@ -28,6 +28,8 @@ export interface BoardCallbacks {
   onLockedTap?: (sealsLeft: number) => void;
   /** The padlock opened. */
   onUnlocked?: () => void;
+  /** The player tried to pour *out of* the one-way flask. */
+  onOneWayTap?: () => void;
 }
 
 interface Slot {
@@ -145,9 +147,15 @@ export class BoardView {
     return this.rules.cauldron && index === 0;
   }
 
+  /** The one-way flask, when present, is always the last tube. */
+  private isOneWay(index: number): boolean {
+    return this.rules.oneWay !== undefined && index === this.rules.oneWay.index;
+  }
+
   private addBottleView(index: number, colorblind: boolean): BottleView {
     const view = new BottleView(
-      index, this.bodyW, this.isCauldron(index) ? 'cauldron' : 'bottle',
+      index, this.bodyW,
+      this.isCauldron(index) ? 'cauldron' : this.isOneWay(index) ? 'oneway' : 'bottle',
     );
     view.setColorblind(colorblind);
     view.on('pointertap', () => this.handleTap(index));
@@ -380,6 +388,12 @@ export class BoardView {
     }
 
     if (this.selected === null) {
+      // The one-way flask is never a source: nothing pours out of it.
+      if (this.isOneWay(index)) {
+        this.rejectTap(index);
+        this.callbacks.onOneWayTap?.();
+        return;
+      }
       if (tube.length === 0) {
         this.rejectTap(index);
         return;
@@ -408,7 +422,7 @@ export class BoardView {
 
     // Not a legal target. If it could be a source, treat the tap as changing
     // your mind rather than as an error - far less punishing than a buzz.
-    if (tube.length > 0 && (!isComplete(tube) || this.isCauldron(index))) {
+    if (tube.length > 0 && !this.isOneWay(index) && (!isComplete(tube) || this.isCauldron(index))) {
       this.select(index);
       audio.play('swap');
       return;
