@@ -211,12 +211,16 @@ export function endlessSpec(id: number): LevelSpec {
   // never a step down, and cap where the precompute proved deals stay fast.
   switch ((n - 1) % 7) {
     case 0:
-      return { id, colors: 8, empties: 2, minPar: Math.min(28, 27 + tier), name, murky };
+      // Held at 27: deals with an ideal of 28 are ~2% of eight-colour deals,
+      // and hunting for one took six seconds on a desktop (twenty on a phone).
+      return { id, colors: 8, empties: 2, minPar: 27, name, murky };
     case 1:
       return { id, colors: 7, empties: 2, minPar: Math.min(19, 18 + tier), name, murky: true };
     case 2:
+      // 17, not the campaign's 18: cauldron deals are the slowest to prove and
+      // this one is dealt live on the player's phone.
       return {
-        id, colors: 6, empties: 1, cauldron: true, minPar: 18, name, murky,
+        id, colors: 6, empties: 1, cauldron: true, minPar: 17, name, murky,
       };
     case 3:
       return { id, colors: 6, empties: 1, minPar: 19, name, murky };

@@ -8,7 +8,7 @@
  *   node scripts/smoke.mjs
  */
 import { chromium } from 'playwright-core';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
@@ -489,7 +489,16 @@ try {
 } catch (err) {
   problems.push(`fatal: ${err.message}`);
 } finally {
-  server?.kill();
+  // On Windows, killing the npx wrapper leaves the real Vite process alive;
+  // take down the whole tree, synchronously, so no dev server outlives the
+  // test (the script exits right after this).
+  if (server) {
+    if (process.platform === 'win32') {
+      spawnSync('taskkill', ['/PID', String(server.pid), '/T', '/F'], { stdio: 'ignore' });
+    } else {
+      server.kill();
+    }
+  }
 }
 
 console.log('\n========================================');
