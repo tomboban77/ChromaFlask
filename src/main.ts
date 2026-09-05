@@ -4,7 +4,7 @@ import { LEVELS, LEVEL_COUNT } from '@/core/levels';
 import { getCampaignLevel } from '@/core/campaign';
 import { TUBE_CAPACITY } from '@/core/board';
 import {
-  COIN_SHOP, LIVES_MAX, coinsFor, starsFor,
+  COIN_SHOP, LIVES_MAX, coinsFor, starThresholds, starsFor,
   type CoinShopItem, type PowerupId,
 } from '@/core/progression';
 import type { GeneratedLevel } from '@/core/types';
@@ -1318,6 +1318,9 @@ class App {
     const moves = this.board.moveCount;
     const seconds = Math.round((Date.now() - this.attemptStartedAt) / 1000);
     const stars = starsFor(moves, level.par);
+    const before = this.save.levelRecord(this.levelId);
+    // Support unlocks store a sentinel; treat those as "no real best yet".
+    const prevBest = before && before.bestMoves < 100_000 ? before.bestMoves : null;
     const { prevStars } = this.save.recordClear(this.levelId, stars, moves);
     // Replays only pay for newly earned stars - see coinsFor.
     const reward = coinsFor(stars, prevStars, this.remote.current.economy);
@@ -1325,6 +1328,7 @@ class App {
     this.save.bumpStat('wins');
     if (stars === 3) this.save.bumpStat('perfects');
     this.save.recordWinForStreak();
+    const streak = this.save.snapshot.stats.streak;
 
     this.tutorial.finish();
     audio.duckMusic(2.2);
@@ -1342,18 +1346,37 @@ class App {
     });
 
     const isLast = this.levelId >= LEVEL_COUNT;
-    window.setTimeout(() => this.showWinModal(stars, moves, seconds, reward, isLast), 620);
+    window.setTimeout(
+      () => this.showWinModal({
+        stars, moves, seconds, reward, isLast, prevStars, prevBest, streak,
+        par: level.par, levelName: level.spec.name,
+      }),
+      620,
+    );
   }
 
-  private showWinModal(
-    stars: number, moves: number, seconds: number, reward: number, isLast: boolean,
-  ): void {
-    const content = el('div');
+  /**
+   * The win screen answers four questions in order: how well did I do
+   * (stars, with the middle one raised), what did I earn and why (coins
+   * counting up, with the breakdown), what would make it better (the exact
+   * move count for the next star, or "Perfect!"), and what's next (one big
+   * green button; replay and home as quiet options).
+   */
+  private showWinModal(w: {
+    stars: number; moves: number; seconds: number; reward: number; isLast: boolean;
+    prevStars: number | null; prevBest: number | null; streak: number;
+    par: number; levelName: string;
+  }): void {
+    const eco = this.remote.current.economy;
+    const reduced =
+      this.save.snapshot.settings.reducedMotion ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const content = el('div', 'win');
 
-    // A par run gets the full treatment.
-    if (stars === 3) content.appendChild(el('div', 'perfect', 'Perfect!'));
+    content.appendChild(el('div', 'win__name', w.levelName));
 
-    const starRow = el('div', 'stars');
+    // Stars in an arc; unearned ones stay as dim outlines so 2/3 reads at a glance.
+    const starRow = el('div', 'stars stars--arc');
     const starEls: HTMLElement[] = [];
     for (let i = 0; i < 3; i++) {
       const s = el('i', '', '★');
@@ -1362,55 +1385,141 @@ class App {
     }
     content.appendChild(starRow);
 
-    const reward$ = el('div', 'reward');
-    reward$.innerHTML = `<span class="chip__icon chip__icon--coin"></span> +${reward} coins`;
-    content.appendChild(reward$);
+    // Verdict: celebrate a perfect, otherwise say exactly what the next star needs.
+    if (w.stars === 3) {
+      content.appendChild(el('div', 'perfect', 'Perfect!'));
+    } else {
+      const t = starThresholds(w.par);
+      const need = w.stars === 2 ? t.three : t.two;
+      content.appendChild(
+        el('div', 'win__verdict', `Finish in ${need} moves or fewer for ${w.stars + 1} stars`),
+      );
+    }
 
-    const stats = el('div', 'statgrid');
+    // Reward, with how it was earned. Replays that add no stars say so plainly.
+    if (w.reward > 0) {
+      const card = el('div', 'win__reward');
+      const big = el('div', 'win__coins');
+      big.innerHTML = `<span class="chip__icon chip__icon--coin"></span><b>+0</b>`;
+      card.appendChild(big);
+      const parts: string[] = [];
+      if (w.prevStars === null) {
+        parts.push(`Cleared +${eco.baseReward}`);
+        parts.push(`${w.stars} star${w.stars === 1 ? '' : 's'} +${w.stars * eco.rewardPerStar}`);
+        if (eco.firstClearBonus > 0) parts.push(`First clear +${eco.firstClearBonus}`);
+      } else {
+        const gained = Math.max(0, w.stars - w.prevStars);
+        parts.push(`${gained} new star${gained === 1 ? '' : 's'} +${w.reward}`);
+      }
+      card.appendChild(el('div', 'win__breakdown', parts.join(' · ')));
+      content.appendChild(card);
+      const counter = big.querySelector('b') as HTMLElement;
+      const startAt = reduced ? 0 : 180 + 3 * 260;
+      window.setTimeout(() => this.countUp(counter, w.reward, reduced ? 0 : 700), startAt);
+    } else {
+      content.appendChild(el('div', 'win__note', 'All stars already earned on this level'));
+    }
+
+    // Stats, with a "New best" tag when the move count improved.
+    const stats = el('div', 'statgrid statgrid--4');
+    const time = w.seconds >= 60
+      ? `${Math.floor(w.seconds / 60)}:${String(w.seconds % 60).padStart(2, '0')}`
+      : `${w.seconds}s`;
+    const isNewBest = w.prevBest !== null && w.moves < w.prevBest;
+    const bestShown = w.prevBest === null ? w.moves : Math.min(w.prevBest, w.moves);
     stats.innerHTML = `
-      <div><b>${moves}</b><span>Moves</span></div>
-      <div><b>${this.level?.par ?? '-'}</b><span>Par</span></div>
-      <div><b>${seconds}s</b><span>Time</span></div>`;
+      <div><b>${w.moves}</b><span>Moves</span></div>
+      <div><b>${w.par}</b><span>Par</span></div>
+      <div><b>${time}</b><span>Time</span></div>
+      <div class="${isNewBest ? 'statgrid__best' : ''}"><b>${bestShown}</b><span>${isNewBest ? 'New best!' : 'Best'}</span></div>`;
     content.appendChild(stats);
 
-    const buttons = isLast
-      ? [
-          { label: 'Back to home', kind: 'primary' as const, onClick: () => this.quitToHome() },
-          { label: 'Play again', kind: 'ghost' as const, onClick: () => this.restartLevel() },
-        ]
-      : [
-          {
-            label: 'Next level',
-            kind: 'success' as const,
-            onClick: () => this.startLevel(this.levelId + 1),
-          },
-          { label: 'Home', kind: 'ghost' as const, onClick: () => this.quitToHome() },
-        ];
+    // Progress through the campaign, plus the streak when there is one worth showing.
+    const meta = el('div', 'win__meta');
+    const cleared = Object.keys(this.save.snapshot.levels).length;
+    const progress = el('div', 'win__progress');
+    progress.innerHTML =
+      `<span class="win__progress-track"><i style="width:${Math.round((cleared / LEVEL_COUNT) * 100)}%"></i></span>` +
+      `<span class="win__progress-label">${cleared} / ${LEVEL_COUNT} levels</span>`;
+    meta.appendChild(progress);
+    if (w.streak >= 2) meta.appendChild(el('span', 'win__streak', `🔥 ${w.streak} in a row`));
+    content.appendChild(meta);
+
+    // Actions: one obvious next step, two quiet alternatives.
+    const actions = el('div', 'win__actions');
+    const act = (label: string, cls: string, fn: () => void): HTMLButtonElement => {
+      const b = el('button', cls, label);
+      b.addEventListener('click', () => {
+        audio.play('button');
+        this.modal.close();
+        fn();
+      });
+      return b;
+    };
+    if (w.isLast) {
+      actions.appendChild(act('Back to home', 'btn btn--primary btn--wide', () => this.quitToHome()));
+      const row = el('div', 'modal__row');
+      row.appendChild(act('Play again', 'btn btn--ghost', () => this.restartLevel()));
+      actions.appendChild(row);
+    } else {
+      actions.appendChild(
+        act('Next level', 'btn btn--success btn--wide win__next', () => this.startLevel(this.levelId + 1)),
+      );
+      const row = el('div', 'modal__row');
+      row.appendChild(act('Replay', 'btn btn--ghost', () => this.restartLevel()));
+      row.appendChild(act('Home', 'btn btn--ghost', () => this.quitToHome()));
+      actions.appendChild(row);
+    }
+    content.appendChild(actions);
 
     this.modal.open({
-      title: isLast ? 'All levels cleared!' : 'Level complete!',
+      title: w.isLast ? 'All levels cleared!' : `Level ${this.levelId} complete!`,
       content,
-      buttons,
       dismissable: false,
     });
 
     // Confetti rains over the dialog itself; a perfect run gets the big burst.
-    this.confetti.burst(stars === 3 ? 2 : 1);
+    this.confetti.burst(w.stars === 3 ? 2 : 1);
 
     // Ring the stars in one at a time so the score lands as a moment.
     starEls.forEach((node, i) => {
       window.setTimeout(() => {
         node.classList.add('pop');
-        if (i < stars) {
+        if (i < w.stars) {
           node.classList.add('on');
           audio.play('star', i);
         }
       }, 180 + i * 260);
     });
 
-    if (!isLast) {
+    if (!w.isLast) {
       window.setTimeout(() => audio.play('unlock'), 180 + 3 * 260 + 200);
     }
+  }
+
+  /** Roll a "+N" counter up to its value with coin ticks along the way. */
+  private countUp(node: HTMLElement, to: number, ms: number): void {
+    if (ms <= 0) {
+      node.textContent = `+${to}`;
+      return;
+    }
+    const t0 = performance.now();
+    let lastTick = 0;
+    const step = (t: number): void => {
+      const p = Math.min(1, (t - t0) / ms);
+      const eased = 1 - Math.pow(1 - p, 3);
+      node.textContent = `+${Math.round(eased * to)}`;
+      if (p < 1) {
+        if (t - lastTick > 95) {
+          audio.play('coin');
+          lastTick = t;
+        }
+        requestAnimationFrame(step);
+      } else {
+        node.textContent = `+${to}`;
+      }
+    };
+    requestAnimationFrame(step);
   }
 
   // ---------------------------------------------------------------- stuck

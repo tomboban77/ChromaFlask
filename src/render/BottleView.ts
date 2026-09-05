@@ -1,4 +1,5 @@
 import { Container, Graphics, Point, Rectangle } from 'pixi.js';
+import gsap from 'gsap';
 import { TUBE_CAPACITY } from '@/core/board';
 import type { ColorId } from '@/core/types';
 import {
@@ -86,6 +87,12 @@ export class BottleView extends Container {
   private readonly glass = new Graphics();
   private readonly glow = new Graphics();
   private readonly flash = new Graphics();
+  /** Cork that seals a completed bottle. Drawn centred on its own origin. */
+  private readonly cap = new Graphics();
+  private capped = false;
+  private capH = 0;
+  /** Cap y when seated in the neck (cap is centred, so this is above the mouth). */
+  private capRestY = 0;
 
   /** Surface agitation, 0..1, decaying. Drives the sine wave on the top band. */
   private wobble = 0;
@@ -106,14 +113,22 @@ export class BottleView extends Container {
     this.liquidLayer.addChild(this.liquidMask);
     this.liquidLayer.mask = this.liquidMask;
 
-    this.addChild(this.glow, this.cavity, this.liquidLayer, this.glass, this.flash);
+    this.addChild(this.glow, this.cavity, this.liquidLayer, this.glass, this.flash, this.cap);
 
     this.eventMode = 'static';
     this.cursor = 'pointer';
     this.flash.alpha = 0;
     this.glow.alpha = 0;
+    this.cap.visible = false;
 
     this.redrawChrome();
+  }
+
+  override destroy(options?: Parameters<Container['destroy']>[0]): void {
+    // A cork mid-flight must not keep tweening a destroyed display object.
+    gsap.killTweensOf(this.cap);
+    gsap.killTweensOf(this.cap.scale);
+    super.destroy(options);
   }
 
   // ------------------------------------------------------------- geometry
@@ -206,6 +221,66 @@ export class BottleView extends Container {
 
   flashComplete(): void {
     this.flash.alpha = 0.8;
+  }
+
+  get isCapped(): boolean {
+    return this.capped;
+  }
+
+  /**
+   * Seal (or unseal) the bottle. With `animate`, the cork launches from the
+   * bottle's base *behind* the glass, overshoots the mouth with a stretch,
+   * then drops into the neck and squashes home - a rocket that lands as a
+   * seal. `onLanded` fires once when it seats (for the pop sound).
+   */
+  setCapped(on: boolean, animate: boolean, onLanded?: () => void): void {
+    if (this.capped === on) return;
+    this.capped = on;
+    gsap.killTweensOf(this.cap);
+    gsap.killTweensOf(this.cap.scale);
+
+    if (!on) {
+      this.cap.visible = false;
+      return;
+    }
+
+    this.cap.visible = true;
+    this.cap.alpha = 1;
+    this.cap.scale.set(1);
+    this.setChildIndex(this.cap, this.children.length - 1);
+
+    if (!animate) {
+      this.cap.y = this.capRestY;
+      onLanded?.();
+      return;
+    }
+
+    // Climb behind the glass so the cork never crosses the liquid.
+    this.setChildIndex(this.cap, 0);
+    this.cap.y = this.geo.yBottom + this.capH;
+    this.cap.alpha = 0;
+    this.cap.scale.set(0.8, 1.3);
+    const apex = this.capRestY - this.geo.bodyW * 0.55;
+
+    gsap
+      .timeline()
+      .to(this.cap, { alpha: 1, duration: 0.08 }, 0)
+      .to(this.cap, { y: apex, duration: 0.3, ease: 'power3.out' }, 0)
+      .to(this.cap.scale, { x: 0.85, y: 1.25, duration: 0.15 }, 0)
+      .to(this.cap.scale, { x: 1, y: 1, duration: 0.15 }, 0.15)
+      .to(this.cap, {
+        y: this.capRestY,
+        duration: 0.16,
+        ease: 'power2.in',
+        // Over the mouth now: bring it in front of the collar as it drops.
+        onStart: () => this.setChildIndex(this.cap, this.children.length - 1),
+        onComplete: () => {
+          this.agitate(0.6);
+          onLanded?.();
+        },
+      })
+      .to(this.cap.scale, { x: 1.3, y: 0.65, duration: 0.07 })
+      .to(this.cap.scale, { x: 1, y: 1, duration: 0.45, ease: 'elastic.out(1, 0.35)' });
   }
 
   // --------------------------------------------------------------- ticking
@@ -360,6 +435,26 @@ export class BottleView extends Container {
     this.flash.clear();
     this.outline(this.flash, t * 0.6);
     this.flash.fill({ color: 0xffffff, alpha: 1 });
+
+    // --- cork: a tan stopper a little wider than the collar, drawn centred
+    // on its own origin so it can squash and stretch in place. At rest its
+    // lower third sits inside the collar and the rest protrudes.
+    const cw = g.collarW * 1.14;
+    const ch = Math.max(9, g.yCollar * 1.9);
+    this.capH = ch;
+    this.capRestY = -ch * 0.5 + g.yCollar * 0.62;
+    const cr = Math.min(5, cw * 0.2);
+    const c = this.cap;
+    c.clear();
+    c.roundRect(-cw / 2, -ch / 2, cw, ch, cr).fill({ color: 0xd9a066 });
+    // darker band where it enters the glass
+    c.rect(-cw / 2 + 1, ch * 0.1, cw - 2, ch * 0.4).fill({ color: 0xa8703c, alpha: 0.8 });
+    // domed top highlight
+    c.roundRect(-cw / 2 + cw * 0.14, -ch / 2 + ch * 0.12, cw * 0.3, ch * 0.3, 2)
+      .fill({ color: 0xffffff, alpha: 0.38 });
+    c.roundRect(-cw / 2, -ch / 2, cw, ch, cr)
+      .stroke({ width: 1.6, color: 0x6b4420, alpha: 0.8 });
+    if (this.capped) c.y = this.capRestY;
 
     // --- selection glow: soft outer halo built from stacked strokes
     this.glow.clear();

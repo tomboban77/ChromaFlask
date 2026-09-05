@@ -125,6 +125,8 @@ export class BoardView {
       this.bottles[i]?.setHidden(this.hidden[i] ?? 0);
     }
     this.syncAll();
+    // A resumed board may already have sealed bottles; show them sealed.
+    this.syncCaps(false);
     // The game screen may still be display:none, in which case the host
     // measures 0x0. Defer the intro until a layout with real dimensions lands.
     this.pendingIntro = true;
@@ -250,6 +252,14 @@ export class BoardView {
   private syncAll(): void {
     for (let i = 0; i < this.board.length; i++) {
       this.bottles[i]?.setContents(this.board[i] as ColorId[]);
+    }
+  }
+
+  /** Cork on every full single-colour bottle, off everywhere else (never the cauldron). */
+  private syncCaps(animate: boolean): void {
+    for (let i = 0; i < this.board.length; i++) {
+      const tube = this.board[i] as ColorId[];
+      this.bottles[i]?.setCapped(isComplete(tube) && !this.isCauldron(i), animate);
     }
   }
 
@@ -603,6 +613,8 @@ export class BoardView {
       if (view && slot) {
         view.flashComplete();
         audio.play('tubeComplete');
+        // The cork rockets in and seals the bottle; the pop lands ~0.5 s later.
+        view.setCapped(true, this.motionScale >= 1, () => audio.play('cork'));
         if (this.particlesEnabled) {
           this.particles.sparkle(slot.x, slot.y + view.totalHeight * 0.55, tube[0] as ColorId, 20);
         }
@@ -679,6 +691,8 @@ export class BoardView {
       const b = this.bottles[idx];
       if (!b) continue;
       b.setContents(this.board[idx] as ColorId[]);
+      // Undoing the sealing pour unseals the bottle.
+      b.setCapped(isComplete(this.board[idx] as ColorId[]) && !this.isCauldron(idx), false);
       b.agitate(0.7);
       if (this.motionScale >= 1) {
         const slot = this.slots[idx] as Slot;

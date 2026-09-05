@@ -69,8 +69,16 @@ _Last updated: 2026-09-05_
   by undo/new bottle). Kills the "this level is impossible" misread.
 - **Gentle onboarding** — levels 1-10 are all two-empty boards; single-empty
   squeeze boards start at level 18, after the player has the skills.
-- **Win** — purple/gold dialog, staggered stars, "PERFECT!" on par runs, DOM
-  confetti raining over the dialog.
+- **Sealed bottles** — completing a bottle rockets a cork up from behind the
+  glass, over the mouth, and drops it into the neck with a squash and a pop
+  (`BottleView.setCapped`). The cork stays as the "done" marker, comes off on
+  undo, is restored silently on resume, and never appears on the cauldron.
+- **Win** — level name, stars in an arc (middle raised; unearned stars as dim
+  outlines), "Perfect!" or the exact move count the next star needs, coins
+  counting up with the breakdown of how they were earned, Moves/Par/Time/Best
+  with a gold "New best!" cell, campaign progress bar, win-streak pill, one
+  big pulsing Next level button with Replay/Home underneath. DOM confetti
+  rains over the dialog.
 - **More Lives dialog** — hearts state, live countdown, coin refill, shop link.
 - **Profile card** — identity + lifetime stats (levels, stars, perfects, best
   streak, pours, hints), edit-look and settings entry points.

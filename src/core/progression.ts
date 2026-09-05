@@ -93,11 +93,24 @@ export const COIN_SHOP: readonly CoinShopItem[] = [
  * three stars means the player played at or near a mathematically perfect line.
  * The tolerance scales with par so long levels are not punishingly strict.
  */
+export interface StarThresholds {
+  /** Most moves that still earn three stars. */
+  readonly three: number;
+  /** Most moves that still earn two stars. */
+  readonly two: number;
+}
+
+export function starThresholds(par: number): StarThresholds {
+  return {
+    three: par + Math.max(2, Math.round(par * 0.15)),
+    two: par + Math.max(5, Math.round(par * 0.5)),
+  };
+}
+
 export function starsFor(moves: number, par: number): 1 | 2 | 3 {
-  const perfect = par + Math.max(2, Math.round(par * 0.15));
-  const good = par + Math.max(5, Math.round(par * 0.5));
-  if (moves <= perfect) return 3;
-  if (moves <= good) return 2;
+  const t = starThresholds(par);
+  if (moves <= t.three) return 3;
+  if (moves <= t.two) return 2;
   return 1;
 }
 

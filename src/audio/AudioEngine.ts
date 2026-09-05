@@ -10,7 +10,7 @@
 export type SfxName =
   | 'select' | 'deselect' | 'swap' | 'pour' | 'land' | 'invalid'
   | 'tubeComplete' | 'star' | 'win' | 'coin' | 'button' | 'powerup'
-  | 'stuck' | 'unlock';
+  | 'stuck' | 'unlock' | 'cork';
 
 interface ToneOptions {
   freq: number;
@@ -299,6 +299,13 @@ export class AudioEngine {
       case 'unlock':
         this.tone({ freq: 660, glideTo: 990, dur: 0.22, type: 'sine', gain: 0.14 });
         this.tone({ freq: 990, glideTo: 1320, dur: 0.3, type: 'sine', gain: 0.1, delay: 0.14 });
+        break;
+
+      case 'cork':
+        // A cork seating: a short woody thump with a bright click on top.
+        this.noise({ dur: 0.08, from: 1400, to: 300, gain: 0.14, q: 1.2, kind: 'lowpass' });
+        this.tone({ freq: 560, glideTo: 240, dur: 0.11, type: 'sine', gain: 0.12 });
+        this.tone({ freq: 1500, dur: 0.035, type: 'triangle', gain: 0.045, delay: 0.005 });
         break;
     }
   }
