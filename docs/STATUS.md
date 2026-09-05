@@ -46,6 +46,12 @@ _Last updated: 2026-09-04_
 - **Level map** — 200 nodes, stars per level, auto-scrolls to current level.
 - **Gameplay** — candy-styled HUD, powerbar, coach + hand-pointer tutorial on
   level 1 (points at the solver's actual next move).
+- **No-win detection** — after each move on small boards, the solver *proves*
+  whether a winning line still exists; if not, a one-time toast says "No way
+  to win from here - use Undo or Restart" (silent when inconclusive, re-armed
+  by undo/new bottle). Kills the "this level is impossible" misread.
+- **Gentle onboarding** — levels 1-10 are all two-empty boards; single-empty
+  squeeze boards start at level 18, after the player has the skills.
 - **Win** — purple/gold dialog, staggered stars, "PERFECT!" on par runs, DOM
   confetti raining over the dialog.
 - **More Lives dialog** — hearts state, live countdown, coin refill, shop link.

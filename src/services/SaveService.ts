@@ -64,9 +64,28 @@ export interface SaveData {
   murkySeen: boolean;
   /** Whether the cauldron mechanic has been introduced with a toast. */
   cauldronSeen: boolean;
+  /** Stable anonymous ID shown in Settings, quoted in support emails. */
+  supportId: string;
+  /** Normalized support codes already applied, so a code redeems once. */
+  redeemedCodes: string[];
 }
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
+
+/** Same confusable-free alphabet as support codes (no I, L, O, U). */
+const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
+
+export function generateSupportId(): string {
+  const bytes = new Uint8Array(8);
+  try {
+    globalThis.crypto.getRandomValues(bytes);
+  } catch {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  let id = '';
+  for (const b of bytes) id += SUPPORT_ID_ALPHABET[b & 31];
+  return id;
+}
 
 export function defaultSave(startingCoins: number): SaveData {
   return {
@@ -87,6 +106,8 @@ export function defaultSave(startingCoins: number): SaveData {
     stats: { plays: 0, wins: 0, perfects: 0, pours: 0, hintsUsed: 0, streak: 0, bestStreak: 0 },
     murkySeen: false,
     cauldronSeen: false,
+    supportId: generateSupportId(),
+    redeemedCodes: [],
   };
 }
 
@@ -138,11 +159,13 @@ const KEY = 'chromaflask.save.v1';
 
 export class SaveService {
   private readonly driver: StorageDriver;
+  private readonly startingCoins: number;
   private data: SaveData;
   private flushHandle: number | null = null;
 
   constructor(startingCoins: number, driver: StorageDriver = pickDriver()) {
     this.driver = driver;
+    this.startingCoins = startingCoins;
     this.data = this.load(startingCoins);
   }
 
@@ -179,6 +202,9 @@ export class SaveService {
       stats: { ...fallback.stats, ...(parsed.stats ?? {}) },
       murkySeen: parsed.murkySeen ?? false,
       cauldronSeen: parsed.cauldronSeen ?? false,
+      // v4 saves predate support codes; mint the ID on first migrated load.
+      supportId: parsed.supportId ?? fallback.supportId,
+      redeemedCodes: parsed.redeemedCodes ?? [],
     };
   }
 
@@ -209,6 +235,51 @@ export class SaveService {
   }
 
   // ------------------------------------------------------------ accessors
+  get supportId(): string {
+    return this.data.supportId;
+  }
+
+  /**
+   * Wipe progress back to a fresh install. Identity survives on purpose:
+   * settings are preferences (not progress), the support ID must stay stable
+   * across a support conversation, and forgetting redeemed codes would let a
+   * single-use code apply twice.
+   */
+  resetProgress(): void {
+    const keepSettings = this.data.settings;
+    const keepSupportId = this.data.supportId;
+    const keepRedeemed = this.data.redeemedCodes;
+    this.data = defaultSave(this.startingCoins);
+    this.data.settings = keepSettings;
+    this.data.supportId = keepSupportId;
+    this.data.redeemedCodes = keepRedeemed;
+    this.flush();
+  }
+
+  markSupportCodeUsed(normalized: string): void {
+    this.update((d) => {
+      d.redeemedCodes.push(normalized);
+      // A player will realistically redeem a handful; cap defensively.
+      if (d.redeemedCodes.length > 64) d.redeemedCodes.splice(0, d.redeemedCodes.length - 64);
+    });
+  }
+
+  /**
+   * Support elevation: mark every level below `target` cleared (1 star) so the
+   * map opens up to it. Real records are kept; bestMoves gets a huge sentinel
+   * so the first genuine clear's Math.min replaces it.
+   */
+  unlockThroughLevel(target: number): void {
+    this.update((d) => {
+      for (let id = 1; id < target; id++) {
+        const key = String(id);
+        if (!d.levels[key]) {
+          d.levels[key] = { stars: 1, bestMoves: Number.MAX_SAFE_INTEGER, clearedAt: Date.now() };
+        }
+      }
+    });
+  }
+
   get coins(): number {
     return this.data.coins;
   }

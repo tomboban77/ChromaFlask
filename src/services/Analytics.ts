@@ -9,6 +9,7 @@ export type AnalyticsEvent =
   | { type: 'level_complete'; level: number; moves: number; par: number; stars: number; seconds: number }
   | { type: 'level_quit'; level: number; moves: number; seconds: number }
   | { type: 'level_stuck'; level: number; moves: number }
+  | { type: 'level_no_win'; level: number; moves: number }
   | { type: 'powerup_used'; level: number; powerup: string; paid: boolean }
   | { type: 'tutorial_step'; step: number }
   | { type: 'tutorial_done' }
@@ -17,7 +18,10 @@ export type AnalyticsEvent =
   | { type: 'iap_start'; product: string }
   | { type: 'iap_result'; product: string; ok: boolean; reason?: string }
   | { type: 'life_lost'; level: number; cause: 'quit' | 'failed' }
-  | { type: 'out_of_lives'; level: number };
+  | { type: 'out_of_lives'; level: number }
+  | { type: 'support_email_open'; level: number }
+  | { type: 'support_code_redeemed'; action: string }
+  | { type: 'progress_reset'; source: 'settings' | 'support_code' };
 
 export interface AnalyticsDriver {
   track(event: AnalyticsEvent): void;
@@ -30,10 +34,50 @@ export class ConsoleAnalyticsDriver implements AnalyticsDriver {
   }
 }
 
+/**
+ * PostHog over its plain capture endpoint - no SDK, ~zero bundle cost.
+ * Public client-side project token (US cloud, project 594724).
+ */
+export const POSTHOG_KEY = 'phc_pJdnjr6vMnZQozVsyY6hPQqrtB992zncabWKKVDSSazi';
+export const POSTHOG_HOST = 'https://us.i.posthog.com';
+
+export class PostHogDriver implements AnalyticsDriver {
+  constructor(
+    private readonly apiKey: string,
+    /** Stable anonymous ID; the save's supportId, so support and funnel line up. */
+    private readonly distinctId: string,
+  ) {}
+
+  track(event: AnalyticsEvent): void {
+    if (!this.apiKey) return;
+    const { type, ...properties } = event;
+    const body = JSON.stringify({
+      api_key: this.apiKey,
+      event: type,
+      distinct_id: this.distinctId,
+      properties,
+      timestamp: new Date().toISOString(),
+    });
+    // keepalive lets the final events of a session survive tab close.
+    void fetch(`${POSTHOG_HOST}/capture/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+    }).catch(() => {
+      /* offline or blocked - gameplay is unaffected */
+    });
+  }
+}
+
 export class Analytics {
   private readonly drivers: AnalyticsDriver[];
   constructor(...drivers: AnalyticsDriver[]) {
     this.drivers = drivers.length ? drivers : [new ConsoleAnalyticsDriver()];
+  }
+  /** For drivers that need boot-time data (e.g. the save's supportId). */
+  addDriver(driver: AnalyticsDriver): void {
+    this.drivers.push(driver);
   }
   track(event: AnalyticsEvent): void {
     for (const d of this.drivers) {

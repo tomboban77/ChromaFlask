@@ -10,7 +10,7 @@ import {
 } from './board';
 import { generateLevel } from './generator';
 import { LEVELS } from './levels';
-import { solve } from './solver';
+import { solvability, solve } from './solver';
 import type { Board, BoardRules, Move } from './types';
 
 let passed = 0;
@@ -148,6 +148,15 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
   const unsolvable: Board = [[0, 1, 0, 1], [1, 0, 1, 0]];
   check('reports unsolvable board', solve(unsolvable, { maxNodes: 50_000 }) === null);
 
+  // Three-way solvability: 'unsolvable' must be a proof, never a budget guess.
+  check('solvability: solvable', solvability([[0, 0, 0], [0], []]) === 'solvable');
+  check('solvability: proven unsolvable', solvability(unsolvable) === 'unsolvable');
+  const big = generateLevel({ id: 400, colors: 6, empties: 2, minPar: 10, name: 'x' });
+  check(
+    'solvability: tiny budget stays unknown, not false-negative',
+    solvability(big.board, undefined, 10) === 'unknown',
+  );
+
   // Audit A* optimality against independent BFS on small boards.
   let audited = 0;
   for (let seed = 0; seed < 6; seed++) {
@@ -249,6 +258,47 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
     `\n  ${LEVELS.length} levels verified - total ${(totalMs / 1000).toFixed(1)}s, ` +
     `worst L${worstId} at ${worstMs.toFixed(0)}ms`,
   );
+}
+
+// -------------------------------------------------------- support codes --
+// The email-support flow has two halves that must never drift apart: the
+// generator (scripts/make-support-code.mjs, run by us) and the client verifier
+// (src/services/Support.ts). Round-trip real codes through both.
+{
+  const { execSync } = await import('node:child_process');
+  const { normalizeCode, verifySupportCode } = await import('../services/Support');
+
+  const id = 'ABCD2345';
+  const make = (args: string): string =>
+    execSync(`node scripts/make-support-code.mjs ${id} ${args}`, { encoding: 'utf8' })
+      .split('\n')[0]!
+      .trim();
+
+  const levelCode = make('level 87');
+  const level = await verifySupportCode(levelCode, id, []);
+  check(
+    'support: level code round-trips',
+    level.ok && level.code.action === 'level' && level.code.param === 87,
+    JSON.stringify(level),
+  );
+
+  const reset = await verifySupportCode(make('reset'), id, []);
+  check('support: reset code round-trips', reset.ok && reset.code.action === 'reset');
+
+  const otherDevice = await verifySupportCode(levelCode, 'WXYZ7893', []);
+  check('support: code bound to one device', !otherDevice.ok && otherDevice.reason === 'invalid');
+
+  const replayed = await verifySupportCode(levelCode, id, [normalizeCode(levelCode)]);
+  check('support: code is single-use', !replayed.ok && replayed.reason === 'used');
+
+  // Flip the first data character (top bits of the version byte).
+  const raw = normalizeCode(levelCode);
+  const tampered = (raw[0] === 'A' ? 'B' : 'A') + raw.slice(1);
+  const bad = await verifySupportCode(tampered, id, []);
+  check('support: tampered code rejected', !bad.ok);
+
+  check('support: confusables normalized', normalizeCode('oil-u') === '011V');
+  check('support: garbage rejected', !(await verifySupportCode('hello!!', id, [])).ok);
 }
 
 console.log(`\n  ${passed} checks passed, ${failures.length} failed`);

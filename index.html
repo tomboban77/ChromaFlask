@@ -16,8 +16,9 @@
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <!-- Entry art paints first; home art warms up during the splash. -->
+    <!-- Entry art and logo paint first; home art warms up during the splash. -->
     <link rel="preload" as="image" href="/Entry.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/logo.webp" fetchpriority="high" />
     <link rel="preload" as="image" href="/home.webp" />
     <title>ChromaFlask</title>
   </head>
@@ -108,6 +109,12 @@
            only the live loading bar sits over it. -->
       <section class="screen screen--active" id="screen-boot">
         <h1 class="sr-only">ChromaFlask</h1>
+        <!-- The badge art is text-free; the wordmark is real (always correctly
+             spelled, crisp at any size) positioned over its blank banner. -->
+        <div class="splash__logo" aria-hidden="true">
+          <img src="/logo.webp" alt="" width="1170" height="1193" />
+          <span class="splash__logo-text"><b>Chroma</b><b>Flask</b></span>
+        </div>
         <div class="splash">
           <div class="splash__bar" role="progressbar" aria-label="Loading">
             <i id="boot-bar"></i>

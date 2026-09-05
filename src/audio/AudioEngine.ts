@@ -33,15 +33,22 @@ interface NoiseOptions {
   kind?: 'bandpass' | 'highpass' | 'lowpass';
 }
 
-const MUSIC_GAIN = 0.34;
+const MUSIC_GAIN = 0.2;
 
-/** Am - F - C - G, voiced as semitone offsets. Gentle, loops without fatigue. */
+/**
+ * Am - F - C - G as MIDI notes, all voiced around middle C. Inversions keep
+ * every chord in the same warm register: nothing low enough to boom, nothing
+ * high enough to pierce. Loops without fatigue.
+ */
 const PROGRESSION: readonly number[][] = [
-  [9, 12, 16], [5, 9, 12], [0, 4, 7], [7, 11, 14],
+  [57, 60, 64], // A3 C4 E4
+  [60, 65, 69], // C4 F4 A4
+  [60, 64, 67], // C4 E4 G4
+  [59, 62, 67], // B3 D4 G4
 ];
 
-function midiToFreq(semitonesFromC3: number): number {
-  return 130.81 * Math.pow(2, semitonesFromC3 / 12);
+function noteHz(midi: number): number {
+  return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
 export class AudioEngine {
@@ -321,55 +328,56 @@ export class AudioEngine {
   /**
    * Lookahead scheduler: a timer this coarse cannot place notes accurately, so
    * it queues them slightly ahead against the audio clock instead.
+   *
+   * The arrangement is a quiet music box: a soft sine pad holds each chord in
+   * the middle register while sparse plucked notes sparkle one and two octaves
+   * above. No bass line, no filter sweeps, no detuned beating - light and
+   * pleasant at length rather than thick.
    */
   private scheduleMusic(): void {
     const ctx = this.ctx;
     const bus = this.musicBus;
     if (!ctx || !bus) return;
 
+    const STEP = 0.36; // ~83bpm in eighth notes; 8 steps per chord
     const horizon = ctx.currentTime + 0.4;
     while (this.nextNoteTime < horizon) {
-      const chord = PROGRESSION[Math.floor(this.step / 8) % PROGRESSION.length] as number[];
+      const bar = Math.floor(this.step / 8);
+      const chord = PROGRESSION[bar % PROGRESSION.length] as number[];
+      const beat = this.step % 8;
       const t = this.nextNoteTime;
 
-      // Sustained pad on the downbeat of each bar.
-      if (this.step % 8 === 0) {
-        for (const semi of chord) {
-          this.pad(ctx, bus, midiToFreq(semi + 48), t, 3.4);
-          this.pad(ctx, bus, midiToFreq(semi + 60), t, 3.4, 0.4);
-        }
+      // Soft sustained pad on the downbeat of each bar.
+      if (beat === 0) {
+        for (const midi of chord) this.pad(ctx, bus, noteHz(midi), t, 3.1);
       }
 
-      // Sparse arpeggio sparkle, skipping beats to stay out of the way.
-      if (this.step % 2 === 1 && Math.random() > 0.45) {
-        const semi = chord[Math.floor(Math.random() * chord.length)] as number;
-        this.pluck(ctx, bus, midiToFreq(semi + 72), t);
+      // Music-box melody: gentle rising contour with rests, an octave up.
+      if ((beat === 1 || beat === 3 || beat === 4 || beat === 6) && Math.random() > 0.3) {
+        const tone = chord[(bar + beat) % chord.length] as number;
+        const octave = beat === 6 && Math.random() > 0.5 ? 24 : 12;
+        this.pluck(ctx, bus, noteHz(tone + octave), t, octave === 24 ? 0.035 : 0.055);
       }
 
-      this.nextNoteTime += 0.42;
+      this.nextNoteTime += STEP;
       this.step++;
     }
   }
 
-  private pad(
-    ctx: AudioContext, bus: GainNode, freq: number, t: number, dur: number, scale = 1,
-  ): void {
+  private pad(ctx: AudioContext, bus: GainNode, freq: number, t: number, dur: number): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     const filter = ctx.createBiquadFilter();
 
-    osc.type = 'triangle';
+    osc.type = 'sine';
     osc.frequency.value = freq;
-    osc.detune.value = (Math.random() - 0.5) * 12;
+    osc.detune.value = (Math.random() - 0.5) * 4; // barely-there movement, no beating
 
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(700, t);
-    filter.frequency.linearRampToValueAtTime(1500, t + dur * 0.4);
-    filter.frequency.linearRampToValueAtTime(600, t + dur);
+    filter.frequency.value = 1600;
 
-    const peak = 0.16 * scale;
     gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(peak, t + 0.9);
+    gain.gain.exponentialRampToValueAtTime(0.05, t + 1.1);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
 
     osc.connect(filter).connect(gain).connect(bus);
@@ -377,17 +385,31 @@ export class AudioEngine {
     osc.stop(t + dur + 0.1);
   }
 
-  private pluck(ctx: AudioContext, bus: GainNode, freq: number, t: number): void {
+  /** Music-box timbre: a sine fundamental with a faint, faster-dying octave. */
+  private pluck(
+    ctx: AudioContext, bus: GainNode, freq: number, t: number, peak = 0.055,
+  ): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.09, t + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+    gain.gain.exponentialRampToValueAtTime(peak, t + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
     osc.connect(gain).connect(bus);
     osc.start(t);
-    osc.stop(t + 1.2);
+    osc.stop(t + 1);
+
+    const shimmer = ctx.createOscillator();
+    const shimmerGain = ctx.createGain();
+    shimmer.type = 'sine';
+    shimmer.frequency.value = freq * 2;
+    shimmerGain.gain.setValueAtTime(0.0001, t);
+    shimmerGain.gain.exponentialRampToValueAtTime(peak * 0.3, t + 0.006);
+    shimmerGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+    shimmer.connect(shimmerGain).connect(bus);
+    shimmer.start(t);
+    shimmer.stop(t + 0.5);
   }
 }
 

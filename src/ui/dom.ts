@@ -57,7 +57,7 @@ export class ToastHost {
 // ------------------------------------------------------------------ modal
 export interface ModalButton {
   label: string;
-  kind?: 'primary' | 'success' | 'ghost';
+  kind?: 'primary' | 'success' | 'ghost' | 'danger';
   /** Return false to keep the modal open. */
   onClick?: () => void | boolean;
 }

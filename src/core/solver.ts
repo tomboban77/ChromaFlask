@@ -114,17 +114,26 @@ function heuristic(board: Board, colors: number, rules: BoardRules): number {
   return Math.max(base, runsIn(board[0] as number[]));
 }
 
+interface SearchOutcome {
+  result: SolveResult | null;
+  /** True when the node budget ran out before the search space was exhausted. */
+  exhausted: boolean;
+}
+
 /**
  * A* over interchangeable-tube-canonicalised states.
- * Returns null if the board is unsolvable or the node budget was exhausted.
+ * `result` is null if the board is unsolvable or the node budget ran out;
+ * `exhausted` tells those two cases apart.
  */
-export function solve(board: Board, opts: SolveOptions = {}): SolveResult | null {
+function search(board: Board, opts: SolveOptions = {}): SearchOutcome {
   const weight = opts.weight ?? 1;
   const maxNodes = opts.maxNodes ?? 200_000;
   const rules = opts.rules ?? DEFAULT_RULES;
   const colors = colorCount(board);
 
-  if (isSolved(board, rules)) return { solution: [], nodesExpanded: 0, optimal: true };
+  if (isSolved(board, rules)) {
+    return { result: { solution: [], nodesExpanded: 0, optimal: true }, exhausted: false };
+  }
 
   const boards: Board[] = [cloneBoard(board)];
   const parent: number[] = [-1];
@@ -154,11 +163,14 @@ export function solve(board: Board, opts: SolveOptions = {}): SolveResult | null
         solution.push(viaMove[n] as Move);
       }
       solution.reverse();
-      return { solution, nodesExpanded: expanded, optimal: weight === 1 };
+      return {
+        result: { solution, nodesExpanded: expanded, optimal: weight === 1 },
+        exhausted: false,
+      };
     }
 
     expanded++;
-    if (expanded > maxNodes) return null;
+    if (expanded > maxNodes) return { result: null, exhausted: true };
 
     for (const move of usefulMoves(current, rules)) {
       const next = cloneBoard(current);
@@ -179,7 +191,28 @@ export function solve(board: Board, opts: SolveOptions = {}): SolveResult | null
     }
   }
 
-  return null;
+  // The reachable space is fully explored and holds no solved state.
+  return { result: null, exhausted: false };
+}
+
+/** A* solve. Returns null if unsolvable or the node budget ran out. */
+export function solve(board: Board, opts: SolveOptions = {}): SolveResult | null {
+  return search(board, opts).result;
+}
+
+export type Solvability = 'solvable' | 'unsolvable' | 'unknown';
+
+/**
+ * Three-way solvability check. 'unsolvable' is a *proof* (the whole reachable
+ * space was explored), so it is safe to tell the player "no way to win from
+ * here"; 'unknown' means the budget ran out first - stay silent.
+ */
+export function solvability(
+  board: Board, rules: BoardRules = DEFAULT_RULES, maxNodes = 40_000,
+): Solvability {
+  const { result, exhausted } = search(board, { weight: 2, maxNodes, rules });
+  if (result) return 'solvable';
+  return exhausted ? 'unknown' : 'unsolvable';
 }
 
 /**

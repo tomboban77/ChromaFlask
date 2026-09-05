@@ -8,11 +8,14 @@ import {
 } from '@/core/progression';
 import type { GeneratedLevel } from '@/core/types';
 
-import { SaveService } from '@/services/SaveService';
+import { SAVE_VERSION, SaveService } from '@/services/SaveService';
 import { AuthService } from '@/services/AuthService';
-import { Analytics } from '@/services/Analytics';
+import { Analytics, POSTHOG_KEY, PostHogDriver } from '@/services/Analytics';
 import { RemoteConfig } from '@/services/RemoteConfig';
 import { IAP_CATALOG, Payments, type IapProduct } from '@/services/Payments';
+import {
+  SUPPORT_CODE_ERROR_TEXT, applySupportCode, formatSupportId, supportMailto, verifySupportCode,
+} from '@/services/Support';
 
 import { audio } from '@/audio/AudioEngine';
 import { GameStage } from '@/render/GameStage';
@@ -90,6 +93,9 @@ class App {
     await this.remote.refresh();
     void this.payments.init();
     this.save = new SaveService(this.remote.current.economy.startingCoins);
+    // The support ID doubles as the analytics identity, so a support email
+    // can be matched to its funnel without collecting anything personal.
+    if (POSTHOG_KEY) this.analytics.addDriver(new PostHogDriver(POSTHOG_KEY, this.save.supportId));
 
     this.toast = new ToastHost($('#toast-root'));
     this.modal = new ModalHost($('#modal-root'));
@@ -109,6 +115,7 @@ class App {
       onMove: (_move, count) => this.onMove(count),
       onWin: () => this.onWin(),
       onStuck: () => this.onStuck(),
+      onNoWin: () => this.onNoWin(),
       onSelectionChange: (i) => {
         if (i !== null) this.tutorial.notify('select');
         this.updateTutorialHand();
@@ -268,10 +275,13 @@ class App {
   }
 
   private wireGlobal(): void {
-    // Audio contexts may only start inside a user gesture.
+    // Audio contexts may only start inside a user gesture. Deliberately NOT
+    // once-only: iOS can suspend the context without a visibility change
+    // (phone call, Siri, headphones unplugged), and the next tap must revive
+    // it. unlock() is idempotent and near-free once the context exists.
     const unlock = () => audio.unlock();
-    window.addEventListener('pointerdown', unlock, { once: true });
-    window.addEventListener('keydown', unlock, { once: true });
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
 
     document.addEventListener('visibilitychange', () => {
       const hidden = document.hidden;
@@ -1092,6 +1102,16 @@ class App {
   }
 
   // ---------------------------------------------------------------- stuck
+  /** The solver proved no winning line remains, though legal moves do. */
+  private onNoWin(): void {
+    audio.play('stuck');
+    haptic([16, 50, 16]);
+    this.analytics.track({
+      type: 'level_no_win', level: this.levelId, moves: this.board.moveCount,
+    });
+    this.toast.show('No way to win from here - use Undo or Restart', 'warn', 3400);
+  }
+
   private onStuck(): void {
     audio.play('stuck');
     haptic([30, 80, 30]);
@@ -1286,6 +1306,8 @@ class App {
       content.appendChild(row);
     }
 
+    content.appendChild(this.buildSupportSection());
+
     const profile = this.save.snapshot.profile;
     const footer = el('p', 'panel__hint');
     footer.innerHTML = profile
@@ -1299,6 +1321,147 @@ class App {
       buttons: [
         { label: 'How to play', kind: 'ghost', onClick: () => this.showHowTo() },
         { label: 'Done', kind: 'primary' },
+      ],
+    });
+  }
+
+  // ------------------------------------------------------------- support
+  private buildSupportSection(): HTMLElement {
+    const section = el('div');
+    section.appendChild(el('div', 'modal__subhead', 'Help & support'));
+
+    const supportRow = (
+      label: string,
+      desc: string,
+      action: string,
+      kind: 'ghost' | 'danger',
+      onClick: () => void,
+    ): void => {
+      const row = el('div', 'setting');
+      const text = el('div');
+      text.appendChild(el('div', 'setting__label', label));
+      text.appendChild(el('div', 'setting__desc', desc));
+      row.appendChild(text);
+      const button = el('button', `btn btn--${kind} btn--compact`, action);
+      button.addEventListener('click', () => {
+        audio.play('button');
+        onClick();
+      });
+      row.appendChild(button);
+      section.appendChild(row);
+    };
+
+    const supportId = formatSupportId(this.save.supportId);
+    supportRow('Support ID', supportId, 'Copy', 'ghost', () => {
+      navigator.clipboard?.writeText(supportId).then(
+        () => this.toast.show('Support ID copied'),
+        () => this.toast.show(`Your ID: ${supportId}`),
+      );
+    });
+
+    supportRow('Contact us', 'Something broken? We answer by email', 'Email', 'ghost', () => {
+      const level = this.save.highestUnlocked(LEVEL_COUNT);
+      this.analytics.track({ type: 'support_email_open', level });
+      window.location.href = supportMailto(this.save.supportId, level, SAVE_VERSION);
+    });
+
+    supportRow('Support code', 'Got a code from us? Redeem it here', 'Enter', 'ghost', () =>
+      this.openSupportCodeEntry(),
+    );
+
+    supportRow('Reset progress', 'Erase levels, coins and stats', 'Reset', 'danger', () =>
+      this.confirmResetProgress(),
+    );
+
+    return section;
+  }
+
+  private openSupportCodeEntry(): void {
+    const content = el('div');
+    const input = el('input', 'field__input');
+    input.placeholder = 'CF-XXXXX-XXXXX-XXXXX-XXXXX';
+    input.autocapitalize = 'characters';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.setAttribute('aria-label', 'Support code');
+    content.appendChild(input);
+    const status = el('p', 'panel__hint support-code__status');
+    content.appendChild(status);
+
+    const redeem = async (): Promise<void> => {
+      const result = await verifySupportCode(
+        input.value,
+        this.save.supportId,
+        this.save.snapshot.redeemedCodes,
+      );
+      if (!result.ok) {
+        status.textContent = SUPPORT_CODE_ERROR_TEXT[result.reason];
+        haptic([12, 40, 12]);
+        return;
+      }
+      const applied = applySupportCode(result.code, this.save, LEVEL_COUNT);
+      this.analytics.track({ type: 'support_code_redeemed', action: result.code.action });
+      if (result.code.action === 'reset') {
+        this.analytics.track({ type: 'progress_reset', source: 'support_code' });
+      }
+      this.modal.close();
+      this.toast.show(applied.message);
+      audio.play('win');
+      if (applied.reload) {
+        this.save.flush();
+        window.setTimeout(() => window.location.reload(), 900);
+      } else {
+        this.refreshAfterSupportCode();
+      }
+    };
+
+    this.modal.open({
+      title: 'Support code',
+      content,
+      inlineButtons: true,
+      buttons: [
+        { label: 'Cancel', kind: 'ghost', onClick: () => this.openSettings() },
+        {
+          label: 'Redeem',
+          kind: 'primary',
+          onClick: () => {
+            void redeem();
+            return false; // stays open; redeem() closes it on success
+          },
+        },
+      ],
+    });
+    window.setTimeout(() => input.focus(), 80);
+  }
+
+  /** A code may have changed coins, lives or unlocks under the open screen. */
+  private refreshAfterSupportCode(): void {
+    if (this.current === 'home') this.renderHome();
+    else if (this.current === 'map') this.renderMap();
+    else if (this.current === 'game') this.updateHud();
+  }
+
+  private confirmResetProgress(): void {
+    this.modal.open({
+      title: 'Reset progress?',
+      bodyHtml: `
+        <p style="text-align:left;margin:0">
+          This erases your levels, stars, coins and stats on this device and
+          restarts the game from level 1. Your settings are kept.
+          <b>This cannot be undone.</b>
+        </p>`,
+      inlineButtons: true,
+      buttons: [
+        { label: 'Keep playing', kind: 'primary', onClick: () => this.openSettings() },
+        {
+          label: 'Reset',
+          kind: 'danger',
+          onClick: () => {
+            this.analytics.track({ type: 'progress_reset', source: 'settings' });
+            this.save.resetProgress();
+            window.location.reload();
+          },
+        },
       ],
     });
   }

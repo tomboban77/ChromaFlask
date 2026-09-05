@@ -4,7 +4,7 @@ import {
   DEFAULT_RULES, TUBE_CAPACITY, applyPour, cloneBoard, isComplete, isDeadlocked,
   isSolved, pourAmount, rulesFor, undoPour,
 } from '@/core/board';
-import { findHint } from '@/core/solver';
+import { findHint, solvability } from '@/core/solver';
 import type { Board, BoardRules, ColorId, GeneratedLevel, Move } from '@/core/types';
 import { audio } from '@/audio/AudioEngine';
 import { BottleView, type Band } from './BottleView';
@@ -18,6 +18,8 @@ export interface BoardCallbacks {
   onMove?: (move: Move, moveCount: number) => void;
   onWin?: () => void;
   onStuck?: () => void;
+  /** Fired once per trap: the position is *proven* unwinnable (moves remain). */
+  onNoWin?: () => void;
   onInvalid?: (index: number) => void;
   onSelectionChange?: (index: number | null) => void;
   onTubeComplete?: (index: number) => void;
@@ -61,6 +63,9 @@ export class BoardView {
   private hidden: number[] = [];
   /** Rule variations for the mounted level (cauldron etc.). */
   private rules: BoardRules = DEFAULT_RULES;
+  /** One "no way to win" warning per trap; re-armed by undo and new space. */
+  private noWinWarned = false;
+  private noWinTimer: number | null = null;
 
   private selected: number | null = null;
   private busy = false;
@@ -96,6 +101,7 @@ export class BoardView {
     this.history = [];
     this.selected = null;
     this.busy = false;
+    this.noWinWarned = false;
 
     this.hidden = this.board.map((tube) =>
       level.spec.murky ? Math.max(0, tube.length - 1) : 0,
@@ -132,6 +138,10 @@ export class BoardView {
     this.generation += 1;
     this.pouring = null;
     this.resolved = false;
+    if (this.noWinTimer !== null) {
+      window.clearTimeout(this.noWinTimer);
+      this.noWinTimer = null;
+    }
     this.clearHint();
     gsap.killTweensOf(this.bottles);
     for (const b of this.bottles) {
@@ -580,7 +590,33 @@ export class BoardView {
     }
     if (isDeadlocked(this.board, this.rules)) {
       this.callbacks.onStuck?.();
+      return;
     }
+    this.scheduleNoWinCheck();
+  }
+
+  /**
+   * A player can pour themselves into a position that still has legal moves
+   * but provably no winning line. Silently letting them flounder reads as
+   * "this level is impossible", so prove it and say so - once per trap.
+   *
+   * Deferred off the move handler, budget-capped, and only on boards small
+   * enough that a full proof is cheap; anything inconclusive stays silent.
+   */
+  private scheduleNoWinCheck(): void {
+    if (this.noWinWarned || this.board.length > 8) return;
+    if (this.noWinTimer !== null) window.clearTimeout(this.noWinTimer);
+
+    const gen = this.generation;
+    const moves = this.history.length;
+    this.noWinTimer = window.setTimeout(() => {
+      this.noWinTimer = null;
+      if (gen !== this.generation || moves !== this.history.length || this.busy) return;
+      if (solvability(this.board, this.rules, 30_000) === 'unsolvable') {
+        this.noWinWarned = true;
+        this.callbacks.onNoWin?.();
+      }
+    }, 150);
   }
 
   // -------------------------------------------------------------- powerups
@@ -592,6 +628,7 @@ export class BoardView {
 
     undoPour(this.board, move);
     this.resolved = false;
+    this.noWinWarned = false; // undoing may have escaped the trap; re-arm
     this.settleHidden();
     this.select(null);
 
@@ -621,6 +658,7 @@ export class BoardView {
     this.clearHint();
     this.board.push([]);
     this.hidden.push(0);
+    this.noWinWarned = false; // fresh space can reopen a winning line
     const view = this.addBottleView(this.board.length - 1, colorblind);
     view.alpha = 0;
     this.layout(this.viewW, this.viewH, true);

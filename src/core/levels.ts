@@ -33,17 +33,23 @@ function nameFor(id: number): string {
   return `${ADJ[(id * 7) % ADJ.length]} ${NOUN[(id * 13) % NOUN.length]}`;
 }
 
-/** Hand-tuned opening: teaches the game and ramps to six colours by level 10. */
+/**
+ * Hand-tuned opening: teaches the game and ramps to six colours by level 10.
+ * Deliberately ALL two-empty boards: single-empty "squeeze" boards let a new
+ * player pour into a dead end within a few moves, which reads as "this level
+ * is impossible without buying a bottle". Tight boards start at level 18,
+ * once the player has the skills (and the no-win warning to guide them).
+ */
 const OPENING: readonly LevelSpec[] = [
   { id: 1, colors: 2, empties: 2, minPar: 2, name: 'First Pour' },
   { id: 2, colors: 3, empties: 2, minPar: 4, name: 'Triple Trouble' },
-  { id: 3, colors: 3, empties: 1, minPar: 6, name: 'Tight Fit' },
+  { id: 3, colors: 3, empties: 2, minPar: 6, name: 'Tight Fit' },
   { id: 4, colors: 4, empties: 2, minPar: 7, name: 'Four Corners' },
   { id: 5, colors: 4, empties: 2, minPar: 8, name: 'Steady Hand' },
-  { id: 6, colors: 4, empties: 1, minPar: 9, name: 'The Squeeze' },
+  { id: 6, colors: 4, empties: 2, minPar: 9, name: 'Slow Brew' },
   { id: 7, colors: 5, empties: 2, minPar: 10, name: 'Spectrum' },
   { id: 8, colors: 5, empties: 2, minPar: 11, name: 'Five Shades' },
-  { id: 9, colors: 5, empties: 1, minPar: 12, name: 'Narrow Margin' },
+  { id: 9, colors: 5, empties: 2, minPar: 12, name: 'High Tide' },
   { id: 10, colors: 6, empties: 2, minPar: 13, name: 'Alchemist' },
 ] as const;
 
