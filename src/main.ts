@@ -598,7 +598,13 @@ class App {
     $('#btn-daily').addEventListener('click', () => {
       audio.play('button');
       haptic(10);
-      void this.startLevel(dailyId(todayDayNumber()));
+      const today = todayDayNumber();
+      const record = this.save.dailyRecord(today);
+      if (record) {
+        this.showDailyDoneDialog(record.stars, record.bestMoves, today);
+      } else {
+        void this.startLevel(dailyId(today));
+      }
     });
 
     for (const tab of Array.from(document.querySelectorAll<HTMLElement>('.bottomnav__tab'))) {
@@ -651,6 +657,48 @@ class App {
     return isEndless(id) ? `Endless #${endlessIndex(id)}` : `Level ${id}`;
   }
 
+  /**
+   * Today's challenge is already cleared: show the result and when the next
+   * one arrives (local midnight). Replaying is allowed but pays nothing new,
+   * and says so.
+   */
+  private showDailyDoneDialog(stars: number, bestMoves: number, today: number): void {
+    const content = el('div', 'dailydone');
+    content.appendChild(
+      el('div', 'dailydone__stars', `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`),
+    );
+    content.appendChild(el('div', 'dailydone__best', `Best today: ${bestMoves} moves`));
+    const streak = this.save.dailyStreak(today);
+    if (streak > 1) content.appendChild(el('div', 'win__streak', `🔥 ${streak}-day streak`));
+    const next = el('div', 'dailydone__next');
+    content.appendChild(next);
+
+    const refresh = () => {
+      const now = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      next.textContent = `Next potion in ${formatCountdown(midnight.getTime() - now.getTime())}`;
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 1000);
+
+    this.modal.open({
+      title: 'Done for today',
+      content,
+      closeButton: true,
+      buttons: [
+        { label: 'Back home', kind: 'primary' },
+        {
+          label: 'Replay for fun (no reward)',
+          kind: 'ghost',
+          onClick: () => {
+            void this.startLevel(dailyId(today));
+          },
+        },
+      ],
+      onClose: () => window.clearInterval(timer),
+    });
+  }
+
   /** The daily button's second line: today's state and the streak. */
   private renderDailyButton(): void {
     const today = todayDayNumber();
@@ -660,7 +708,7 @@ class App {
     if (record) {
       sub.textContent =
         `Done today ${'★'.repeat(record.stars)}${'☆'.repeat(3 - record.stars)}` +
-        (streak > 1 ? ` · 🔥 ${streak}-day streak` : '');
+        (streak > 1 ? ` · 🔥 ${streak}-day streak` : ' · back tomorrow');
     } else if (streak > 0) {
       sub.textContent = `🔥 ${streak}-day streak · play today to keep it`;
     } else {

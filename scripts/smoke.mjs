@@ -388,6 +388,17 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.click('#btn-back'); // no moves: straight home
   await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
 
+  // ---- a dialog button that opens another dialog must not close the new one
+  await page.click('#home-profile');
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  await page.locator('.modal button', { hasText: 'How to play' }).click();
+  await sleep(300);
+  const howToTitle = (await page.locator('.modal__title').textContent())?.trim();
+  console.log(`  chained dialog  "${howToTitle}"`);
+  if (howToTitle !== 'How to play') problems.push(`[${label}] How to play should open from the profile card (saw "${howToTitle}")`);
+  await page.locator('.modal button', { hasText: 'Got it' }).click();
+  await sleep(200);
+
   // ---- back button: closes an open dialog, then returns from map to home
   await page.click('#btn-settings-home');
   await page.waitForSelector('.modal', { timeout: 5000 });

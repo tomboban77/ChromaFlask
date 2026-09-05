@@ -142,7 +142,9 @@ export class ModalHost {
         const button = el('button', `btn btn--${spec.kind ?? 'ghost'}`, spec.label);
         button.addEventListener('click', () => {
           const keepOpen = spec.onClick?.() === false;
-          if (!keepOpen) this.close();
+          // Close only the dialog this button belongs to. If the handler
+          // opened another dialog, that one is now current and must survive.
+          if (!keepOpen && this.current === modal) this.close();
         });
         actions.appendChild(button);
       }

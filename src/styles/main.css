@@ -1122,6 +1122,26 @@ body {
 }
 .node--endless .node__num { color: var(--gold-hi); font-size: 26px; line-height: 1; }
 
+/* ------------------------------------------------------ daily done dialog -- */
+.dailydone { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 16px; }
+.dailydone__stars {
+  font-size: 40px;
+  line-height: 1;
+  color: var(--accent-warm);
+  filter: drop-shadow(0 0 12px rgba(255, 176, 32, 0.6));
+}
+.dailydone__best { font-size: 14px; color: #e9defc; }
+.dailydone__next {
+  margin-top: 4px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(20, 8, 50, 0.45);
+  font-size: 13px;
+  font-weight: 800;
+  color: #cdb4f5;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ----------------------------------------------------------- how to play -- */
 .howto { text-align: left; }
 .howto h3 {
