@@ -122,6 +122,18 @@ function specFor(id: number): LevelSpec {
     };
   }
 
+  // The Locked Bottle, every 10 levels through the late tiers: a full board
+  // whose first bottle is padlocked until one other bottle is sealed - two
+  // from the third tier. Same par floor as a standard board; the lock itself
+  // adds the depth (and a planning problem no earlier level poses).
+  if (tier >= 1 && id % 10 === 5) {
+    return {
+      id, colors, empties: 2, minPar,
+      lock: { seals: tier >= 3 ? 2 : 1 },
+      name: nameFor(id), murky: isMurky(id),
+    };
+  }
+
   // Squeeze every 10 levels: one empty tube. Colours are capped because
   // single-empty boards get vanishingly rare to deal beyond six colours.
   // From the third late tier a second squeeze joins each block of ten.
@@ -185,7 +197,7 @@ export function endlessSpec(id: number): LevelSpec {
   const name = nameFor(id);
   // Floors start where the campaign's final tier left them, so endless is
   // never a step down, and cap where the precompute proved deals stay fast.
-  switch ((n - 1) % 5) {
+  switch ((n - 1) % 6) {
     case 0:
       return { id, colors: 8, empties: 2, minPar: Math.min(28, 27 + tier), name, murky };
     case 1:
@@ -196,8 +208,10 @@ export function endlessSpec(id: number): LevelSpec {
       };
     case 3:
       return { id, colors: 6, empties: 1, minPar: 19, name, murky };
-    default:
+    case 4:
       return { id, colors: 7, empties: 3, minPar: 17, name, murky: true };
+    default:
+      return { id, colors: 8, empties: 2, minPar: 27, lock: { seals: 2 }, name, murky };
   }
 }
 

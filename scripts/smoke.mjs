@@ -370,6 +370,24 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.click('#btn-back'); // no moves made: straight home, no dialog
   await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
 
+  // ---- locked bottle (level 205): tapping the padlocked bottle is refused, others select
+  await page.evaluate(() => window.__cf.start(205));
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
+  await sleep(1500);
+  await page.evaluate(() => window.__cf.tap(0)); // bottle 0 is the locked one
+  await sleep(300);
+  const afterLockedTap = await page.evaluate(() => window.__cf.state());
+  await page.evaluate(() => window.__cf.tap(1));
+  await sleep(300);
+  const afterFreeTap = await page.evaluate(() => window.__cf.state());
+  console.log(`  locked bottle   tap locked -> selected=${afterLockedTap.selected}, tap free -> selected=${afterFreeTap.selected}`);
+  if (afterLockedTap.selected !== null) problems.push(`[${label}] the locked bottle must not be selectable`);
+  if (afterFreeTap.selected !== 1) problems.push(`[${label}] an ordinary bottle should still select on a lock level`);
+  await page.evaluate(() => window.__cf.tap(1)); // deselect
+  await sleep(200);
+  await page.click('#btn-back'); // no moves: straight home
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+
   // ---- back button: closes an open dialog, then returns from map to home
   await page.click('#btn-settings-home');
   await page.waitForSelector('.modal', { timeout: 5000 });

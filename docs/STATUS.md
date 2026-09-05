@@ -96,8 +96,18 @@ _Last updated: 2026-09-05_
 - **Murky potions** (from level 36, ramping to dominant past 120) — colours
   below each tube's mouth start concealed ("?" murk) and reveal permanently as
   they surface. Purely visual; solver and par untouched.
-- Both introduced by one-time toasts, staggered so players meet one idea at a
-  time; both documented in "How to play".
+- **The Locked Bottle** (levels 205, 215, … 495, and one shape in six in
+  endless) — the first filled bottle is padlocked and cannot be poured into
+  or out of until the player has **sealed** one other bottle (two from level
+  321). The lock is a pure function of the board (`lockActive`), so undo
+  re-locks, the solver needs no extra state, every existing heuristic stays
+  admissible, and A* is audited against brute force under lock rules. While
+  locked the bottle is fingerprinted separately; once open it is an ordinary
+  tube again. Rendered as a dark plate with a gold padlock and one dot per
+  seal still needed; opening swells and fades the plate with a sparkle and
+  the unlock chime. Tapping it explains why (throttled toast).
+- All three introduced by one-time toasts, staggered so players meet one idea
+  at a time; all documented in "How to play".
 
 ### Screens & flow
 - **Splash** — full-bleed entry art (`public/Entry.webp`) + loading bar

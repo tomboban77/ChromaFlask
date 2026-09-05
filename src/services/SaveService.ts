@@ -100,6 +100,8 @@ export interface SaveData {
   endlessSeen: boolean;
   /** Daily challenge records (keyed by day number) and streak. */
   daily: DailyState;
+  /** Whether the locked-bottle mechanic has been introduced with a toast. */
+  lockSeen: boolean;
 }
 
 /** Mutable save-side shape of the core's read-only DailyStreak, plus history. */
@@ -114,7 +116,7 @@ export interface DailyState {
 const _dailyStateIsStreak: (s: DailyState) => DailyStreak = (s) => s;
 void _dailyStateIsStreak;
 
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -157,6 +159,7 @@ export function defaultSave(startingCoins: number): SaveData {
     inProgress: null,
     endlessSeen: false,
     daily: { records: {}, streak: 0, lastDay: -1, bestStreak: 0 },
+    lockSeen: false,
   };
 }
 
@@ -262,6 +265,8 @@ export class SaveService {
       endlessSeen: parsed.endlessSeen ?? false,
       // v8 saves predate the daily challenge.
       daily: { ...fallback.daily, ...(parsed.daily ?? {}), records: parsed.daily?.records ?? {} },
+      // v9 saves predate the locked bottle.
+      lockSeen: parsed.lockSeen ?? false,
     };
   }
 

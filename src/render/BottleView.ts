@@ -90,6 +90,10 @@ export class BottleView extends Container {
   /** Cork that seals a completed bottle. Drawn centred on its own origin. */
   private readonly cap = new Graphics();
   private capped = false;
+  /** Padlock plate for the Locked Bottle; hidden unless the lock is engaged. */
+  private readonly lockPlate = new Graphics();
+  private locked = false;
+  private lockSeals = 0;
   private capH = 0;
   /** Cap y when seated in the neck (cap is centred, so this is above the mouth). */
   private capRestY = 0;
@@ -113,22 +117,109 @@ export class BottleView extends Container {
     this.liquidLayer.addChild(this.liquidMask);
     this.liquidLayer.mask = this.liquidMask;
 
-    this.addChild(this.glow, this.cavity, this.liquidLayer, this.glass, this.flash, this.cap);
+    this.addChild(
+      this.glow, this.cavity, this.liquidLayer, this.glass, this.flash, this.lockPlate, this.cap,
+    );
 
     this.eventMode = 'static';
     this.cursor = 'pointer';
     this.flash.alpha = 0;
     this.glow.alpha = 0;
     this.cap.visible = false;
+    this.lockPlate.visible = false;
 
     this.redrawChrome();
   }
 
   override destroy(options?: Parameters<Container['destroy']>[0]): void {
-    // A cork mid-flight must not keep tweening a destroyed display object.
+    // A cork mid-flight (or a padlock mid-unlock) must not keep tweening a
+    // destroyed display object.
     gsap.killTweensOf(this.cap);
     gsap.killTweensOf(this.cap.scale);
+    gsap.killTweensOf(this.lockPlate);
+    gsap.killTweensOf(this.lockPlate.scale);
     super.destroy(options);
+  }
+
+  get isLocked(): boolean {
+    return this.locked;
+  }
+
+  /**
+   * Show or hide the padlock. Engaging is instant (a lock is a state, not an
+   * event); opening animates the plate swelling and fading away, with
+   * `onUnlocked` for the sound and sparkle.
+   */
+  setLocked(on: boolean, seals: number, animate: boolean, onUnlocked?: () => void): void {
+    if (seals !== this.lockSeals) {
+      this.lockSeals = seals;
+      this.redrawLockPlate();
+    }
+    if (this.locked === on) return;
+    this.locked = on;
+    gsap.killTweensOf(this.lockPlate);
+    gsap.killTweensOf(this.lockPlate.scale);
+
+    if (on) {
+      this.lockPlate.visible = true;
+      this.lockPlate.alpha = 1;
+      this.lockPlate.scale.set(1);
+      return;
+    }
+    if (!animate) {
+      this.lockPlate.visible = false;
+      return;
+    }
+    gsap.to(this.lockPlate.scale, { x: 1.35, y: 1.35, duration: 0.42, ease: 'back.out(2)' });
+    gsap.to(this.lockPlate, {
+      alpha: 0,
+      duration: 0.42,
+      ease: 'power2.in',
+      onComplete: () => {
+        this.lockPlate.visible = false;
+        this.agitate(0.5);
+        onUnlocked?.();
+      },
+    });
+  }
+
+  /** Dark plate on the body with a gold padlock; one dot per seal still needed. */
+  private redrawLockPlate(): void {
+    const g = this.geo;
+    const p = this.lockPlate;
+    p.clear();
+    const bodyH = g.yBottom - g.yBody;
+    const w = g.bodyW * 0.72;
+    const h = Math.min(bodyH * 0.42, g.bodyW * 0.7);
+    const cx = 0;
+    const cy = g.yBody + bodyH * 0.5;
+    p.position.set(0, 0);
+    p.pivot.set(0, 0);
+
+    p.roundRect(cx - w / 2, cy - h / 2, w, h, Math.min(8, w * 0.16))
+      .fill({ color: 0x1a1533, alpha: 0.82 })
+      .stroke({ width: 1.6, color: 0xf0b43c, alpha: 0.85 });
+
+    // padlock: shackle over a body with a keyhole
+    const lw = w * 0.42;
+    const lh = h * 0.34;
+    const ly = cy - h * 0.06;
+    const shackleR = lw * 0.32;
+    p.arc(cx, ly - lh / 2, shackleR, Math.PI, Math.PI * 2)
+      .stroke({ width: Math.max(2, lw * 0.16), color: 0xffc531, cap: 'round' });
+    p.roundRect(cx - lw / 2, ly - lh / 2, lw, lh, Math.min(4, lw * 0.15)).fill({ color: 0xffc531 });
+    p.circle(cx, ly + lh * 0.02, Math.max(1.4, lw * 0.1)).fill({ color: 0x3d2a05 });
+    p.rect(cx - Math.max(0.8, lw * 0.05), ly + lh * 0.02, Math.max(1.6, lw * 0.1), lh * 0.3)
+      .fill({ color: 0x3d2a05 });
+
+    // one dot per bottle still to seal
+    const dots = Math.max(0, Math.min(4, this.lockSeals));
+    const dr = Math.max(1.6, w * 0.06);
+    const spacing = dr * 3;
+    const startX = cx - ((dots - 1) * spacing) / 2;
+    for (let i = 0; i < dots; i++) {
+      p.circle(startX + i * spacing, cy + h * 0.36, dr).fill({ color: 0xffffff, alpha: 0.85 });
+    }
   }
 
   // ------------------------------------------------------------- geometry
@@ -455,6 +546,9 @@ export class BottleView extends Container {
     c.roundRect(-cw / 2, -ch / 2, cw, ch, cr)
       .stroke({ width: 1.6, color: 0x6b4420, alpha: 0.8 });
     if (this.capped) c.y = this.capRestY;
+
+    // --- padlock plate (geometry-dependent, so redrawn with the chrome)
+    this.redrawLockPlate();
 
     // --- selection glow: soft outer halo built from stacked strokes
     this.glow.clear();

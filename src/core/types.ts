@@ -48,12 +48,21 @@ export interface LevelSpec {
    * Flexible space that turns into a liability if used carelessly.
    */
   readonly cauldron?: boolean;
+  /**
+   * The Locked Bottle: one filled tube starts padlocked and cannot be poured
+   * into or out of until `seals` other bottles have been completed. Forces
+   * the player to plan which colours to finish first. Purely a restriction
+   * on legal moves, so every existing solver bound stays admissible.
+   */
+  readonly lock?: { readonly seals: number };
 }
 
 /** Rule variations that change what the engine considers legal or solved. */
 export interface BoardRules {
   /** When true, tube 0 is the Cauldron: accepts any colour, must end empty. */
   readonly cauldron: boolean;
+  /** When set, tube `index` is padlocked until `seals` ordinary bottles are complete. */
+  readonly lock?: { readonly index: number; readonly seals: number };
 }
 
 /** A generated, verified-solvable puzzle. */

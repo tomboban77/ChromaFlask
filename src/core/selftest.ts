@@ -5,8 +5,8 @@
  */
 import {
   DEFAULT_RULES, TUBE_CAPACITY, applyPour, canPour, canonicalKey, cloneBoard,
-  isDeadlocked, isSolved, legalMoves, pourAmount, rulesFor, topRun, undoPour,
-  usefulMoves,
+  isDeadlocked, isSolved, legalMoves, lockActive, pourAmount, rulesFor, sealsRemaining, topRun,
+  undoPour, usefulMoves,
 } from './board';
 import { getCampaignLevel, isStoredOptimal, storedLevelCount } from './campaign';
 import { CHAPTERS, CHAPTER_SIZE, chapterFor, isChapterEnd } from './chapters';
@@ -163,6 +163,58 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
   );
 }
 
+// ---------------------------------------------------------- locked bottle
+{
+  // Tube 0 is padlocked until one other bottle is complete.
+  const R: BoardRules = { cauldron: false, lock: { index: 0, seals: 1 } };
+  const b: Board = [[0, 1], [1, 1, 1], [1], [0, 0, 0], []];
+  check('lock: engaged with nothing sealed', lockActive(b, R) && sealsRemaining(b, R) === 1);
+  check('lock: cannot pour out of the locked bottle', !canPour(b, 0, 4, R));
+  check('lock: cannot pour into the locked bottle', !canPour(b, 2, 0, R));
+  check('lock: other pours unaffected', canPour(b, 2, 1, R));
+  check('lock: solver never proposes touching it', usefulMoves(b, R).every((m) => m.from !== 0 && m.to !== 0));
+
+  // Sealing bottle 1 opens the lock.
+  const opened = cloneBoard(b);
+  applyPour(opened, 2, 1, R);
+  check('lock: opens once a bottle is sealed', !lockActive(opened, R) && sealsRemaining(opened, R) === 0);
+  // Out into the empty tube, and in from a matching top (tube 1's colour matches tube 0's top).
+  check('lock: pours in and out allowed after opening', canPour(opened, 0, 4, R) && canPour(opened, 1, 0, R));
+  check('lock: rules for a spec place it on the first filled tube',
+    rulesFor({ lock: { seals: 1 } }).lock?.index === 0 && rulesFor({ cauldron: true, lock: { seals: 2 } }).lock?.index === 1);
+
+  // Keys: locked bottle is position-sensitive while locked, ordinary once open.
+  check('lock: key distinguishes the locked bottle from an identical ordinary tube',
+    canonicalKey([[0, 1], [2], [0, 1]], R) !== canonicalKey([[2], [0, 1], [0, 1]], R));
+  const RO: BoardRules = { cauldron: false, lock: { index: 0, seals: 1 } };
+  const openA: Board = [[0, 1], [2, 2, 2, 2], [3]];
+  const openB: Board = [[3], [2, 2, 2, 2], [0, 1]];
+  check('lock: once open, the bottle is interchangeable again', canonicalKey(openA, RO) === canonicalKey(openB, RO));
+  check('lock: seals needed can be two', lockActive([[0], [1, 1, 1, 1], [2, 2]], { cauldron: false, lock: { index: 0, seals: 2 } }));
+
+  // End-to-end: a generated locked level solves, and A* matches brute force.
+  let audited = 0;
+  for (let seed = 0; seed < 6; seed++) {
+    const spec = { id: 500 + seed, colors: 3, empties: 1, minPar: 1, name: 'audit', lock: { seals: 1 } };
+    const gen = generateLevel(spec);
+    const rules = rulesFor(spec);
+    check(`lock audit ${seed}: solution wins`, isSolved(replay(gen.board, gen.solution, rules), rules));
+    check(`lock audit ${seed}: solution never touches the bottle while locked`, (() => {
+      const w = cloneBoard(gen.board);
+      for (const m of gen.solution) {
+        if (lockActive(w, rules) && (m.from === 0 || m.to === 0)) return false;
+        applyPour(w, m.from, m.to, rules);
+      }
+      return true;
+    })());
+    const bfs = bfsOptimal(gen.board, rules);
+    if (bfs === null) continue;
+    audited++;
+    check(`lock audit ${seed}: A* par is optimal`, gen.par === bfs, `A*=${gen.par} bfs=${bfs}`);
+  }
+  check('lock optimality audit ran', audited >= 4, `audited=${audited}`);
+}
+
 // --------------------------------------------------------------- solver
 {
   const trivial: Board = [[0, 0, 0], [0], []];
@@ -239,7 +291,7 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
 
     const rules = rulesFor(spec);
     const tubes = spec.colors + spec.empties + (spec.cauldron ? 1 : 0);
-    const flags = `${spec.cauldron ? 'C' : '·'}${spec.murky ? 'M' : '·'}`;
+    const flags = `${spec.cauldron ? 'C' : '·'}${spec.murky ? 'M' : '·'}${spec.lock ? 'L' : '·'}`;
     // 200 rows would drown the signal: print band edges and anything slow.
     if (spec.id - lastPrinted >= 10 || spec.id <= 10 || ms > 300) {
       lastPrinted = spec.id;
@@ -382,9 +434,10 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
 {
   check('endless: ids past the campaign', isEndless(ENDLESS_START) && !isEndless(LEVELS.length));
   check('endless: getLevelSpec resolves endless ids', getLevelSpec(ENDLESS_START).id === ENDLESS_START);
+  // Six per end: one full cycle of the six endless shapes.
   const sample = [
-    ...Array.from({ length: 5 }, (_, i) => ENDLESS_START + i),
-    ...Array.from({ length: 5 }, (_, i) => ENDLESS_START + 120 + i),
+    ...Array.from({ length: 6 }, (_, i) => ENDLESS_START + i),
+    ...Array.from({ length: 6 }, (_, i) => ENDLESS_START + 120 + i),
   ];
   let worst = 0;
   for (const id of sample) {

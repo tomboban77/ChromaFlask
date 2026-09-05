@@ -174,6 +174,12 @@ class App {
       },
       onTubeComplete: () => haptic(18),
       onInvalid: () => haptic([12, 40, 12]),
+      onLockedTap: (left) => this.explainLock(left),
+      onUnlocked: () => {
+        audio.play('unlock');
+        haptic([10, 30, 20]);
+        this.toast.show('Padlock open!', 'info', 1400);
+      },
     });
     this.stage.boardLayer.addChild(this.board.layer);
     this.stage.addUpdater((dt) => this.board.update(dt));
@@ -343,6 +349,7 @@ class App {
         ),
         moves: this.board.moveCount,
         tubes: this.board.tubeCount,
+        selected: this.board.selectedIndex,
         coins: this.save.coins,
         lives: this.save.lives.count,
         par: this.level?.par ?? null,
@@ -1157,6 +1164,17 @@ class App {
       this.analytics.track({ type: 'level_start', level: id, attempt: this.attempt });
     }
 
+    if (this.level.spec.lock && !this.save.snapshot.lockSeen) {
+      this.save.update((d) => {
+        d.lockSeen = true;
+      });
+      const n = this.level.spec.lock.seals;
+      this.toast.show(
+        `A locked bottle! Seal ${n === 1 ? 'another bottle' : `${n} other bottles`} to open its padlock.`,
+        'info', 4600,
+      );
+    }
+
     if (isEndless(id) && !this.save.snapshot.endlessSeen) {
       this.save.update((d) => {
         d.endlessSeen = true;
@@ -1307,6 +1325,18 @@ class App {
     this.attemptStartedAt = Date.now();
     this.board.mount(this.level, this.save.snapshot.settings.colorblind);
     this.updateHud();
+  }
+
+  /** Why the tap did nothing; throttled so a frustrated triple-tap reads as one message. */
+  private lockToastAt = 0;
+  private explainLock(sealsLeft: number): void {
+    const now = performance.now();
+    if (now - this.lockToastAt < 2500) return;
+    this.lockToastAt = now;
+    this.toast.show(
+      sealsLeft === 1 ? 'Locked - seal one more bottle to open it' : `Locked - seal ${sealsLeft} more bottles to open it`,
+      'warn', 2200,
+    );
   }
 
   private onMove(count: number): void {
@@ -2166,7 +2196,9 @@ class App {
 
           <h3>Twists</h3>
           <p>The gold-rimmed <b>Cauldron</b> accepts any colour on top but must be empty to win.
-             <b>Murky potions</b> hide their colours until they reach the surface.</p>
+             <b>Murky potions</b> hide their colours until they reach the surface.
+             A <b>locked bottle</b> cannot be poured into or out of until you have sealed
+             the number of other bottles shown by the dots under its padlock.</p>
         </div>`,
       buttons: [{ label: 'Got it', kind: 'primary' }],
     });

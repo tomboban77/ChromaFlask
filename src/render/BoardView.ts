@@ -2,7 +2,7 @@ import { Container, Point } from 'pixi.js';
 import gsap from 'gsap';
 import {
   DEFAULT_RULES, TUBE_CAPACITY, applyPour, cloneBoard, isComplete, isDeadlocked,
-  isSolved, pourAmount, rulesFor, undoPour,
+  isSolved, lockActive, pourAmount, rulesFor, sealsRemaining, undoPour,
 } from '@/core/board';
 import { findHint } from '@/core/solver';
 import type { Board, BoardRules, ColorId, GeneratedLevel, Move } from '@/core/types';
@@ -24,6 +24,10 @@ export interface BoardCallbacks {
   onInvalid?: (index: number) => void;
   onSelectionChange?: (index: number | null) => void;
   onTubeComplete?: (index: number) => void;
+  /** The player tapped the padlocked bottle; `sealsLeft` bottles still to seal. */
+  onLockedTap?: (sealsLeft: number) => void;
+  /** The padlock opened. */
+  onUnlocked?: () => void;
 }
 
 interface Slot {
@@ -127,6 +131,7 @@ export class BoardView {
     this.syncAll();
     // A resumed board may already have sealed bottles; show them sealed.
     this.syncCaps(false);
+    this.syncLock(false);
     // The game screen may still be display:none, in which case the host
     // measures 0x0. Defer the intro until a layout with real dimensions lands.
     this.pendingIntro = true;
@@ -261,6 +266,27 @@ export class BoardView {
     }
   }
 
+  /** The padlocked bottle, if this level has one and the lock is engaged. */
+  private isLockedTube(index: number): boolean {
+    return this.rules.lock !== undefined && index === this.rules.lock.index &&
+      lockActive(this.board, this.rules);
+  }
+
+  /** Padlock plate follows the rule state; opening animates and reports. */
+  private syncLock(animate: boolean): void {
+    if (!this.rules.lock) return;
+    const view = this.bottles[this.rules.lock.index];
+    if (!view) return;
+    const active = lockActive(this.board, this.rules);
+    view.setLocked(active, sealsRemaining(this.board, this.rules), animate, () => {
+      const slot = this.slots[this.rules.lock?.index ?? -1];
+      if (slot && this.particlesEnabled) {
+        this.particles.sparkle(slot.x, slot.y + view.totalHeight * 0.5, 2, 16);
+      }
+      this.callbacks.onUnlocked?.();
+    });
+  }
+
   /** Cork on every full single-colour bottle, off everywhere else (never the cauldron). */
   private syncCaps(animate: boolean): void {
     for (let i = 0; i < this.board.length; i++) {
@@ -341,6 +367,13 @@ export class BoardView {
 
     const tube = this.board[index];
     if (!tube) return;
+
+    // A padlocked bottle is neither a source nor a target until the lock opens.
+    if (this.isLockedTube(index)) {
+      this.rejectTap(index);
+      this.callbacks.onLockedTap?.(sealsRemaining(this.board, this.rules));
+      return;
+    }
 
     if (this.selected === null) {
       if (tube.length === 0) {
@@ -610,6 +643,8 @@ export class BoardView {
   private afterMove(move: Move, target: number): void {
     this.settleHidden();
     this.callbacks.onMove?.(move, this.history.length);
+    // Sealing a bottle may have opened the padlock.
+    this.syncLock(true);
 
     // The cauldron never "completes" - even full and uniform it must empty out.
     const tube = this.board[target];
@@ -692,6 +727,8 @@ export class BoardView {
     this.noWinWarned = false; // undoing may have escaped the trap; re-arm
     this.settleHidden();
     this.select(null);
+    // Unsealing a bottle re-engages the padlock, silently.
+    this.syncLock(false);
 
     for (const idx of [move.from, move.to]) {
       const b = this.bottles[idx];

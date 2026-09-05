@@ -39,8 +39,10 @@ were benchmarked separately on this machine (Node 22, desktop).
 > par floor that climbs through the whole deal distribution (full-board ideal
 > rises monotonically to 27), all pars proven optimal offline (134 KB /
 > 28 KB gz). U6 chapters shipped: 25 named chapters with map headers,
-> progress and a completion bonus. L4 (new mechanics) is planned to land
-> inside the late tiers before launch.
+> progress and a completion bonus. U5 daily challenge shipped (local-day
+> seed, streak, bonus). L4 first new mechanic shipped: the Locked Bottle,
+> every tenth late-tier level and one endless shape in six, with a
+> brute-force optimality audit under lock rules.
 >
 > **Decisions taken with the owner's go-ahead (same day):** E2 economy
 > rebalanced (200 start, free 3 undo / 1 hint / 0 bottle, 50 + 15/star);

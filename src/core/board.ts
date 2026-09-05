@@ -6,14 +6,58 @@ export const TUBE_CAPACITY = 4;
 /** Classic rules: every vessel is an ordinary tube. */
 export const DEFAULT_RULES: BoardRules = { cauldron: false };
 
-/** The rules a level spec plays under. */
-export function rulesFor(spec: Pick<LevelSpec, 'cauldron'>): BoardRules {
-  return spec.cauldron ? { cauldron: true } : DEFAULT_RULES;
+/**
+ * The rules a level spec plays under. The cauldron, when present, is tube 0;
+ * the locked bottle is the first *filled* tube (index 1 with a cauldron, else 0).
+ */
+export function rulesFor(spec: Pick<LevelSpec, 'cauldron' | 'lock'>): BoardRules {
+  if (!spec.cauldron && !spec.lock) return DEFAULT_RULES;
+  const rules: { cauldron: boolean; lock?: BoardRules['lock'] } = { cauldron: !!spec.cauldron };
+  if (spec.lock) rules.lock = { index: spec.cauldron ? 1 : 0, seals: spec.lock.seals };
+  return rules;
 }
 
 /** Index of the cauldron under these rules, or -1 when there is none. */
 function cauldronIndex(rules: BoardRules): number {
   return rules.cauldron ? 0 : -1;
+}
+
+/** Index of the locked bottle under these rules, or -1 when there is none. */
+export function lockIndex(rules: BoardRules): number {
+  return rules.lock ? rules.lock.index : -1;
+}
+
+/**
+ * Whether the padlock is currently engaged: fewer than `seals` ordinary
+ * bottles (not the cauldron, not the locked bottle itself) are complete.
+ * A pure function of the board, so undo re-locks and the solver needs no
+ * extra state.
+ */
+export function lockActive(board: Board, rules: BoardRules): boolean {
+  if (!rules.lock) return false;
+  const ci = cauldronIndex(rules);
+  const li = rules.lock.index;
+  let sealed = 0;
+  for (let i = 0; i < board.length; i++) {
+    if (i === li || i === ci) continue;
+    if (isComplete(board[i] as Tube)) {
+      sealed += 1;
+      if (sealed >= rules.lock.seals) return false;
+    }
+  }
+  return true;
+}
+
+/** Bottles still to seal before the lock opens (0 when open or absent). */
+export function sealsRemaining(board: Board, rules: BoardRules): number {
+  if (!rules.lock) return 0;
+  const ci = cauldronIndex(rules);
+  let sealed = 0;
+  for (let i = 0; i < board.length; i++) {
+    if (i === rules.lock.index || i === ci) continue;
+    if (isComplete(board[i] as Tube)) sealed += 1;
+  }
+  return Math.max(0, rules.lock.seals - sealed);
 }
 
 export function cloneBoard(board: Board): Board {
@@ -61,6 +105,10 @@ export function canPour(
   if (!src || !dst) return false;
   if (src.length === 0) return false;
   if (dst.length >= TUBE_CAPACITY) return false;
+  // A padlocked bottle takes part in nothing until the lock opens.
+  if (rules.lock && (from === rules.lock.index || to === rules.lock.index) && lockActive(board, rules)) {
+    return false;
+  }
   if (dst.length === 0) return true;
   if (to === cauldronIndex(rules)) return true;
   return src[src.length - 1] === dst[dst.length - 1];
@@ -146,6 +194,8 @@ export function isDeadlocked(board: Board, rules: BoardRules = DEFAULT_RULES): b
  */
 export function usefulMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Move[] {
   const ci = cauldronIndex(rules);
+  // While the padlock holds, the locked bottle is simply not on the board.
+  const li = rules.lock && lockActive(board, rules) ? rules.lock.index : -1;
   const moves: Move[] = [];
   let firstEmpty = -1;
   for (let i = 0; i < board.length; i++) {
@@ -157,6 +207,7 @@ export function usefulMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Mo
   }
 
   for (let from = 0; from < board.length; from++) {
+    if (from === li) continue;
     const src = board[from] as Tube;
     if (src.length === 0) continue;
     if (from !== ci && isComplete(src)) continue;
@@ -165,7 +216,7 @@ export function usefulMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Mo
     const srcUniform = run.count === src.length;
 
     for (let to = 0; to < board.length; to++) {
-      if (to === from) continue;
+      if (to === from || to === li) continue;
       const dst = board[to] as Tube;
       if (dst.length === 0) {
         if (srcUniform && from !== ci) continue;
@@ -182,18 +233,24 @@ export function usefulMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Mo
  * Order-independent board fingerprint. Ordinary tubes are interchangeable, so
  * sorting their encodings collapses huge numbers of equivalent states - this
  * is the single biggest win in the solver. The cauldron is *not*
- * interchangeable, so it is fingerprinted separately in front.
+ * interchangeable, so it is fingerprinted separately in front. So is the
+ * locked bottle *while the lock holds*; once open it is an ordinary tube,
+ * and along useful lines the lock never re-engages (complete tubes are never
+ * disturbed), so folding it back in is safe.
  */
 export function canonicalKey(board: Board, rules: BoardRules = DEFAULT_RULES): string {
   const ci = cauldronIndex(rules);
-  const start = ci >= 0 ? 1 : 0;
-  const parts = new Array<string>(board.length - start);
-  for (let i = start; i < board.length; i++) {
-    parts[i - start] = (board[i] as Tube).join(',');
+  const li = rules.lock && lockActive(board, rules) ? rules.lock.index : -1;
+  const parts: string[] = [];
+  for (let i = 0; i < board.length; i++) {
+    if (i === ci || i === li) continue;
+    parts.push((board[i] as Tube).join(','));
   }
   parts.sort();
-  const rest = parts.join('|');
-  return ci >= 0 ? `${(board[ci] as Tube).join(',')}#${rest}` : rest;
+  let key = parts.join('|');
+  if (li >= 0) key = `L${(board[li] as Tube).join(',')}#${key}`;
+  if (ci >= 0) key = `${(board[ci] as Tube).join(',')}#${key}`;
+  return key;
 }
 
 /** Total contiguous colour runs on the board. Equals colour count when solved. */
