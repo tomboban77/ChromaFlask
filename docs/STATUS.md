@@ -18,8 +18,8 @@ _Last updated: 2026-09-05_
   player gets the identical board), every level machine-proven solvable before
   it is accepted, with its winning line attached (powers hints + tutorial).
 - **Precomputed campaign** (`src/core/campaign.json`, built by
-  `npm run levels:build`) — all 200 boards and winning lines computed once at
-  build time (52 KB, ~11 KB gzipped), so "Next level" costs zero solver work
+  `npm run levels:build`) — all 500 boards and winning lines computed once at
+  build time (132 KB, ~28 KB gzipped), so "Next level" costs zero solver work
   on-device (the worst seeds took 1.3 s on a desktop and several seconds on a
   phone). With no time budget the exact solve runs to completion: **every
   stored par is proven optimal** (one par tightened vs. the runtime
@@ -32,10 +32,15 @@ _Last updated: 2026-09-05_
   discarded if the board moved on; a dead worker degrades to synchronous
   search. No-win coverage extended from 8 to 10 tubes.
 
-### 200-level campaign (`src/core/levels.ts`)
+### 500-level campaign (`src/core/levels.ts`)
 - Hand-tuned opening (1–10), then a measured sawtooth curve: colour bands
   6 → 7 → 8, par floors 13 → 21, **breather** every 10th level (extra tube),
   **squeeze** every 10th (one empty tube).
+- Levels 201–500 continue in five tiers of sixty: par floors step 21 → 22 →
+  23 (squeezes 14 → 15, breathers 13 → 14, cauldron held at 15 because it is
+  the slowest shape to prove), and from the third tier a second squeeze joins
+  each block of ten. Deliberately gentle: these tiers are where the next
+  mechanics land (AUDIT.md L4). All 500 pars proven optimal offline.
 - Verified end-to-end by `npm run test:core` (~3,700 checks): solvable, par =
   solution length, minPar met, unit conservation, byte-identical determinism,
   generation speed (worst ≈ 1 s desktop for one deep cauldron seed; typical
@@ -49,7 +54,7 @@ _Last updated: 2026-09-05_
   par floor rising one step every 20 levels up to each shape's campaign cap,
   and murk alternating. Deterministic per id, so resume and analytics work
   unchanged.
-- Entered from the level-200 win screen ("Start endless mode"), the home Play
+- Entered from the level-500 win screen ("Start endless mode"), the home Play
   button once the campaign is done ("Endless #n"), or a gold ∞ node at the
   foot of the map. HUD and win screen say "Endless #n"; profile shows
   "Endless cleared". Campaign counters (stars, cleared, progress bar) count
@@ -76,7 +81,7 @@ _Last updated: 2026-09-05_
   the home screen in well under a second.
 - **Home** — full-bleed scene art, avatar → profile card, coins/hearts pills,
   big play button, purple/gold bottom nav (Shop · Home · Levels).
-- **Level map** — 200 nodes, stars per level, auto-scrolls to current level.
+- **Level map** — 500 nodes, stars per level, auto-scrolls to current level.
 - **Gameplay** — candy-styled HUD, powerbar, coach + hand-pointer tutorial on
   level 1 (points at the solver's actual next move).
 - **No-win detection** — after each move on small boards, the solver *proves*

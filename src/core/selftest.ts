@@ -252,10 +252,13 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
     check(`L${spec.id} solution wins`, isSolved(replay(gen.board, gen.solution, rules), rules));
     check(`L${spec.id} solution length == par`, gen.solution.length === gen.par);
     // Players get the precomputed campaign; the generator is the fallback and
-    // the endless-mode path. The bound is a regression guard against a solver
-    // change making generation explode, not a promise about any one machine
-    // (it must survive a CI runner and a laptop running other tests).
-    check(`L${spec.id} generates under 3s`, ms < 3000, `${ms.toFixed(0)}ms`);
+    // the endless-mode path (in a worker). The bound is a regression guard
+    // against a solver change making generation explode, not a promise about
+    // any one machine (it must survive a CI runner and a laptop running other
+    // tests). Cauldron deals branch hardest - a few late seeds take ~4 s on a
+    // desktop - so they get more headroom.
+    const budgetMs = spec.cauldron ? 5000 : 3000;
+    check(`L${spec.id} generates under ${budgetMs / 1000}s`, ms < budgetMs, `${ms.toFixed(0)}ms`);
 
     // conservation: exactly TUBE_CAPACITY units of each colour
     const counts = new Map<number, number>();

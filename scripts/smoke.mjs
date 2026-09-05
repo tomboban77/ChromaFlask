@@ -15,6 +15,8 @@ import { setTimeout as sleep } from 'node:timers/promises';
 const PORT = 5199;
 const URL = `http://localhost:${PORT}/`;
 const SHOTS = '.tmp/shots';
+/** Must match LEVEL_COUNT in src/core/levels.ts. */
+const LEVEL_COUNT = 500;
 
 const EDGE_PATHS = [
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
@@ -116,8 +118,8 @@ async function runViewport(browser, label, width, height, isMobile) {
   const nodeCount = await page.locator('.node').count();
   const lockedCount = await page.locator('.node--locked').count();
   console.log(`  map screen      OK (${nodeCount} levels, ${lockedCount} locked)`);
-  if (nodeCount !== 200) problems.push(`[${label}] expected 200 level nodes, got ${nodeCount}`);
-  if (lockedCount !== 199) problems.push(`[${label}] expected 199 locked levels, got ${lockedCount}`);
+  if (nodeCount !== LEVEL_COUNT) problems.push(`[${label}] expected ${LEVEL_COUNT} level nodes, got ${nodeCount}`);
+  if (lockedCount !== LEVEL_COUNT - 1) problems.push(`[${label}] expected ${LEVEL_COUNT - 1} locked levels, got ${lockedCount}`);
   await page.screenshot({ path: `${SHOTS}/${label}-2-map.png` });
 
   // ---- into level 1
@@ -338,8 +340,8 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (afterLeave !== 'Level 2') problems.push(`[${label}] leaving should clear the saved attempt (got "${afterLeave}")`);
   if (livesAfterLeave !== '5') problems.push(`[${label}] leaving a live board must not cost a heart (hearts=${livesAfterLeave})`);
 
-  // ---- endless mode: level 201 is generated in the worker on demand
-  await page.evaluate(() => window.__cf.start(201));
+  // ---- endless mode: the first level past the campaign is generated in the worker on demand
+  await page.evaluate((id) => window.__cf.start(id), LEVEL_COUNT + 1);
   await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
   await page.waitForFunction(() => window.__cf.state().tubes > 0, null, { timeout: 15_000 });
   await sleep(600);
@@ -348,7 +350,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   console.log(`  endless #1      "${endlessLabel}" tubes=${endless.tubes} ideal=${endless.par}`);
   if (endlessLabel !== 'Endless #1') problems.push(`[${label}] HUD should read "Endless #1", got "${endlessLabel}"`);
   if (endless.tubes !== 10) problems.push(`[${label}] endless #1 should be 8 colours + 2 empties = 10 tubes, got ${endless.tubes}`);
-  if (!(endless.par >= 18)) problems.push(`[${label}] endless #1 ideal should be >= 18, got ${endless.par}`);
+  if (!(endless.par >= 22)) problems.push(`[${label}] endless #1 ideal should be >= 22, got ${endless.par}`);
   await page.click('#btn-back'); // no moves made: straight home, no dialog
   await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
 
@@ -375,7 +377,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   const unlockedAfter = await page.locator('.node--locked').count();
   console.log(`  after reload    name="${savedName}" locked=${unlockedAfter}`);
   if (savedName !== 'Tester') problems.push(`[${label}] profile did not persist (got "${savedName}")`);
-  if (unlockedAfter !== 198) {
+  if (unlockedAfter !== LEVEL_COUNT - 2) {
     problems.push(`[${label}] level 2 should be unlocked after clearing 1 (locked=${unlockedAfter})`);
   }
   await page.screenshot({ path: `${SHOTS}/${label}-11-reloaded.png` });

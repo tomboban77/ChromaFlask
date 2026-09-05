@@ -4,7 +4,7 @@ A mobile-first liquid-sort puzzle for the web. PixiJS renders the board, GSAP
 choreographs the pours, and the HUD is plain DOM so text stays crisp and
 accessible.
 
-A 200-level campaign with two signature twists — **the Cauldron** (accepts any
+A 500-level campaign with two signature twists — **the Cauldron** (accepts any
 colour, must be emptied to win) and **murky potions** (colours hidden until
 they surface) — plus hearts, coins, a store-billing shop, tutorial, and a full
 candy-style UI.
@@ -26,7 +26,7 @@ npm run dev        # http://localhost:5173
 | `npm run preview` | Serve the built output |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
-| `npm run levels:build` | Precompute all 200 boards + optimal lines into `src/core/campaign.json` |
+| `npm run levels:build` | Precompute all 500 boards + optimal lines into `src/core/campaign.json` |
 | `npm run test:core` | Rules/solver/generator suite, incl. proving `campaign.json` (no browser needed) |
 | `npm run test:e2e` | Drives the real game in Edge, plays a level to a win |
 
@@ -41,7 +41,7 @@ src/
     board.ts        pour rules (incl. cauldron BoardRules), win/deadlock, hashing
     solver.ts       A* with admissible heuristics -> optimal move counts
     generator.ts    seeded deal, validated solvable, computes par
-    levels.ts       the 200-level campaign curve (breathers, squeezes, twists)
+    levels.ts       the 500-level campaign curve (breathers, squeezes, twists)
     progression.ts  stars, coin economy, lives constants, coin-shop catalog
   services/    Driver-based seams. Swap a driver, not the call sites.
     SaveService     LocalStorage | in-memory fallback | (later) cloud
@@ -79,7 +79,7 @@ of the search space). Its heuristic — total colour runs minus colour count —
 admissible, because a single pour merges at most one pair of runs. Under
 cauldron rules a second admissible bound applies (every run inside the cauldron
 needs a pour to leave), and the max of the two is used. Offline, the exact
-search runs with no time budget, so all 200 stored pars are proven optimal; the
+search runs with no time budget, so all 500 stored pars are proven optimal; the
 core test suite asserts that flag and audits pars against an independent BFS
 under both rule sets. A 3-star target is a real mathematical claim, not a guess.
 

@@ -707,7 +707,7 @@ class App {
       grid.appendChild(node);
     }
 
-    // 200 nodes is a long scroll: land the player on their current level.
+    // 500 nodes is a long scroll: land the player on their current level.
     requestAnimationFrame(() => {
       grid.querySelector('.node--next, .node:not(.node--locked):last-of-type')
         ?.scrollIntoView({ block: 'center' });
@@ -1412,7 +1412,7 @@ class App {
       seconds,
     });
 
-    // Finishing level 200 is the campaign's finale; the door to endless opens.
+    // Finishing the last campaign level is the finale; the door to endless opens.
     const isLast = this.levelId === LEVEL_COUNT;
     window.setTimeout(
       () => this.showWinModal({
