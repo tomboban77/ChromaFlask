@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "levels:build": "vite build --ssr src/core/precompute.ts --outDir .tmp --logLevel error && node .tmp/precompute.js",
+    "levels:sweep": "vite build --ssr src/core/sweep.ts --outDir .tmp --logLevel error && node .tmp/sweep.js",
     "test:core": "vite build --ssr src/core/selftest.ts --outDir .tmp --logLevel error && node .tmp/selftest.js",
     "test:e2e": "node scripts/smoke.mjs"
   },

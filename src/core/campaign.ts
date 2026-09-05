@@ -36,6 +36,25 @@ export function isStoredOptimal(id: number): boolean | null {
 }
 
 /**
+ * Whether the stored entry for `id` is self-consistent under the *current*
+ * rules (its line replays to a win in exactly `par` moves). The test suite
+ * asserts this so a rules change can never silently demote a level to the
+ * on-device generator fallback.
+ */
+export function isStoredValid(id: number): boolean {
+  const entry = stored.get(id);
+  if (!entry) return false;
+  const rules = rulesFor(getLevelSpec(id));
+  const work = cloneBoard(entry.board);
+  let n = 0;
+  for (const [from, to] of entry.moves) {
+    if (!applyPour(work, from, to, rules)) return false;
+    n += 1;
+  }
+  return n === entry.par && isSolved(work, rules);
+}
+
+/**
  * The level as the player will see it. Uses the precomputed board and line
  * when present and self-consistent (the line must replay to a win in exactly
  * `par` moves); otherwise generates on the spot, which is identical by

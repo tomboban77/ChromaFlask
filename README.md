@@ -27,6 +27,7 @@ npm run dev        # http://localhost:5173
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 | `npm run levels:build` | Precompute all 500 boards + optimal lines into `src/core/campaign.json` |
+| `npm run levels:sweep` | Deal the next 2 years of dailies + 1000 endless levels; fails on any that cannot be built (~3 min) |
 | `npm run test:core` | Rules/solver/generator suite, incl. proving `campaign.json` (no browser needed) |
 | `npm run test:e2e` | Drives the real game in Edge, plays a level to a win |
 

@@ -9,7 +9,7 @@ import {
   undoPour, usefulMoves,
 } from './board';
 import { ACHIEVEMENTS, unlockedAchievements } from './achievements';
-import { getCampaignLevel, isStoredOptimal, storedLevelCount } from './campaign';
+import { getCampaignLevel, isStoredOptimal, isStoredValid, storedLevelCount } from './campaign';
 import { CHAPTERS, CHAPTER_SIZE, chapterFor, isChapterEnd } from './chapters';
 import {
   DAILY_BASE, advanceStreak, currentStreak, dailyId, dailySpec, dateFromDay, dayFromDailyId,
@@ -376,6 +376,9 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
         isSolved(replay(stored.board, stored.solution, rules), rules),
     );
     check(`L${spec.id} campaign par proven optimal`, isStoredOptimal(spec.id) === true);
+    // The stored line must be the one players actually get - never a silent
+    // fallback to on-device generation because the rules moved under it.
+    check(`L${spec.id} campaign entry valid under current rules`, isStoredValid(spec.id));
   }
 
   check('campaign covers every level', storedLevelCount() === LEVELS.length,
