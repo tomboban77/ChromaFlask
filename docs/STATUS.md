@@ -36,11 +36,18 @@ _Last updated: 2026-09-05_
 - Hand-tuned opening (1–10), then a measured sawtooth curve: colour bands
   6 → 7 → 8, par floors 13 → 21, **breather** every 10th level (extra tube),
   **squeeze** every 10th (one empty tube).
-- Levels 201–500 continue in five tiers of sixty: par floors step 21 → 22 →
-  23 (squeezes 14 → 15, breathers 13 → 14, cauldron held at 15 because it is
-  the slowest shape to prove), and from the third tier a second squeeze joins
-  each block of ten. Deliberately gentle: these tiers are where the next
-  mechanics land (AUDIT.md L4). All 500 pars proven optimal offline.
+- The par floor climbs through the whole distribution of deals instead of
+  sitting under it: full eight-colour boards 17 → 19 (56–100), 20 → 21
+  (101–150), 22 (151–200), then 23 → 27 across five tiers of sixty
+  (201–500); squeezes 14 → 19, cauldrons 15 → 18, breathers 13 → 17. From the
+  third tier a second squeeze joins each block of ten and murk rises to three
+  levels in four. Measured on the precomputed file: the full-board ideal
+  rises monotonically 17 → 21 → 24.5 → 24.9 → 25.5 → 25.9 → 26.4 → 27.4 across
+  the blocks from 11–30 to 441–500; the all-levels block average goes 11.5 →
+  24.4 and is diluted by squeezes (~17–19) and cauldrons (~18–19), which sit
+  lower by design as the rhythm beats. All 500 pars proven optimal offline; the
+  precompute pays for the rejected deals, players never wait. These tiers are
+  also where the next mechanics land (AUDIT.md L4).
 - Verified end-to-end by `npm run test:core` (~3,700 checks): solvable, par =
   solution length, minPar met, unit conservation, byte-identical determinism,
   generation speed (worst ≈ 1 s desktop for one deep cauldron seed; typical

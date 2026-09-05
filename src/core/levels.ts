@@ -13,11 +13,12 @@ import type { LevelSpec } from './types';
  *  - murky:        from level 36, colours below each tube's mouth start hidden
  *
  * Levels 1-200 are the original ramp. Levels 201-500 continue in five tiers
- * of sixty: the par floors step up a notch or two inside the caps the
- * precompute proved fast and optimal, and from the third tier a second
- * squeeze joins each block of ten. New mechanics are meant to land in these
- * tiers (see docs/AUDIT.md L4); until they do, the tiers are deliberately
- * gentle rather than a grind.
+ * of sixty. Because the campaign is precomputed offline, the par floor can
+ * climb through the whole distribution of deals (eight-colour boards reach
+ * an ideal of 27 by the last tier, squeezes 19, cauldrons 18, breathers 17),
+ * a second squeeze joins each block of ten from the third tier, and murk
+ * rises to three levels in four. New mechanics are meant to land in these
+ * tiers as well (see docs/AUDIT.md L4).
  *
  * Every spec is deterministic (id seeds the generator) and machine-verified by
  * `npm run test:core`: solvable, meets minPar, conserves units, and generates
@@ -86,28 +87,36 @@ function specFor(id: number): LevelSpec {
   if (id >= 22 && id % 10 === 2) {
     return {
       id, colors: 6, empties: 1, cauldron: true,
-      minPar: id <= 60 ? 13 : 15,
+      // 13 -> 15 across the original ramp, then 16, 16, 17, 17, 18.
+      minPar: id <= 60 ? 13 : id <= 200 ? 15 : Math.min(18, 15 + Math.ceil(tier / 2)),
       name: nameFor(id), murky: isMurky(id),
     };
   }
 
-  // Base par floor per band, rising slowly inside the final band so level 190
-  // is measurably deeper than level 60. Late tiers: 21, 22, 22, 23, 23.
-  let minPar = colors === 6 ? 13 : colors === 7 ? 15 : 17;
-  if (colors === 8) minPar += Math.min(4, Math.floor((id - 56) / 30));
-  else minPar += Math.min(2, Math.floor((id % 30) / 12));
-  if (tier > 0) minPar = Math.min(23, 21 + Math.floor(tier / 2));
+  // Par floor. Raw eight-colour deals have an ideal of 23-28 (median 25), so
+  // a floor below that rejects nothing and the curve goes flat; this one
+  // climbs through the whole distribution instead:
+  //   56-100: 17, 18, 19   101-150: 20, 21   151-200: 22   tiers: 23 .. 27.
+  // The precompute pays for the rejected deals offline; players never wait.
+  let minPar: number;
+  if (colors === 6) minPar = 13 + Math.min(2, Math.floor((id % 30) / 12));
+  else if (colors === 7) minPar = 15 + Math.min(2, Math.floor((id % 30) / 12));
+  else if (id <= 100) minPar = 17 + Math.floor((id - 56) / 15);
+  else if (id <= 150) minPar = 20 + Math.floor((id - 101) / 25);
+  else if (id <= 200) minPar = 22;
+  else minPar = Math.min(27, 22 + tier);
 
   let empties = 2;
 
   // Breather every 10 levels: extra tube, fewer colours, gentler par.
   // Capped at 7 colours: an 11-tube 8-colour board makes the optimal solve
   // explode (seconds of generation on-device) without feeling any easier.
+  // Breathers deepen too (13 -> 17), staying well under the standard floor.
   if (id % 10 === 4) {
     const c = Math.min(colors, 7);
     return {
       id, colors: c, empties: 3,
-      minPar: (c === 7 ? 13 : 11) + (tier >= 3 ? 1 : 0),
+      minPar: c === 7 ? Math.min(17, 13 + tier) : 11,
       name: nameFor(id), murky: isMurky(id),
     };
   }
@@ -118,18 +127,20 @@ function specFor(id: number): LevelSpec {
   if (id % 10 === 8 || (tier >= 3 && id % 10 === 6)) {
     empties = 1;
     const squeezed = id <= 30 ? 5 : 6;
-    minPar = (squeezed === 5 ? 11 : 14) + (tier >= 2 ? 1 : 0);
+    // 11 (five colours), then 14 -> 15 across the ramp, then 16 .. 19.
+    minPar = squeezed === 5 ? 11 : id <= 100 ? 14 : id <= 200 ? 15 : Math.min(19, 15 + tier);
     return { id, colors: squeezed, empties, minPar, name: nameFor(id), murky: isMurky(id) };
   }
 
   return { id, colors, empties, minPar, name: nameFor(id), murky: isMurky(id) };
 }
 
-/** Murky cadence: introduced at 36, common by 70, dominant past 120. */
+/** Murky cadence: introduced at 36, common by 70, dominant past 120, three in four from level 321. */
 function isMurky(id: number): boolean {
   if (id < 36) return false;
   if (id <= 70) return id % 5 === 1;
   if (id <= 120) return id % 3 === 0;
+  if (tierFor(id) >= 3) return id % 4 !== 1;
   return id % 3 !== 1;
 }
 
@@ -175,17 +186,17 @@ export function endlessSpec(id: number): LevelSpec {
   // never a step down, and cap where the precompute proved deals stay fast.
   switch ((n - 1) % 5) {
     case 0:
-      return { id, colors: 8, empties: 2, minPar: Math.min(23, 22 + tier), name, murky };
+      return { id, colors: 8, empties: 2, minPar: Math.min(28, 27 + tier), name, murky };
     case 1:
-      return { id, colors: 7, empties: 2, minPar: Math.min(18, 17 + tier), name, murky: true };
+      return { id, colors: 7, empties: 2, minPar: Math.min(19, 18 + tier), name, murky: true };
     case 2:
       return {
-        id, colors: 6, empties: 1, cauldron: true, minPar: 15, name, murky,
+        id, colors: 6, empties: 1, cauldron: true, minPar: 18, name, murky,
       };
     case 3:
-      return { id, colors: 6, empties: 1, minPar: 15, name, murky };
+      return { id, colors: 6, empties: 1, minPar: 19, name, murky };
     default:
-      return { id, colors: 7, empties: 3, minPar: 14, name, murky: true };
+      return { id, colors: 7, empties: 3, minPar: 17, name, murky: true };
   }
 }
 
