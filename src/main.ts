@@ -2161,22 +2161,37 @@ class App {
     this.show('profile');
   }
 
+  /**
+   * Settings, in the order a player scans them: who they are, the things
+   * they change often (sound, language), accessibility, privacy, then help
+   * and the one destructive action at the very bottom. Rare support tooling
+   * (support ID, code redemption) lives one tap deeper in its own dialog.
+   */
   private openSettings(): void {
     const s = this.save.snapshot.settings;
     const content = el('div');
 
-    type Toggle = 'sfx' | 'music' | 'haptics' | 'colorblind' | 'reducedMotion' | 'analytics';
-    const rows: Array<[Toggle, string, string]> = [
-      ['sfx', t('settings.sfx'), t('settings.sfxDesc')],
-      ['music', t('settings.music'), t('settings.musicDesc')],
-      ['haptics', t('settings.haptics'), t('settings.hapticsDesc')],
-      ['colorblind', t('settings.colorblind'), t('settings.colorblindDesc')],
-      ['reducedMotion', t('settings.reducedMotion'), t('settings.reducedMotionDesc')],
-      // Keep last: the smoke test addresses the switches above by position.
-      ['analytics', t('settings.analytics'), t('settings.analyticsDesc')],
-    ];
+    // Identity header - the same card the profile dialog uses, compacted.
+    const profile = this.save.snapshot.profile;
+    const head = el('div', 'profdlg__head profdlg__head--compact');
+    head.appendChild(el('span', 'profdlg__avatar', profile?.avatar ?? '🐱'));
+    const who = el('div', 'profdlg__who');
+    who.appendChild(el('div', 'profdlg__name', profile?.name || t('prof.guest')));
+    who.appendChild(
+      el('div', 'profdlg__level', t('level.n', { n: this.save.highestUnlocked(LEVEL_COUNT) })),
+    );
+    head.appendChild(who);
+    const edit = el('button', 'btn btn--ghost btn--compact', t('prof.changeLook'));
+    edit.addEventListener('click', () => {
+      audio.play('button');
+      this.modal.close();
+      this.editProfile();
+    });
+    head.appendChild(edit);
+    content.appendChild(head);
 
-    for (const [key, label, desc] of rows) {
+    type Toggle = 'sfx' | 'music' | 'haptics' | 'colorblind' | 'reducedMotion' | 'analytics';
+    const toggleRow = (key: Toggle, label: string, desc: string): HTMLElement => {
       const row = el('div', 'setting');
       const text = el('div');
       text.appendChild(el('div', 'setting__label', label));
@@ -2198,18 +2213,41 @@ class App {
         audio.play('button');
       });
       row.appendChild(toggle);
-      content.appendChild(row);
-    }
+      return row;
+    };
 
+    // Switch order matters to the smoke test (it addresses them by index):
+    // sfx, music, haptics, colourblind, reduced motion, analytics.
+    content.appendChild(toggleRow('sfx', t('settings.sfx'), t('settings.sfxDesc')));
+    content.appendChild(toggleRow('music', t('settings.music'), t('settings.musicDesc')));
+    content.appendChild(toggleRow('haptics', t('settings.haptics'), t('settings.hapticsDesc')));
     content.appendChild(this.buildLanguageRow());
-    content.appendChild(this.buildSupportSection());
 
-    const profile = this.save.snapshot.profile;
-    const footer = el('p', 'panel__hint');
-    footer.innerHTML = profile
-      ? t('settings.playingAs', { name: escapeHtml(profile.name), avatar: escapeHtml(profile.avatar) })
-      : t('settings.guest');
-    content.appendChild(footer);
+    content.appendChild(el('div', 'modal__subhead', t('settings.accessibility')));
+    content.appendChild(toggleRow('colorblind', t('settings.colorblind'), t('settings.colorblindDesc')));
+    content.appendChild(
+      toggleRow('reducedMotion', t('settings.reducedMotion'), t('settings.reducedMotionDesc')),
+    );
+
+    content.appendChild(el('div', 'modal__subhead', t('settings.privacy')));
+    content.appendChild(toggleRow('analytics', t('settings.analytics'), t('settings.analyticsDesc')));
+    content.appendChild(
+      this.actionRow(t('support.privacy'), t('support.privacyDesc'), t('support.view'), 'ghost', () => {
+        window.open('./privacy.html', '_blank', 'noopener');
+      }),
+    );
+
+    content.appendChild(el('div', 'modal__subhead', t('support.head')));
+    content.appendChild(
+      this.actionRow(t('support.head'), t('support.rowDesc'), t('support.open'), 'ghost', () =>
+        this.openSupportDialog(),
+      ),
+    );
+    content.appendChild(
+      this.actionRow(t('support.reset'), t('support.resetDesc'), t('support.resetBtn'), 'danger', () =>
+        this.confirmResetProgress(),
+      ),
+    );
 
     this.modal.open({
       title: t('common.settings'),
@@ -2253,58 +2291,62 @@ class App {
   }
 
   // ------------------------------------------------------------- support
-  private buildSupportSection(): HTMLElement {
-    const section = el('div');
-    section.appendChild(el('div', 'modal__subhead', t('support.head')));
+  /** A settings row whose control is a compact button rather than a switch. */
+  private actionRow(
+    label: string,
+    desc: string,
+    action: string,
+    kind: 'ghost' | 'danger',
+    onClick: () => void,
+  ): HTMLElement {
+    const row = el('div', 'setting');
+    const text = el('div');
+    text.appendChild(el('div', 'setting__label', label));
+    text.appendChild(el('div', 'setting__desc', desc));
+    row.appendChild(text);
+    const button = el('button', `btn btn--${kind} btn--compact`, action);
+    button.addEventListener('click', () => {
+      audio.play('button');
+      onClick();
+    });
+    row.appendChild(button);
+    return row;
+  }
 
-    const supportRow = (
-      label: string,
-      desc: string,
-      action: string,
-      kind: 'ghost' | 'danger',
-      onClick: () => void,
-    ): void => {
-      const row = el('div', 'setting');
-      const text = el('div');
-      text.appendChild(el('div', 'setting__label', label));
-      text.appendChild(el('div', 'setting__desc', desc));
-      row.appendChild(text);
-      const button = el('button', `btn btn--${kind} btn--compact`, action);
-      button.addEventListener('click', () => {
-        audio.play('button');
-        onClick();
-      });
-      row.appendChild(button);
-      section.appendChild(row);
-    };
-
+  /**
+   * Help & support: the tools a player only needs after something went
+   * wrong. Kept out of the main settings list so it stays scannable.
+   */
+  private openSupportDialog(): void {
+    const content = el('div');
     const supportId = formatSupportId(this.save.supportId);
-    supportRow(t('support.id'), supportId, t('support.copy'), 'ghost', () => {
-      navigator.clipboard?.writeText(supportId).then(
-        () => this.toast.show(t('support.copied')),
-        () => this.toast.show(t('support.yourId', { id: supportId })),
-      );
-    });
 
-    supportRow(t('support.contact'), t('support.contactDesc'), t('support.email'), 'ghost', () => {
-      const level = this.save.highestUnlocked(LEVEL_COUNT);
-      this.analytics.track({ type: 'support_email_open', level });
-      window.location.href = supportMailto(this.save.supportId, level, SAVE_VERSION);
-    });
-
-    supportRow(t('support.code'), t('support.codeDesc'), t('support.enter'), 'ghost', () =>
-      this.openSupportCodeEntry(),
+    content.appendChild(
+      this.actionRow(t('support.contact'), t('support.contactDesc'), t('support.email'), 'ghost', () => {
+        const level = this.save.highestUnlocked(LEVEL_COUNT);
+        this.analytics.track({ type: 'support_email_open', level });
+        window.location.href = supportMailto(this.save.supportId, level, SAVE_VERSION);
+      }),
+    );
+    content.appendChild(
+      this.actionRow(t('support.id'), supportId, t('support.copy'), 'ghost', () => {
+        navigator.clipboard?.writeText(supportId).then(
+          () => this.toast.show(t('support.copied')),
+          () => this.toast.show(t('support.yourId', { id: supportId })),
+        );
+      }),
+    );
+    content.appendChild(
+      this.actionRow(t('support.code'), t('support.codeDesc'), t('support.enter'), 'ghost', () =>
+        this.openSupportCodeEntry(),
+      ),
     );
 
-    supportRow(t('support.privacy'), t('support.privacyDesc'), t('support.view'), 'ghost', () => {
-      window.open('./privacy.html', '_blank', 'noopener');
+    this.modal.open({
+      title: t('support.head'),
+      content,
+      buttons: [{ label: t('common.back'), kind: 'ghost', onClick: () => this.openSettings() }],
     });
-
-    supportRow(t('support.reset'), t('support.resetDesc'), t('support.resetBtn'), 'danger', () =>
-      this.confirmResetProgress(),
-    );
-
-    return section;
   }
 
   private openSupportCodeEntry(): void {
@@ -2351,7 +2393,7 @@ class App {
       content,
       inlineButtons: true,
       buttons: [
-        { label: t('common.cancel'), kind: 'ghost', onClick: () => this.openSettings() },
+        { label: t('common.cancel'), kind: 'ghost', onClick: () => this.openSupportDialog() },
         {
           label: t('support.redeem'),
           kind: 'primary',

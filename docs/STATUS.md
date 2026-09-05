@@ -223,10 +223,17 @@ _Last updated: 2026-09-05_
 - **Error reporting** — uncaught errors and rejections (and boot failures) are
   sent as `client_error` analytics events, de-duplicated and capped at five
   per session. A failed boot shows a Reload control instead of a stuck splash.
+- **Settings layout** — identity card first (avatar, name, current level,
+  "Change look"), then Sound effects / Music / Vibration / Language, then
+  grouped subheads: Accessibility (colourblind aid, reduced motion), Privacy
+  (anonymous usage data, privacy policy), Help & support (one row opening a
+  sub-dialog with Contact us, Support ID + copy, Support code; plus Reset
+  progress). Rare support tooling is one tap deeper so the main list stays
+  scannable. The smoke test addresses switches by index in that order.
 - **Analytics consent** — Settings → "Share anonymous usage data" (default on)
   gates every event that leaves the device.
 - **Privacy policy page** — `public/privacy.html`, shipped with the build,
-  linked from the consent checkbox and Settings → Help & support, precached
+  linked from the consent checkbox and Settings → Privacy, precached
   by the service worker. Three bracketed placeholders (date, publisher,
   country) to fill before release.
 - **How to play** — reachable from Settings *and* the profile card; covers

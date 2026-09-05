@@ -293,11 +293,13 @@ export const en = {
   'settings.language': 'Language',
   'settings.languageDesc': 'Reloads the game',
   'settings.languageAuto': 'Device language',
-  'settings.playingAs': 'Playing as <b>{name}</b> {avatar}',
-  'settings.guest': 'Playing as guest',
+  'settings.accessibility': 'Accessibility',
+  'settings.privacy': 'Privacy',
 
   // support
   'support.head': 'Help & support',
+  'support.rowDesc': 'Email us, your support ID, redeem a code',
+  'support.open': 'Open',
   'support.id': 'Support ID',
   'support.copy': 'Copy',
   'support.copied': 'Support ID copied',
