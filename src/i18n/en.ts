@@ -68,6 +68,11 @@ export const en = {
   'daily.done.replay': 'Replay for fun (no reward)',
   'daily.streak': '🔥 {n}-day streak',
   'daily.streakStarted': '🔥 Streak started',
+  'share.button': 'Share',
+  'share.headline': '🧪 ChromaFlask Daily · {date}',
+  'share.result': '{stars} {moves} · ideal {ideal}',
+  'share.copied': 'Result copied - paste it anywhere',
+  'share.failed': 'Could not share right now',
 
   // map
   'map.title': 'Select a level',

@@ -55,6 +55,11 @@ const table: Record<string, string> = {
   'daily.done.replay': 'Keyfine oyna (ödül yok)',
   'daily.streak': '🔥 {n} günlük seri',
   'daily.streakStarted': '🔥 Seri başladı',
+  'share.button': 'Paylaş',
+  'share.headline': '🧪 ChromaFlask Günlük · {date}',
+  'share.result': '{stars} {moves} · ideal {ideal}',
+  'share.copied': 'Sonuç kopyalandı: istediğin yere yapıştır',
+  'share.failed': 'Şu anda paylaşılamadı',
 
   'map.title': 'Bir seviye seç',
   'map.nodeLocked': 'Seviye {n}, kilitli',

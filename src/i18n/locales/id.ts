@@ -55,6 +55,11 @@ const table: Record<string, string> = {
   'daily.done.replay': 'Main lagi untuk seru-seruan (tanpa hadiah)',
   'daily.streak': '🔥 rentetan {n} hari',
   'daily.streakStarted': '🔥 Rentetan dimulai',
+  'share.button': 'Bagikan',
+  'share.headline': '🧪 ChromaFlask Harian · {date}',
+  'share.result': '{stars} {moves} · ideal {ideal}',
+  'share.copied': 'Hasil disalin: tempel di mana saja',
+  'share.failed': 'Tidak bisa berbagi saat ini',
 
   'map.title': 'Pilih level',
   'map.nodeLocked': 'Level {n}, terkunci',

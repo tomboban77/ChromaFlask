@@ -54,6 +54,8 @@ async function runViewport(browser, label, width, height, isMobile) {
     deviceScaleFactor: isMobile ? 3 : 1,
     isMobile,
     hasTouch: isMobile,
+    // The daily share falls back to the clipboard where there is no share sheet.
+    permissions: ['clipboard-read', 'clipboard-write'],
   });
   const page = await context.newPage();
 
@@ -466,6 +468,36 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.goBack();
   await page.waitForSelector('#screen-home.screen--active', { timeout: 5000 });
   console.log('  back on map     returned home');
+
+  // ---- daily win + share: the result text lands on the clipboard (desktop has no share sheet)
+  await page.click('#btn-daily');
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
+  await page.waitForFunction(() => window.__cf.state().tubes > 0, null, { timeout: 15_000 });
+  await sleep(600);
+  const dailyPlay = await page.evaluate(() => window.__cf.autoplay());
+  await page.waitForSelector('.modal', { timeout: 10_000 });
+  const shareBtn = page.locator('.modal .win__share');
+  const shareCount = await shareBtn.count();
+  let shared = '';
+  let clip = '';
+  if (shareCount === 1) {
+    await shareBtn.click();
+    await sleep(500);
+    // The text the game built is the contract; the clipboard read is informational
+    // (headless browsers often refuse it even with the permission granted).
+    shared = await page.evaluate(() => window.__cf.lastShare());
+    clip = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+  }
+  const shareLines = shared.split('\n');
+  console.log(`  daily share     ${dailyPlay.moves} moves, ${shareLines.length} lines, clipboard ${clip === shared ? 'matches' : 'unreadable here'}: "${shareLines[1] ?? ''}"`);
+  if (shareCount !== 1) problems.push(`[${label}] the daily win screen should have one Share button (got ${shareCount})`);
+  if (!shareLines[0]?.startsWith('🧪 ChromaFlask Daily')) problems.push(`[${label}] share text should open with the daily headline, got "${shareLines[0]}"`);
+  if (!/^★{1,3}☆{0,2} \d+ moves? · ideal \d+/.test(shareLines[1] ?? '')) problems.push(`[${label}] share result line malformed: "${shareLines[1]}"`);
+  if (!shareLines.at(-1)?.startsWith('http')) problems.push(`[${label}] share text should end with the game link`);
+  const stillWon = await page.evaluate(() => window.__cf.state().modalOpen);
+  if (!stillWon) problems.push(`[${label}] sharing must leave the win screen open`);
+  await page.locator('.modal .win__next').click(); // Home
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
 
   // ---- persistence across a reload (lands on home, then check the map)
   await page.reload({ waitUntil: 'load' });

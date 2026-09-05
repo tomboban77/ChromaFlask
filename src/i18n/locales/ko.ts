@@ -55,6 +55,11 @@ const table: Record<string, string> = {
   'daily.done.replay': '재미로 다시 하기 (보상 없음)',
   'daily.streak': '🔥 {n}일 연속',
   'daily.streakStarted': '🔥 연속 기록 시작',
+  'share.button': '공유',
+  'share.headline': '🧪 ChromaFlask 데일리 · {date}',
+  'share.result': '{stars} {moves} · 이상 {ideal}',
+  'share.copied': '결과를 복사했어요. 어디든 붙여 넣으세요',
+  'share.failed': '지금은 공유할 수 없어요',
 
   'map.title': '레벨 선택',
   'map.nodeLocked': '레벨 {n}, 잠김',

@@ -56,6 +56,11 @@ const table: Record<string, string> = {
   'daily.done.replay': 'मज़े के लिए फिर खेलें (कोई इनाम नहीं)',
   'daily.streak': '🔥 {n} दिन की स्ट्रीक',
   'daily.streakStarted': '🔥 स्ट्रीक शुरू',
+  'share.button': 'शेयर करें',
+  'share.headline': '🧪 ChromaFlask दैनिक · {date}',
+  'share.result': '{stars} {moves} · आदर्श {ideal}',
+  'share.copied': 'परिणाम कॉपी हो गया: कहीं भी पेस्ट करें',
+  'share.failed': 'अभी शेयर नहीं हो सका',
 
   'map.title': 'लेवल चुनें',
   'map.nodeLocked': 'लेवल {n}, लॉक है',

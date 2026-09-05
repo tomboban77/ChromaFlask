@@ -373,6 +373,7 @@ class App {
         modalOpen: this.modal.isOpen,
         winCount: this.winCount,
       }),
+      lastShare: () => this.lastShareText,
       /** Plays the generated winning line, waiting for each pour to land. */
       autoplay: async (): Promise<{ moves: number; log: string[] }> => {
         const solution = this.level?.solution ?? [];
@@ -1768,6 +1769,66 @@ class App {
    * move count for the next star, or "Perfect!"), and what's next (one big
    * green button; replay and home as quiet options).
    */
+  /**
+   * The daily result as a few lines of plain text, the way word games are
+   * shared: date, stars, moves against the proven ideal, streak, link. The
+   * ideal is the hook - no other sort game can print one it has proven.
+   */
+  private dailyShareText(w: { stars: number; moves: number; par: number; dailyStreak: number }): string {
+    const day = dayFromDailyId(this.levelId);
+    const stars = '★'.repeat(w.stars) + '☆'.repeat(3 - w.stars);
+    const lines = [
+      t('share.headline', { date: formatLongDate(dateFromDay(day)) }),
+      t('share.result', { stars, moves: tp('hud.moves', w.moves), ideal: w.par }),
+    ];
+    if (w.stars === 3) lines[1] += ` · ${t('win.perfect')}`;
+    if (w.dailyStreak > 1) lines.push(t('daily.streak', { n: w.dailyStreak }));
+    lines.push(window.location.origin + window.location.pathname);
+    return lines.join('\n');
+  }
+
+  /**
+   * Native share sheet where the browser has one (phones), otherwise the
+   * clipboard, otherwise a dialog with the text selected for a manual copy.
+   * A dismissed share sheet is not an error and says nothing.
+   */
+  /** The last share text built, for the smoke test (clipboard reads are unreliable headless). */
+  private lastShareText = '';
+
+  private async shareDailyResult(w: { stars: number; moves: number; par: number; dailyStreak: number }): Promise<void> {
+    const text = this.dailyShareText(w);
+    this.lastShareText = text;
+    const nav = navigator as Navigator & { share?: (data: { text: string }) => Promise<void> };
+    if (typeof nav.share === 'function') {
+      try {
+        await nav.share({ text });
+        this.analytics.track({ type: 'daily_share', stars: w.stars, streak: w.dailyStreak, method: 'share' });
+      } catch (err) {
+        if ((err as { name?: string }).name !== 'AbortError') this.toast.show(t('share.failed'), 'warn');
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      this.toast.show(t('share.copied'));
+      this.analytics.track({ type: 'daily_share', stars: w.stars, streak: w.dailyStreak, method: 'copy' });
+    } catch {
+      // No clipboard access: show the text so it can be copied by hand. The
+      // win modal is replaced; Back reopens nothing, home is a tap away.
+      const box = el('textarea', 'field__input share__text');
+      box.value = text;
+      box.readOnly = true;
+      box.rows = 5;
+      this.modal.open({
+        title: t('share.button'),
+        content: box,
+        buttons: [{ label: t('common.done'), kind: 'primary', onClick: () => this.quitToHome() }],
+      });
+      box.focus();
+      box.select();
+    }
+  }
+
   private showWinModal(w: {
     stars: number; moves: number; seconds: number; reward: number; isLast: boolean;
     prevStars: number | null; prevBest: number | null; streak: number;
@@ -1890,6 +1951,13 @@ class App {
       // There is no "next" daily until tomorrow: home is the way on.
       actions.appendChild(act(t('common.home'), 'btn btn--success btn--wide win__next', () => this.quitToHome()));
       const row = el('div', 'modal__row');
+      // Share keeps the win screen open: the player comes back to it after the share sheet.
+      const share = el('button', 'btn btn--ghost win__share', t('share.button'));
+      share.addEventListener('click', () => {
+        audio.play('button');
+        void this.shareDailyResult(w);
+      });
+      row.appendChild(share);
       row.appendChild(act(t('common.replay'), 'btn btn--ghost', () => this.restartLevel()));
       actions.appendChild(row);
     } else {

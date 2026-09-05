@@ -55,6 +55,11 @@ const table: Record<string, string> = {
   'daily.done.replay': 'Repetir por diversión (sin recompensa)',
   'daily.streak': '🔥 racha de {n} días',
   'daily.streakStarted': '🔥 Racha iniciada',
+  'share.button': 'Compartir',
+  'share.headline': '🧪 ChromaFlask Diario · {date}',
+  'share.result': '{stars} {moves} · ideal {ideal}',
+  'share.copied': 'Resultado copiado: pégalo donde quieras',
+  'share.failed': 'No se pudo compartir ahora',
 
   'map.title': 'Elige un nivel',
   'map.nodeLocked': 'Nivel {n}, bloqueado',

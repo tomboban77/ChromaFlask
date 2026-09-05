@@ -1374,6 +1374,16 @@ body {
 .win__next { font-size: 18px; min-height: 58px; animation: playpulse 2.2s ease-in-out 1.4s infinite; }
 .win__actions .modal__row .btn { min-height: 44px; padding: 10px 14px; font-size: 14px; }
 
+/* Manual-copy fallback for the daily share: the text, selected, nothing else. */
+.share__text {
+  display: block;
+  resize: none;
+  text-align: left;
+  line-height: 1.5;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
 /* settings rows */
 .setting {
   display: flex;

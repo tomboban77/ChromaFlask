@@ -84,6 +84,13 @@ _Last updated: 2026-09-05_
   (v9), capped at 120 days; campaign counters are untouched.
 - Win screen: date as the eyebrow, "🔥 n-day streak" pill, Home as the
   primary action. Profile shows current and best daily streak.
+- **Share** (daily win screen only) — a few lines of plain text the way word
+  games are shared: "🧪 ChromaFlask Daily · date", "★★★ 21 moves · ideal 21 ·
+  Perfect!", the streak when above one, and the game link. Native share sheet
+  where the browser has one, else clipboard with a toast, else a dialog with
+  the text selected. Sharing leaves the win screen open; a dismissed sheet is
+  silent. `daily_share` analytics event (method share/copy). The smoke test
+  wins today's daily and checks the built text through the dev hook.
 - Verified: core suite deals a week of dailies and round-trips day arithmetic
   across a DST boundary; smoke test starts today's daily through the worker.
 
