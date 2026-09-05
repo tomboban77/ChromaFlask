@@ -45,6 +45,18 @@ jobs:
       - name: Build
         run: npx vite build
 
+      # Drives the real game in headless Chromium: full flows, economy
+      # assertions, tutorial, back button, persistence. Non-blocking until it
+      # has been seen green on this runner; then drop continue-on-error so a
+      # broken flow can never deploy.
+      - name: Install Playwright Chromium
+        run: npx playwright-core install --with-deps chromium
+        continue-on-error: true
+
+      - name: End-to-end smoke test
+        run: npm run test:e2e
+        continue-on-error: true
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

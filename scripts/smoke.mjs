@@ -20,11 +20,10 @@ const EDGE_PATHS = [
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
   'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
 ];
+// Local Windows machines drive the installed Edge; anywhere else (CI) uses
+// Playwright's own Chromium, installed with `npx playwright-core install chromium`.
 const edge = EDGE_PATHS.find((p) => existsSync(p));
-if (!edge) {
-  console.error('Microsoft Edge not found; cannot run smoke test.');
-  process.exit(1);
-}
+console.log(edge ? `browser: Edge (${edge})` : 'browser: Playwright Chromium');
 
 mkdirSync(SHOTS, { recursive: true });
 
@@ -334,7 +333,7 @@ try {
   console.log('dev server up');
 
   const browser = await chromium.launch({
-    executablePath: edge,
+    ...(edge ? { executablePath: edge } : {}),
     headless: true,
     args: [
       // Headless needs a software GL path for Pixi to get a WebGL context.

@@ -1,3 +1,8 @@
+// Pixi's default WebGL uniform sync builds functions with `new Function`,
+// which the production Content Security Policy forbids (script-src 'self',
+// no 'unsafe-eval'). This entry point swaps in a static implementation.
+// Must be imported before the Application is created.
+import 'pixi.js/unsafe-eval';
 import { Application, Container } from 'pixi.js';
 import { ParticleField, Starfield, StreamView } from './effects';
 
@@ -96,7 +101,10 @@ export class GameStage {
     }
   }
 
-  /** Stop rendering while a modal or a background tab has the screen. */
+  /**
+   * Stop the frame loop while the game screen is hidden (other screens, or a
+   * background tab). Idempotent: Pixi's ticker ignores redundant start/stop.
+   */
   setPaused(paused: boolean): void {
     if (paused) this.app.ticker.stop();
     else this.app.ticker.start();

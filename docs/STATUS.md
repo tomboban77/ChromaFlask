@@ -17,6 +17,20 @@ _Last updated: 2026-09-05_
 - **Generator** (`src/core/generator.ts`) — deterministic per level id (every
   player gets the identical board), every level machine-proven solvable before
   it is accepted, with its winning line attached (powers hints + tutorial).
+- **Precomputed campaign** (`src/core/campaign.json`, built by
+  `npm run levels:build`) — all 200 boards and winning lines computed once at
+  build time (52 KB, ~11 KB gzipped), so "Next level" costs zero solver work
+  on-device (the worst seeds took 1.3 s on a desktop and several seconds on a
+  phone). With no time budget the exact solve runs to completion: **every
+  stored par is proven optimal** (one par tightened vs. the runtime
+  generator, L192 23 → 22). `getCampaignLevel` validates each stored line by
+  replay and falls back to the generator if anything is off. `test:core`
+  proves the file against the live generator on every run.
+- **Solver worker** (`src/core/solver.worker.ts`, `services/SolverClient.ts`)
+  — hints and the no-win proof run off the main thread; exhausting the
+  proof budget on a cauldron board is ~0.5 s of CPU on a desktop. Results are
+  discarded if the board moved on; a dead worker degrades to synchronous
+  search. No-win coverage extended from 8 to 10 tubes.
 
 ### 200-level campaign (`src/core/levels.ts`)
 - Hand-tuned opening (1–10), then a measured sawtooth curve: colour bands
@@ -40,7 +54,10 @@ _Last updated: 2026-09-05_
   time; both documented in "How to play".
 
 ### Screens & flow
-- **Splash** — full-bleed entry art (`public/Entry.webp`) + live loading bar.
+- **Splash** — full-bleed entry art (`public/Entry.webp`) + loading bar
+  driven by real boot milestones (config, save, renderer, wiring) with a
+  450 ms floor so it never flashes; a returning player on a fast device is on
+  the home screen in well under a second.
 - **Home** — full-bleed scene art, avatar → profile card, coins/hearts pills,
   big play button, purple/gold bottom nav (Shop · Home · Levels).
 - **Level map** — 200 nodes, stars per level, auto-scrolls to current level.
@@ -104,6 +121,18 @@ _Last updated: 2026-09-05_
   per session. A failed boot shows a Reload control instead of a stuck splash.
 - **Analytics consent** — Settings → "Share anonymous usage data" (default on)
   gates every event that leaves the device.
+- **Content Security Policy** — injected as a `<meta>` tag at build time
+  (`vite.config.ts`): scripts only from the bundle, connections only to
+  PostHog, no eval. Pixi is loaded through `pixi.js/unsafe-eval` so its
+  shader uniform sync works without `new Function`.
+- **Render loop pauses off the game screen** — home, map and shop no longer
+  draw starfield and bottles into a hidden canvas every frame.
+- **Art budget** — `optimize-art.mjs` carries per-image quality/width
+  settings; critical-path images went from 712 KB to 547 KB; home art
+  preloads at low priority.
+- **E2E in CI** — `smoke.mjs` uses Edge when present, otherwise Playwright's
+  Chromium; the deploy workflow runs it non-blocking until it has been seen
+  green on the runner (then drop `continue-on-error`).
 - **Art pipeline** — drop PNG sources in `art/`, run
   `node scripts/optimize-art.mjs` → optimized WebP in `public/` (preloaded).
 - **PWA / store-wrap readiness** — full icon set (192/512 + maskable variants
@@ -126,7 +155,7 @@ _Last updated: 2026-09-05_
 | Trademark search | Run "ChromaFlask" through USPTO/EUIPO + both app stores before launch. |
 | iOS haptics | Web vibration is unsupported on iOS; the Capacitor wrapper needs a native haptics bridge. |
 | Receipt validation | Client-side purchase grants are fine for launch but spoofable; add a server verification endpoint before revenue scales. |
-| Full audit | [AUDIT.md](AUDIT.md) (2026-09-05) — findings by area with a P0/P1/P2 roadmap. P0 items E1, U3, U1, E4, S1, S2, O1, O2 are done; P1 starts with precomputed levels and mid-level resume. |
+| Full audit | [AUDIT.md](AUDIT.md) (2026-09-05) — findings by area with a P0/P1/P2 roadmap. P0 complete. P1: L1/P1 precompute + worker, P3, P2 images, S3 CSP, O4, U4 done; U2 mid-level resume and lazy Pixi next. |
 
 ---
 

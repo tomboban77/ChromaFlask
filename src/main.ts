@@ -1,7 +1,7 @@
 import './styles/main.css';
 
-import { LEVELS, LEVEL_COUNT, getLevelSpec } from '@/core/levels';
-import { generateLevel } from '@/core/generator';
+import { LEVELS, LEVEL_COUNT } from '@/core/levels';
+import { getCampaignLevel } from '@/core/campaign';
 import {
   COIN_SHOP, LIVES_MAX, coinsFor, starsFor,
   type CoinShopItem, type PowerupId,
@@ -99,10 +99,10 @@ class App {
   private ignoreNextPop = false;
 
   async boot(): Promise<void> {
-    // The splash progress starts immediately so the first paint already moves.
-    const splashDone = this.animateSplash();
+    this.setSplash(6, 'Mixing colours…');
 
     await this.remote.refresh();
+    this.setSplash(20, 'Mixing colours…');
     this.save = new SaveService(this.remote.current.economy.startingCoins);
     // Off the boot path. Once the store is reachable, settle anything that was
     // paid for but never delivered (see Payments.ts lifecycle notes).
@@ -128,8 +128,10 @@ class App {
     );
 
     this.applySettings();
+    this.setSplash(35, 'Warming the flasks…');
 
     await this.stage.init($('#board-host'));
+    this.setSplash(80, 'Almost ready…');
     this.analytics.track({ type: 'app_start', renderer: this.stage.rendererType });
 
     this.board = new BoardView(this.stage.stream, this.stage.particles, {
@@ -191,7 +193,7 @@ class App {
       });
     }
 
-    await splashDone;
+    await this.finishSplash();
     if (this.save.snapshot.profile) {
       this.renderHome();
       this.show('home');
@@ -200,26 +202,25 @@ class App {
     }
   }
 
-  /** Determinate splash bar: honest about the ~1.6s the boot actually takes. */
-  private animateSplash(): Promise<void> {
-    const bar = $('#boot-bar');
-    const pct = $('#boot-pct');
-    const phrases = ['Mixing colours…', 'Warming the flasks…', 'Almost ready…'];
-    return new Promise((resolve) => {
-      const t0 = performance.now();
-      const duration = 1600;
-      const tick = (t: number) => {
-        const p = Math.min(1, (t - t0) / duration);
-        const eased = 1 - Math.pow(1 - p, 2.2);
-        const value = Math.round(eased * 100);
-        bar.style.width = `${value}%`;
-        const phrase = phrases[Math.min(phrases.length - 1, Math.floor(p * phrases.length))];
-        pct.textContent = `${phrase} ${value}%`;
-        if (p < 1) requestAnimationFrame(tick);
-        else resolve();
-      };
-      requestAnimationFrame(tick);
-    });
+  // ----------------------------------------------------------------- splash
+  private readonly splashStartedAt = performance.now();
+
+  /**
+   * The bar tracks real boot milestones rather than a fixed timer, so a
+   * returning player on a fast device is on the home screen in well under a
+   * second instead of watching a scripted 1.6 s animation.
+   */
+  private setSplash(percent: number, phrase: string): void {
+    $('#boot-bar').style.width = `${percent}%`;
+    $('#boot-pct').textContent = `${phrase} ${percent}%`;
+  }
+
+  /** Hold the splash for a brief minimum so it never flashes, then complete. */
+  private async finishSplash(minMs = 450): Promise<void> {
+    const remaining = minMs - (performance.now() - this.splashStartedAt);
+    if (remaining > 0) await new Promise((r) => window.setTimeout(r, remaining));
+    this.setSplash(100, 'Ready');
+    await new Promise((r) => window.setTimeout(r, 120));
   }
 
   // ------------------------------------------------------ error reporting
@@ -342,6 +343,10 @@ class App {
 
     // The Pixi host has no size while hidden; nudge a reflow once it is shown.
     if (id === 'game') requestAnimationFrame(() => this.stage.app.resize());
+    // The canvas only exists on the game screen. Everywhere else the render
+    // loop would be drawing starfield and bottles into a display:none host -
+    // pure battery cost.
+    this.stage.setPaused(id !== 'game' || document.hidden);
     this.updateTutorialHand();
     this.syncHistoryGuard();
   }
@@ -435,7 +440,7 @@ class App {
 
     document.addEventListener('visibilitychange', () => {
       const hidden = document.hidden;
-      this.stage.setPaused(hidden);
+      this.stage.setPaused(hidden || this.current !== 'game');
       if (hidden) {
         audio.suspend();
         this.save.flush();
@@ -930,9 +935,9 @@ class App {
       this.openShop('game-coins');
     });
 
-    $('#btn-undo').addEventListener('click', () => this.usePowerup('undo'));
-    $('#btn-hint').addEventListener('click', () => this.usePowerup('hint'));
-    $('#btn-bottle').addEventListener('click', () => this.usePowerup('bottle'));
+    $('#btn-undo').addEventListener('click', () => void this.usePowerup('undo'));
+    $('#btn-hint').addEventListener('click', () => void this.usePowerup('hint'));
+    $('#btn-bottle').addEventListener('click', () => void this.usePowerup('bottle'));
   }
 
   private startLevel(id: number): void {
@@ -951,7 +956,8 @@ class App {
     this.nudged = false;
 
     try {
-      this.level = generateLevel(getLevelSpec(id));
+      // Precomputed at build time; the generator is only a fallback.
+      this.level = getCampaignLevel(id);
     } catch (err) {
       console.error(err);
       this.toast.show('Could not build that level. Please try another.', 'error');
@@ -1135,7 +1141,7 @@ class App {
     return Math.max(0, this.remote.current.economy.freeUses[id] - this.uses[id]);
   }
 
-  private usePowerup(id: PowerupId): void {
+  private async usePowerup(id: PowerupId): Promise<void> {
     if (this.board.isBusy) return;
 
     // Spend order: free allowance, then shop-bought stock. Out of both means
@@ -1159,7 +1165,9 @@ class App {
         if (!applied) this.toast.show('Nothing to undo', 'info', 1400);
         break;
       case 'hint':
-        applied = this.board.showHint();
+        // Solved in the worker; the board may move on meanwhile, in which
+        // case showHint resolves false and the use is refunded below.
+        applied = await this.board.showHint();
         if (applied) this.save.bumpStat('hintsUsed');
         else this.toast.show('No winning move from here - try undo or restart', 'warn', 3000);
         break;
@@ -1353,12 +1361,16 @@ class App {
         {
           label: 'Undo last pour',
           kind: 'primary',
-          onClick: () => this.usePowerup('undo'),
+          onClick: () => {
+            void this.usePowerup('undo');
+          },
         },
         {
           label: 'Add an empty bottle',
           kind: 'ghost',
-          onClick: () => this.usePowerup('bottle'),
+          onClick: () => {
+            void this.usePowerup('bottle');
+          },
         },
         {
           label: this.heartCostLabel('Restart level'),

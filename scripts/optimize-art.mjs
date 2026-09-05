@@ -16,12 +16,26 @@ if (files.length === 0) {
   process.exit(0);
 }
 
+/**
+ * Per-image settings. Every one of these is on the critical path before the
+ * first screen paints, so bytes matter more than the last notch of quality:
+ *  - logo: displayed at most 360 CSS px wide, so 1080 px covers 3x screens.
+ *  - Entry/home: full-bleed painted backgrounds; soft gradients compress well.
+ */
+const SETTINGS = {
+  logo: { width: 1080, quality: 72 },
+  Entry: { width: 1170, quality: 74 },
+  home: { width: 1170, quality: 74 },
+};
+const DEFAULT = { width: 1170, quality: 80 };
+
 for (const file of files) {
-  const out = join(OUT, `${parse(file).name}.webp`);
+  const name = parse(file).name;
+  const out = join(OUT, `${name}.webp`);
+  const { width, quality } = SETTINGS[name] ?? DEFAULT;
   const image = sharp(join(SRC, file));
   const meta = await image.metadata();
-  // 1170px is enough for a 390pt phone at 3x; larger sources are downscaled.
-  const resized = meta.width > 1170 ? image.resize({ width: 1170 }) : image;
-  const info = await resized.webp({ quality: 82 }).toFile(out);
-  console.log(`${file} -> ${out}  ${(info.size / 1024).toFixed(0)} KB (${info.width}x${info.height})`);
+  const resized = meta.width > width ? image.resize({ width }) : image;
+  const info = await resized.webp({ quality }).toFile(out);
+  console.log(`${file} -> ${out}  ${(info.size / 1024).toFixed(0)} KB (${info.width}x${info.height}, q${quality})`);
 }

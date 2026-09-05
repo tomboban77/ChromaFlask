@@ -22,6 +22,15 @@ were benchmarked separately on this machine (Node 22, desktop).
 > in the store data-safety forms. Not verified on a real Android device: the
 > Play Billing restore path (needs a license tester in a TWA).
 >
+> **P1 progress (same day):** L1/P1 all 200 levels precomputed at build time,
+> every par proven optimal (L192 tightened 23 → 22), solver moved to a Web
+> Worker for hints and no-win proofs; P3 render loop pauses off the game
+> screen; U4 splash follows real boot progress (450 ms floor); P2 critical
+> images 712 → 547 KB; S3 build-time CSP (Pixi via `unsafe-eval` entry so
+> `new Function` is not needed); O4 e2e runs on Playwright Chromium in CI
+> (non-blocking until seen green). Remaining P1: U2 mid-level resume, lazy
+> Pixi chunk, E6 already done.
+>
 > **Decisions taken with the owner's go-ahead (same day):** E2 economy
 > rebalanced (200 start, free 3 undo / 1 hint / 0 bottle, 50 + 15/star);
 > E6 hearts now pay only for failures (dead-ended or proven-unwinnable

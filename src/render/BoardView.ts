@@ -4,8 +4,9 @@ import {
   DEFAULT_RULES, TUBE_CAPACITY, applyPour, cloneBoard, isComplete, isDeadlocked,
   isSolved, pourAmount, rulesFor, undoPour,
 } from '@/core/board';
-import { findHint, solvability } from '@/core/solver';
+import { findHint } from '@/core/solver';
 import type { Board, BoardRules, ColorId, GeneratedLevel, Move } from '@/core/types';
+import { solverClient } from '@/services/SolverClient';
 import { audio } from '@/audio/AudioEngine';
 import { BottleView, type Band } from './BottleView';
 import type { ParticleField, StreamView } from './effects';
@@ -614,11 +615,13 @@ export class BoardView {
    * but provably no winning line. Silently letting them flounder reads as
    * "this level is impossible", so prove it and say so - once per trap.
    *
-   * Deferred off the move handler, budget-capped, and only on boards small
-   * enough that a full proof is cheap; anything inconclusive stays silent.
+   * The proof runs in the solver worker (exhausting the budget on a cauldron
+   * board is ~0.5 s of CPU on a desktop, far more on a phone), budget-capped,
+   * and only on boards up to ten tubes; anything inconclusive stays silent.
+   * The result is discarded if the board moved on while it was computing.
    */
   private scheduleNoWinCheck(): void {
-    if (this.noWinWarned || this.board.length > 8) return;
+    if (this.noWinWarned || this.board.length > 10) return;
     if (this.noWinTimer !== null) window.clearTimeout(this.noWinTimer);
 
     const gen = this.generation;
@@ -626,10 +629,15 @@ export class BoardView {
     this.noWinTimer = window.setTimeout(() => {
       this.noWinTimer = null;
       if (gen !== this.generation || moves !== this.history.length || this.busy) return;
-      if (solvability(this.board, this.rules, 30_000) === 'unsolvable') {
-        this.noWinWarned = true;
-        this.callbacks.onNoWin?.();
-      }
+      void solverClient
+        .solvability(cloneBoard(this.board), this.rules, 30_000)
+        .then((result) => {
+          if (gen !== this.generation || moves !== this.history.length) return;
+          if (result === 'unsolvable' && !this.noWinWarned) {
+            this.noWinWarned = true;
+            this.callbacks.onNoWin?.();
+          }
+        });
     }, 150);
   }
 
@@ -687,11 +695,18 @@ export class BoardView {
     return true;
   }
 
-  /** Highlights the first move of a winning line. Returns false if none exists. */
-  showHint(): boolean {
+  /**
+   * Highlights the first move of a winning line. Resolves false if none
+   * exists, or if the board changed while the worker was thinking (the
+   * caller then refunds the powerup).
+   */
+  async showHint(): Promise<boolean> {
     if (this.busy) return false;
     this.clearHint();
-    const move = findHint(this.board, this.rules);
+    const gen = this.generation;
+    const moves = this.history.length;
+    const move = await solverClient.hint(cloneBoard(this.board), this.rules);
+    if (gen !== this.generation || moves !== this.history.length || this.busy) return false;
     if (!move) return false;
 
     this.hintPair = { from: move.from, to: move.to };

@@ -8,6 +8,7 @@ import {
   isDeadlocked, isSolved, legalMoves, pourAmount, rulesFor, topRun, undoPour,
   usefulMoves,
 } from './board';
+import { getCampaignLevel, isStoredOptimal, storedLevelCount } from './campaign';
 import { generateLevel } from './generator';
 import { LEVELS } from './levels';
 import { DEFAULT_ECONOMY, coinsFor, starsFor } from './progression';
@@ -250,7 +251,11 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
     check(`L${spec.id} meets minPar`, gen.par >= spec.minPar, `par=${gen.par} min=${spec.minPar}`);
     check(`L${spec.id} solution wins`, isSolved(replay(gen.board, gen.solution, rules), rules));
     check(`L${spec.id} solution length == par`, gen.solution.length === gen.par);
-    check(`L${spec.id} generates under 2s`, ms < 2000, `${ms.toFixed(0)}ms`);
+    // Players get the precomputed campaign; the generator is the fallback and
+    // the endless-mode path. The bound is a regression guard against a solver
+    // change making generation explode, not a promise about any one machine
+    // (it must survive a CI runner and a laptop running other tests).
+    check(`L${spec.id} generates under 3s`, ms < 3000, `${ms.toFixed(0)}ms`);
 
     // conservation: exactly TUBE_CAPACITY units of each colour
     const counts = new Map<number, number>();
@@ -270,7 +275,27 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
       `L${spec.id} deterministic`,
       JSON.stringify(again.board) === JSON.stringify(gen.board),
     );
+
+    // The precomputed campaign (campaign.json) is what players actually get.
+    // It must be the same board, and its line must be at least as short.
+    const stored = getCampaignLevel(spec.id);
+    check(
+      `L${spec.id} campaign board matches generator`,
+      JSON.stringify(stored.board) === JSON.stringify(gen.board),
+    );
+    check(`L${spec.id} campaign par never worse than generator`, stored.par <= gen.par,
+      `stored=${stored.par} gen=${gen.par}`);
+    check(`L${spec.id} campaign par meets minPar`, stored.par >= spec.minPar);
+    check(
+      `L${spec.id} campaign solution wins in par moves`,
+      stored.solution.length === stored.par &&
+        isSolved(replay(stored.board, stored.solution, rules), rules),
+    );
+    check(`L${spec.id} campaign par proven optimal`, isStoredOptimal(spec.id) === true);
   }
+
+  check('campaign covers every level', storedLevelCount() === LEVELS.length,
+    `${storedLevelCount()} of ${LEVELS.length}`);
 
   console.log(
     `\n  ${LEVELS.length} levels verified - total ${(totalMs / 1000).toFixed(1)}s, ` +

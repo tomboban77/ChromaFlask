@@ -26,7 +26,8 @@ npm run dev        # http://localhost:5173
 | `npm run preview` | Serve the built output |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
-| `npm run test:core` | Rules/solver/generator suite (no browser needed) |
+| `npm run levels:build` | Precompute all 200 boards + optimal lines into `src/core/campaign.json` |
+| `npm run test:core` | Rules/solver/generator suite, incl. proving `campaign.json` (no browser needed) |
 | `npm run test:e2e` | Drives the real game in Edge, plays a level to a win |
 
 `dist/` is fully static — any CDN or static host will serve it. Paths are
@@ -64,20 +65,23 @@ touches only `render/`.
 
 ### Notable implementation details
 
-**Every level is provably solvable.** `generateLevel` deals a seeded random
-board and then actually solves it before accepting it. Generation is
-deterministic per level id, so all players get identical boards. Typical cost
-is well under 100 ms at level start; the single worst campaign seed (a deep
-cauldron board) is ~1 s on desktop.
+**Every level is provably solvable, and precomputed.** `generateLevel` deals a
+seeded random board and then actually solves it before accepting it.
+Generation is deterministic per level id, so all players get identical boards
+- which is why the whole campaign is computed once at build time
+(`npm run levels:build` → `src/core/campaign.json`) and costs nothing at level
+start. The generator stays as the validated fallback and the future endless
+mode; the solver runs in a Web Worker for hints and no-win proofs.
 
 **Par is genuinely optimal.** The solver is A* over states canonicalised by
 sorting tube contents (tubes are interchangeable, which collapses a huge amount
 of the search space). Its heuristic — total colour runs minus colour count — is
 admissible, because a single pour merges at most one pair of runs. Under
 cauldron rules a second admissible bound applies (every run inside the cauldron
-needs a pour to leave), and the max of the two is used. The core test suite
-audits pars against an independent BFS under both rule sets, so a 3-star target
-is a real mathematical claim, not a guess.
+needs a pour to leave), and the max of the two is used. Offline, the exact
+search runs with no time budget, so all 200 stored pars are proven optimal; the
+core test suite asserts that flag and audits pars against an independent BFS
+under both rule sets. A 3-star target is a real mathematical claim, not a guess.
 
 **The liquid surface stays level while the bottle tilts.** Bands are emitted in
 bottle-local space as quads between two parallel lines whose normal is

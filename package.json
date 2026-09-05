@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
+    "levels:build": "vite build --ssr src/core/precompute.ts --outDir .tmp --logLevel error && node .tmp/precompute.js",
     "test:core": "vite build --ssr src/core/selftest.ts --outDir .tmp --logLevel error && node .tmp/selftest.js",
     "test:e2e": "node scripts/smoke.mjs"
   },
