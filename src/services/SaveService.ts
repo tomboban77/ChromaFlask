@@ -108,6 +108,13 @@ export interface SaveData {
   oneWaySeen: boolean;
   /** Ids of achievements already awarded (their coins have been paid). */
   achievements: string[];
+  /**
+   * Levels the player paid coins to skip. A skipped level unlocks the next one
+   * but is not cleared: it has no record, earns no stars, does not count toward
+   * chapter completion or achievements, and can be replayed any time. A real
+   * clear removes it from this list.
+   */
+  skipped: number[];
   /** Welcome-back reward: consecutive days claimed, and the last claimed day. */
   login: { streak: number; lastDay: number };
 }
@@ -124,7 +131,7 @@ export interface DailyState {
 const _dailyStateIsStreak: (s: DailyState) => DailyStreak = (s) => s;
 void _dailyStateIsStreak;
 
-export const SAVE_VERSION = 13;
+export const SAVE_VERSION = 14;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -172,6 +179,7 @@ export function defaultSave(startingCoins: number): SaveData {
     oneWaySeen: false,
     achievements: [],
     login: { streak: 0, lastDay: -1 },
+    skipped: [],
   };
 }
 
@@ -283,6 +291,10 @@ export class SaveService {
       // v10 saves predate achievements and the login reward.
       achievements: Array.isArray(parsed.achievements) ? parsed.achievements : [],
       login: { ...fallback.login, ...(parsed.login ?? {}) },
+      // v13 saves predate skip level.
+      skipped: Array.isArray(parsed.skipped)
+        ? parsed.skipped.filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
+        : [],
     };
   }
 
@@ -500,6 +512,8 @@ export class SaveService {
         bestMoves: prev ? Math.min(prev.bestMoves, moves) : moves,
         clearedAt: Date.now(),
       };
+      // A genuine clear retires the skip.
+      if (d.skipped.includes(levelId)) d.skipped = d.skipped.filter((id) => id !== levelId);
     });
     return { isFirstClear, prevStars: prev ? prev.stars : null };
   }
@@ -508,14 +522,35 @@ export class SaveService {
     return this.data.levels[String(levelId)];
   }
 
-  /** Highest campaign level the player may enter: one past their furthest clear. */
-  highestUnlocked(levelCount: number): number {
-    let cleared = 0;
+  // ------------------------------------------------------------------ skip
+  /** Mark a level skipped (coins are charged by the caller). Idempotent. */
+  skipLevel(levelId: number): void {
+    if (this.data.skipped.includes(levelId) || this.data.levels[String(levelId)]) return;
+    this.update((d) => {
+      d.skipped.push(levelId);
+    });
+  }
+
+  isSkipped(levelId: number): boolean {
+    return this.data.skipped.includes(levelId);
+  }
+
+  /** Furthest id at or below `max` that is cleared or skipped; 0 if none. */
+  private furthestReached(min: number, max: number): number {
+    let furthest = 0;
     for (const key of Object.keys(this.data.levels)) {
       const id = Number(key);
-      if (Number.isFinite(id) && id <= levelCount && id > cleared) cleared = id;
+      if (Number.isFinite(id) && id >= min && id <= max && id > furthest) furthest = id;
     }
-    return Math.min(levelCount, cleared + 1);
+    for (const id of this.data.skipped) {
+      if (id >= min && id <= max && id > furthest) furthest = id;
+    }
+    return furthest;
+  }
+
+  /** Highest campaign level the player may enter: one past their furthest clear or skip. */
+  highestUnlocked(levelCount: number): number {
+    return Math.min(levelCount, this.furthestReached(1, levelCount) + 1);
   }
 
   /** Campaign levels cleared (ids within the campaign only). */
@@ -548,14 +583,9 @@ export class SaveService {
     return n;
   }
 
-  /** The next endless level to play: one past the furthest endless clear. */
+  /** The next endless level to play: one past the furthest endless clear or skip. */
   nextEndlessId(levelCount: number): number {
-    let furthest = levelCount;
-    for (const key of Object.keys(this.data.levels)) {
-      const id = Number(key);
-      if (Number.isFinite(id) && id > furthest) furthest = id;
-    }
-    return furthest + 1;
+    return Math.max(levelCount, this.furthestReached(levelCount + 1, Number.MAX_SAFE_INTEGER)) + 1;
   }
 
   get totalStars(): number {

@@ -720,6 +720,9 @@ body {
 
 .node--done { border-color: rgba(43, 217, 124, 0.5); }
 
+/* Paid to pass: open, unstarred, with an amber dashed rim so it reads as "come back". */
+.node--skipped { border-style: dashed; border-color: rgba(255, 176, 32, 0.6); }
+
 .node--locked {
   opacity: 0.42;
   cursor: not-allowed;

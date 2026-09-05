@@ -17,6 +17,8 @@ export interface EconomyConfig {
   readonly dailyBonus: number;
   /** Extra empty tubes the Add Bottle powerup may add per attempt. */
   readonly maxExtraTubes: number;
+  /** Coins to skip the current level (unlocks the next; the skipped one earns nothing). */
+  readonly skipPrice: number;
 }
 
 /**
@@ -49,6 +51,10 @@ export const DEFAULT_ECONOMY: EconomyConfig = {
   // daily, not a reason to skip the campaign.
   dailyBonus: 50,
   maxExtraTubes: 2,
+  // A skip is a safety valve against churn, not a shortcut: a little over
+  // one and a half perfect clears, dearer than a hint pack (200 buys three
+  // hints) so trying a hint first is always the cheaper route.
+  skipPrice: 150,
 };
 
 // ------------------------------------------------------------ login reward

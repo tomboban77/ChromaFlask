@@ -13,6 +13,7 @@ export type AnalyticsEvent =
   | { type: 'login_reward'; day: number; coins: number }
   | { type: 'level_quit'; level: number; moves: number; seconds: number }
   | { type: 'level_stuck'; level: number; moves: number }
+  | { type: 'level_skip'; level: number; moves: number; price: number }
   | { type: 'level_no_win'; level: number; moves: number }
   | { type: 'powerup_used'; level: number; powerup: string; paid: boolean }
   | { type: 'tutorial_step'; step: number }

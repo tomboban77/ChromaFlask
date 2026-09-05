@@ -187,6 +187,15 @@ _Last updated: 2026-09-05_
   shop-bought stock → **shop opens** (never silently charged to coins; empty
   badge becomes a green "+"). Bottles are deliberately never free: a free
   extra tube erases the difficulty curve.
+- **Skip level** (150 coins, `economy.skipPrice`) — offered in the Restart
+  dialog and the No-moves-left dialog on campaign and endless levels (never
+  the daily, never inside the tutorial). Paying unlocks the next level and
+  moves straight to it; the skipped level keeps no record, earns no stars,
+  does not count toward chapter completion or achievements, costs no heart,
+  and shows on the map with an amber dashed rim to come back to. A genuine
+  clear later retires the skip. Without enough coins the shop opens and
+  nothing is charged. Save v14 (`skipped`). Smoke test covers cost, heart,
+  landing level and the map marker after reload.
 - **Economy tuning** — 200 starting coins; a 3-star first clear pays 95
   (50 + 15/star). Hint ×3 = 200, Bottle ×3 = 320, Undo ×3 = 80, hearts 500.
   All in `DEFAULT_ECONOMY`, meant to be retuned live via RemoteConfig.
@@ -205,7 +214,7 @@ _Last updated: 2026-09-05_
 - Haptics on pours/errors/wins/buttons (Android; toggle in settings).
 - Accessibility: colourblind glyphs, reduced motion, focus management, 44 px
   touch targets, safe-area insets.
-- **Persistence** — save schema v13 with forward-compatible migrations
+- **Persistence** — save schema v14 with forward-compatible migrations
   (profile, level records, coins, inventory, lives, lifetime stats, mechanic
   intros, support ID, redeemed codes, granted purchase tokens, in-progress
   attempt). LocalStorage with in-memory fallback.

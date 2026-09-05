@@ -371,6 +371,31 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (afterLeave !== 'Level 2') problems.push(`[${label}] leaving should clear the saved attempt (got "${afterLeave}")`);
   if (livesAfterLeave !== '5') problems.push(`[${label}] leaving a live board must not cost a heart (hearts=${livesAfterLeave})`);
 
+  // ---- skip level: 150 coins, no heart, unlocks the next level, records no clear
+  await page.evaluate(() => window.__cf.start(2));
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 8000 });
+  await sleep(900);
+  const skipMove = await page.evaluate(() => window.__cf.move(0));
+  await page.evaluate((mv) => window.__cf.tap(mv.from), skipMove);
+  await page.evaluate((mv) => window.__cf.tap(mv.to), skipMove);
+  await sleep(1100);
+  const beforeSkip = await page.evaluate(() => window.__cf.state());
+  await page.click('#btn-restart');
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  await page.locator('.modal button', { hasText: 'Skip level' }).click();
+  await page.waitForFunction(() => window.__cf.state().level === 3, null, { timeout: 8000 });
+  await sleep(600);
+  const afterSkip = await page.evaluate(() => window.__cf.state());
+  const skipLabel = (await page.locator('#game-level-label').textContent())?.trim();
+  console.log(`  skip level      level ${beforeSkip.level} -> ${afterSkip.level} "${skipLabel}", coins ${beforeSkip.coins} -> ${afterSkip.coins}, hearts ${afterSkip.lives}`);
+  if (afterSkip.coins !== beforeSkip.coins - 150) problems.push(`[${label}] skip should cost 150 coins (${beforeSkip.coins} -> ${afterSkip.coins})`);
+  if (afterSkip.lives !== beforeSkip.lives) problems.push(`[${label}] skipping must not cost a heart`);
+  if (skipLabel !== 'Level 3') problems.push(`[${label}] skip should land on level 3, HUD reads "${skipLabel}"`);
+  await page.click('#btn-back'); // no moves on level 3: straight home
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+  const playAfterSkip = (await page.locator('#btn-play').textContent())?.trim();
+  if (playAfterSkip !== 'Level 3') problems.push(`[${label}] after a skip the play button should offer level 3, got "${playAfterSkip}"`);
+
   // ---- endless mode: the first level past the campaign is generated in the worker on demand
   await page.evaluate((id) => window.__cf.start(id), LEVEL_COUNT + 1);
   await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
@@ -449,11 +474,14 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.waitForSelector('#screen-map.screen--active', { timeout: 8000 });
   const savedName = await page.locator('#map-name').textContent();
   const unlockedAfter = await page.locator('.node--locked').count();
-  console.log(`  after reload    name="${savedName}" locked=${unlockedAfter}`);
+  const skippedAfter = await page.locator('.node--skipped').count();
+  console.log(`  after reload    name="${savedName}" locked=${unlockedAfter} skipped=${skippedAfter}`);
   if (savedName !== 'Tester') problems.push(`[${label}] profile did not persist (got "${savedName}")`);
-  if (unlockedAfter !== LEVEL_COUNT - 2) {
-    problems.push(`[${label}] level 2 should be unlocked after clearing 1 (locked=${unlockedAfter})`);
+  // Level 1 cleared, level 2 skipped: 3 is open, 4..500 locked.
+  if (unlockedAfter !== LEVEL_COUNT - 3) {
+    problems.push(`[${label}] levels 1-3 should be open after clearing 1 and skipping 2 (locked=${unlockedAfter})`);
   }
+  if (skippedAfter !== 1) problems.push(`[${label}] the skipped level 2 should show as skipped on the map (got ${skippedAfter})`);
   await page.screenshot({ path: `${SHOTS}/${label}-11-reloaded.png` });
 
   await context.close();

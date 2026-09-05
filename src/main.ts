@@ -362,6 +362,7 @@ class App {
         screen: SCREENS.find((n) =>
           $(`#screen-${n}`).classList.contains('screen--active'),
         ),
+        level: this.levelId,
         moves: this.board.moveCount,
         tubes: this.board.tubeCount,
         selected: this.board.selectedIndex,
@@ -771,16 +772,20 @@ class App {
         if (chapter) grid.appendChild(this.buildChapterHeader(chapter, unlocked));
       }
 
+      const skipped = !record && this.save.isSkipped(spec.id);
       const node = el('button', 'node');
       if (locked) node.classList.add('node--locked');
       if (record) node.classList.add('node--done');
+      if (skipped) node.classList.add('node--skipped');
       if (isNext) node.classList.add('node--next');
       node.disabled = locked;
       node.setAttribute(
         'aria-label',
         locked
           ? t('map.nodeLocked', { n: spec.id })
-          : t('map.nodeAria', { n: spec.id, name: spec.name, stars: record?.stars ?? 0 }),
+          : skipped
+            ? t('map.nodeSkipped', { n: spec.id, name: spec.name })
+            : t('map.nodeAria', { n: spec.id, name: spec.name, stars: record?.stars ?? 0 }),
       );
 
       node.appendChild(el('span', 'node__num', locked ? '🔒' : String(spec.id)));
@@ -2000,6 +2005,7 @@ class App {
             this.restartLevel();
           },
         },
+        ...(this.canSkip ? [this.skipButton()] : []),
       ],
       dismissable: false,
     });
@@ -2027,6 +2033,46 @@ class App {
     this.save.loseLife();
     this.save.breakStreak();
     this.analytics.track({ type: 'life_lost', level: this.levelId, cause });
+  }
+
+  // ------------------------------------------------------------------ skip
+  /**
+   * Skip is offered on campaign and endless levels, never on the daily (one
+   * board per day, nothing to skip to) and never inside the tutorial.
+   */
+  private get canSkip(): boolean {
+    return !isDaily(this.levelId) && !this.tutorial.active && !this.board.isResolved;
+  }
+
+  /**
+   * Pay coins to move on without clearing. Costs no heart (nothing was
+   * failed), records no clear, and the level stays on the map to come back
+   * to. Without enough coins the shop opens and nothing is charged.
+   */
+  private skipLevel(): void {
+    if (!this.canSkip) return;
+    const price = this.remote.current.economy.skipPrice;
+    if (!this.save.trySpend(price)) {
+      audio.play('invalid');
+      this.toast.show(t('shop.notEnough', { n: price }), 'warn');
+      this.openShop('skip');
+      return;
+    }
+    this.analytics.track({
+      type: 'level_skip', level: this.levelId, moves: this.board.moveCount, price,
+    });
+    this.save.skipLevel(this.levelId);
+    this.save.setInProgress(null);
+    this.toast.show(t('skip.done'));
+    void this.startLevel(this.levelId + 1);
+  }
+
+  private skipButton(): { label: string; kind: 'ghost'; onClick: () => void } {
+    return {
+      label: t('skip.button', { n: this.remote.current.economy.skipPrice }),
+      kind: 'ghost',
+      onClick: () => this.skipLevel(),
+    };
   }
 
   // --------------------------------------------------------------- dialogs
@@ -2079,22 +2125,22 @@ class App {
   private confirmRestart(): void {
     if (this.board.moveCount === 0) return;
     const body = this.heartAtStake ? t('restart.bodyLost') : t('restart.body');
+    const restart = {
+      label: t('restart.restart'),
+      kind: 'primary' as const,
+      onClick: () => {
+        // Same rule as the stuck dialog: only a lost board costs a heart.
+        this.loseLife('failed');
+        this.restartLevel();
+      },
+    };
+    const cancel = { label: t('common.cancel'), kind: 'ghost' as const };
+    // With a skip on offer the three actions stack; a plain restart stays a two-button row.
     this.modal.open({
       title: t('restart.title'),
       bodyHtml: escapeHtml(body),
-      inlineButtons: true,
-      buttons: [
-        { label: t('common.cancel'), kind: 'ghost' },
-        {
-          label: t('restart.restart'),
-          kind: 'primary',
-          onClick: () => {
-            // Same rule as the stuck dialog: only a lost board costs a heart.
-            this.loseLife('failed');
-            this.restartLevel();
-          },
-        },
-      ],
+      inlineButtons: !this.canSkip,
+      buttons: this.canSkip ? [restart, this.skipButton(), cancel] : [cancel, restart],
     });
   }
 
