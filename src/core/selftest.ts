@@ -4,13 +4,14 @@
  * without needing a browser or any rendering.
  */
 import {
-  TUBE_CAPACITY, applyPour, canPour, canonicalKey, cloneBoard, isDeadlocked,
-  isSolved, legalMoves, pourAmount, topRun, undoPour,
+  DEFAULT_RULES, TUBE_CAPACITY, applyPour, canPour, canonicalKey, cloneBoard,
+  isDeadlocked, isSolved, legalMoves, pourAmount, rulesFor, topRun, undoPour,
+  usefulMoves,
 } from './board';
 import { generateLevel } from './generator';
 import { LEVELS } from './levels';
 import { solve } from './solver';
-import type { Board, Move } from './types';
+import type { Board, BoardRules, Move } from './types';
 
 let passed = 0;
 const failures: string[] = [];
@@ -21,9 +22,9 @@ function check(name: string, cond: boolean, detail = ''): void {
 }
 
 /** Independent brute-force shortest solution, to audit the A* par. */
-function bfsOptimal(board: Board, cap = 400_000): number | null {
-  const start = canonicalKey(board);
-  if (isSolved(board)) return 0;
+function bfsOptimal(board: Board, rules: BoardRules = DEFAULT_RULES, cap = 400_000): number | null {
+  const start = canonicalKey(board, rules);
+  if (isSolved(board, rules)) return 0;
   const seen = new Set<string>([start]);
   let frontier: Board[] = [cloneBoard(board)];
   let depth = 0;
@@ -32,11 +33,11 @@ function bfsOptimal(board: Board, cap = 400_000): number | null {
     depth++;
     const next: Board[] = [];
     for (const b of frontier) {
-      for (const mv of legalMoves(b)) {
+      for (const mv of legalMoves(b, rules)) {
         const nb = cloneBoard(b);
-        applyPour(nb, mv.from, mv.to);
-        if (isSolved(nb)) return depth;
-        const k = canonicalKey(nb);
+        applyPour(nb, mv.from, mv.to, rules);
+        if (isSolved(nb, rules)) return depth;
+        const k = canonicalKey(nb, rules);
         if (seen.has(k)) continue;
         seen.add(k);
         if (++visited > cap) return null;
@@ -48,10 +49,10 @@ function bfsOptimal(board: Board, cap = 400_000): number | null {
   return null;
 }
 
-function replay(board: Board, moves: readonly Move[]): Board {
+function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAULT_RULES): Board {
   const b = cloneBoard(board);
   for (const mv of moves) {
-    const applied = applyPour(b, mv.from, mv.to);
+    const applied = applyPour(b, mv.from, mv.to, rules);
     if (!applied) throw new Error(`illegal move in solution: ${mv.from}->${mv.to}`);
   }
   return b;
@@ -100,6 +101,44 @@ function replay(board: Board, moves: readonly Move[]): Board {
   );
 }
 
+// -------------------------------------------------------- cauldron rules
+{
+  const R: BoardRules = { cauldron: true }; // tube 0 is the cauldron
+
+  const mixed: Board = [[2], [0, 1], [], []];
+  check('cauldron accepts a mismatched colour', canPour(mixed, 1, 0, R));
+  check('classic rules still refuse that pour', !canPour(mixed, 1, 0));
+  check('cauldron pours out onto a match', canPour([[1, 0], [0, 0], []], 0, 1, R));
+  check('cauldron pour-out respects colour', !canPour([[1, 0], [1, 1], []], 0, 1, R));
+  check('full cauldron accepts nothing', !canPour([[0, 1, 0, 1], [2]], 1, 0, R));
+
+  const almost: Board = [[0, 0, 0, 0], [1, 1, 1, 1], []];
+  check('cauldron must end empty to win', !isSolved(almost, R));
+  check('same board is solved under classic rules', isSolved(almost));
+  check('solved once cauldron is empty', isSolved([[], [1, 1, 1, 1], [0, 0, 0, 0]], R));
+
+  const um = usefulMoves([[0, 0], [1, 1, 1, 1], []], R);
+  check('uniform cauldron may empty into empty tube', um.some((m) => m.from === 0 && m.to === 2));
+  const um2 = usefulMoves([[0, 0, 0, 0], [1, 1], []], R);
+  check('full uniform cauldron never locks in', um2.some((m) => m.from === 0));
+
+  check(
+    'cauldron key is position-sensitive',
+    canonicalKey([[0], [1], []], R) !== canonicalKey([[1], [0], []], R),
+  );
+  check(
+    'ordinary tubes stay interchangeable under cauldron rules',
+    canonicalKey([[2], [0, 1], []], R) === canonicalKey([[2], [], [0, 1]], R),
+  );
+
+  const cb: Board = [[], [0, 1, 0, 1], [1, 0, 1, 0], [], []];
+  const res = solve(cb, { rules: R });
+  check(
+    'solves a cauldron board end to end',
+    res !== null && isSolved(replay(cb, res.solution, R), R),
+  );
+}
+
 // --------------------------------------------------------------- solver
 {
   const trivial: Board = [[0, 0, 0], [0], []];
@@ -124,29 +163,65 @@ function replay(board: Board, moves: readonly Move[]): Board {
     );
   }
   check('optimality audit actually ran', audited >= 4, `audited=${audited}`);
+
+  // Same audit under cauldron rules - the pruning in usefulMoves must never
+  // cost the solver a shorter line that full BFS can find.
+  let cauldronAudited = 0;
+  for (let seed = 0; seed < 6; seed++) {
+    const spec = {
+      id: 300 + seed, colors: 3, empties: 1, minPar: 1, name: 'audit', cauldron: true,
+    };
+    const gen = generateLevel(spec);
+    const bfs = bfsOptimal(gen.board, rulesFor(spec));
+    if (bfs === null) continue;
+    cauldronAudited++;
+    check(
+      `A* par optimal with cauldron (seed ${seed})`,
+      gen.par === bfs,
+      `A*=${gen.par} bfs=${bfs}`,
+    );
+  }
+  check('cauldron optimality audit ran', cauldronAudited >= 4, `audited=${cauldronAudited}`);
 }
 
 // ------------------------------------------------------------ generator
 {
-  console.log('\n  level  colors  empties  tubes  par   gen(ms)');
-  console.log('  ' + '-'.repeat(46));
+  console.log('\n  level  colors  empties  tubes  par  flags   gen(ms)');
+  console.log('  ' + '-'.repeat(52));
+
+  let worstMs = 0;
+  let worstId = 0;
+  let totalMs = 0;
+  let lastPrinted = 0;
 
   for (const spec of LEVELS) {
     const t0 = performance.now();
     const gen = generateLevel(spec);
     const ms = performance.now() - t0;
+    totalMs += ms;
+    if (ms > worstMs) {
+      worstMs = ms;
+      worstId = spec.id;
+    }
 
-    const tubes = spec.colors + spec.empties;
-    console.log(
-      `  ${String(spec.id).padStart(5)}  ${String(spec.colors).padStart(6)}` +
-      `  ${String(spec.empties).padStart(7)}  ${String(tubes).padStart(5)}` +
-      `  ${String(gen.par).padStart(3)}  ${ms.toFixed(1).padStart(8)}`,
-    );
+    const rules = rulesFor(spec);
+    const tubes = spec.colors + spec.empties + (spec.cauldron ? 1 : 0);
+    const flags = `${spec.cauldron ? 'C' : '·'}${spec.murky ? 'M' : '·'}`;
+    // 200 rows would drown the signal: print band edges and anything slow.
+    if (spec.id - lastPrinted >= 10 || spec.id <= 10 || ms > 300) {
+      lastPrinted = spec.id;
+      console.log(
+        `  ${String(spec.id).padStart(5)}  ${String(spec.colors).padStart(6)}` +
+        `  ${String(spec.empties).padStart(7)}  ${String(tubes).padStart(5)}` +
+        `  ${String(gen.par).padStart(3)}  ${flags.padStart(5)}` +
+        `  ${ms.toFixed(1).padStart(8)}`,
+      );
+    }
 
     check(`L${spec.id} tube count`, gen.board.length === tubes);
-    check(`L${spec.id} not pre-solved`, !isSolved(gen.board));
+    check(`L${spec.id} not pre-solved`, !isSolved(gen.board, rules));
     check(`L${spec.id} meets minPar`, gen.par >= spec.minPar, `par=${gen.par} min=${spec.minPar}`);
-    check(`L${spec.id} solution wins`, isSolved(replay(gen.board, gen.solution)));
+    check(`L${spec.id} solution wins`, isSolved(replay(gen.board, gen.solution, rules), rules));
     check(`L${spec.id} solution length == par`, gen.solution.length === gen.par);
     check(`L${spec.id} generates under 2s`, ms < 2000, `${ms.toFixed(0)}ms`);
 
@@ -169,6 +244,11 @@ function replay(board: Board, moves: readonly Move[]): Board {
       JSON.stringify(again.board) === JSON.stringify(gen.board),
     );
   }
+
+  console.log(
+    `\n  ${LEVELS.length} levels verified - total ${(totalMs / 1000).toFixed(1)}s, ` +
+    `worst L${worstId} at ${worstMs.toFixed(0)}ms`,
+  );
 }
 
 console.log(`\n  ${passed} checks passed, ${failures.length} failed`);

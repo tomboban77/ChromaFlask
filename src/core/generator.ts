@@ -1,9 +1,12 @@
-import { TUBE_CAPACITY, cloneBoard, isSolved, isUniform } from './board';
+import { TUBE_CAPACITY, cloneBoard, isSolved, isUniform, rulesFor } from './board';
 import { mulberry32, shuffle } from './rng';
 import { solve } from './solver';
 import type { Board, ColorId, GeneratedLevel, LevelSpec } from './types';
 
-/** Deal all colour units into the filled tubes, leaving `empties` spare. */
+/**
+ * Deal all colour units into the filled tubes, leaving `empties` spare.
+ * On cauldron levels the cauldron sits at index 0 and starts empty.
+ */
 function deal(spec: LevelSpec, attempt: number): Board {
   const rng = mulberry32(spec.id * 7919 + attempt * 104_729 + 1);
 
@@ -14,6 +17,7 @@ function deal(spec: LevelSpec, attempt: number): Board {
   shuffle(units, rng);
 
   const board: Board = [];
+  if (spec.cauldron) board.push([]);
   for (let t = 0; t < spec.colors; t++) {
     board.push(units.slice(t * TUBE_CAPACITY, (t + 1) * TUBE_CAPACITY));
   }
@@ -38,17 +42,29 @@ function isTooEasy(board: Board, spec: LevelSpec): boolean {
  */
 export function generateLevel(spec: LevelSpec): GeneratedLevel {
   const MAX_ATTEMPTS = 400;
+  const rules = rulesFor(spec);
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const board = deal(spec, attempt);
     if (isTooEasy(board, spec)) continue;
 
     // Cheap solvability gate first - most rejections die here.
-    const quick = solve(board, { weight: 3, maxNodes: 40_000 });
+    const quick = solve(board, { weight: 3, maxNodes: 40_000, rules });
     if (!quick) continue;
 
+    // The weighted line is never shorter than the optimum, so a quick line
+    // already under minPar proves the board is too easy - skip the exact
+    // solve. Same boards accepted, at a fraction of the retry cost.
+    if (quick.solution.length < spec.minPar) continue;
+
     // Then spend real budget finding the true optimum for a fair star target.
-    const exact = solve(board, { weight: 1, maxNodes: 250_000 });
+    // Cauldron boards branch much harder, so their exact pass gets a tighter
+    // node budget with a near-optimal (within 25%, node-budgeted, still
+    // deterministic) fallback for the rare pathological deal.
+    const exactBudget = spec.cauldron ? 60_000 : 250_000;
+    const exact =
+      solve(board, { weight: 1, maxNodes: exactBudget, rules }) ??
+      (spec.cauldron ? solve(board, { weight: 1.25, maxNodes: 60_000, rules }) : null);
     const best = exact ?? quick;
     if (best.solution.length < spec.minPar) continue;
 

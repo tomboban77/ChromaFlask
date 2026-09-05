@@ -76,13 +76,35 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.fill('#name-input', 'Tester');
   await page.click('#btn-start-profile');
 
+  // ---- home
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 10_000 });
+  const playLabel = (await page.locator('#btn-play').textContent())?.trim();
+  console.log(`  home screen     OK (play button: "${playLabel}")`);
+  if (playLabel !== 'Level 1') problems.push(`[${label}] play button should read "Level 1", got "${playLabel}"`);
+  const livesShown = (await page.locator('#home-lives').textContent())?.trim();
+  if (livesShown !== '5') problems.push(`[${label}] fresh profile should have 5 hearts, got "${livesShown}"`);
+  await page.screenshot({ path: `${SHOTS}/${label}-1b-home.png` });
+
+  // ---- shop (open from the bottom nav, then close)
+  await page.click('.bottomnav__tab[data-nav="shop"]');
+  await page.waitForSelector('#screen-shop.screen--active', { timeout: 8000 });
+  const bundleCount = await page.locator('.bundle').count();
+  const coinItemCount = await page.locator('.shopitem').count();
+  console.log(`  shop screen     OK (${bundleCount} bundles, ${coinItemCount} coin items)`);
+  if (bundleCount !== 2) problems.push(`[${label}] expected 2 IAP bundles in dev, got ${bundleCount}`);
+  if (coinItemCount !== 4) problems.push(`[${label}] expected 4 coin items, got ${coinItemCount}`);
+  await page.screenshot({ path: `${SHOTS}/${label}-1c-shop.png` });
+  await page.click('#btn-shop-close');
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+
   // ---- map
+  await page.click('.bottomnav__tab[data-nav="map"]');
   await page.waitForSelector('#screen-map.screen--active', { timeout: 10_000 });
   const nodeCount = await page.locator('.node').count();
   const lockedCount = await page.locator('.node--locked').count();
   console.log(`  map screen      OK (${nodeCount} levels, ${lockedCount} locked)`);
-  if (nodeCount !== 10) problems.push(`[${label}] expected 10 level nodes, got ${nodeCount}`);
-  if (lockedCount !== 9) problems.push(`[${label}] expected 9 locked levels, got ${lockedCount}`);
+  if (nodeCount !== 200) problems.push(`[${label}] expected 200 level nodes, got ${nodeCount}`);
+  if (lockedCount !== 199) problems.push(`[${label}] expected 199 locked levels, got ${lockedCount}`);
   await page.screenshot({ path: `${SHOTS}/${label}-2-map.png` });
 
   // ---- into level 1
@@ -115,6 +137,9 @@ async function runViewport(browser, label, width, height, isMobile) {
   const coachVisible = await page.locator('#coach').isVisible();
   console.log(`  tutorial        ${coachVisible ? 'shown' : 'NOT shown'}`);
   if (!coachVisible) problems.push(`[${label}] tutorial did not appear on level 1`);
+  const handVisible = await page.locator('#tutorial-hand').isVisible();
+  console.log(`  hand pointer    ${handVisible ? 'shown' : 'NOT shown'}`);
+  if (!handVisible) problems.push(`[${label}] tutorial hand pointer did not appear`);
 
   // ---- a manual pour, to exercise real input and the pour animation
   await page.evaluate(() => window.__cf.tap(0));
@@ -195,6 +220,39 @@ async function runViewport(browser, label, width, height, isMobile) {
   }
   await page.screenshot({ path: `${SHOTS}/${label}-8-powerups.png` });
 
+  // ---- out of a powerup -> the shop opens instead of charging coins
+  const coinsBeforeEmpty = (await page.evaluate(() => window.__cf.state())).coins;
+  await page.click('#btn-hint');
+  await sleep(350);
+  await page.click('#btn-hint'); // free allowance (3) now exhausted incl. earlier use
+  await sleep(350);
+  await page.click('#btn-hint');
+  await page.waitForSelector('#screen-shop.screen--active', { timeout: 8000 });
+  const coinsAfterEmpty = (await page.evaluate(() => window.__cf.state())).coins;
+  console.log(`  powerup empty   shop opened, coins ${coinsBeforeEmpty} -> ${coinsAfterEmpty}`);
+  if (coinsAfterEmpty !== coinsBeforeEmpty) {
+    problems.push(`[${label}] running out of hints must open the shop, not charge coins`);
+  }
+  await page.screenshot({ path: `${SHOTS}/${label}-8b-shop-from-game.png` });
+
+  // buy a Hint x3 pack with coins (item order: hearts, undo, hint, bottle)
+  await page.locator('.shopitem .pricebtn').nth(2).click();
+  await sleep(400);
+  const afterPack = await page.evaluate(() => window.__cf.state());
+  console.log(`  coin purchase   hint x3 for 200 (coins ${coinsAfterEmpty} -> ${afterPack.coins})`);
+  if (afterPack.coins !== coinsAfterEmpty - 200) {
+    problems.push(`[${label}] hint pack should cost 200 coins`);
+  }
+  await page.click('#btn-shop-close');
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 8000 });
+  await page.click('#btn-hint'); // consumes owned stock
+  await sleep(450);
+  const hintBadge = (await page.locator('#badge-hint').textContent())?.trim();
+  console.log(`  owned stock     hint badge now "${hintBadge}"`);
+  if (hintBadge !== '2') {
+    problems.push(`[${label}] hint badge should read 2 after using 1 of 3 bought, got "${hintBadge}"`);
+  }
+
   // ---- settings, including the colourblind aid
   await page.click('#btn-settings-game');
   await page.waitForSelector('.modal', { timeout: 5000 });
@@ -205,14 +263,16 @@ async function runViewport(browser, label, width, height, isMobile) {
   await sleep(500);
   await page.screenshot({ path: `${SHOTS}/${label}-10-colorblind.png` });
 
-  // ---- persistence across a reload
+  // ---- persistence across a reload (lands on home, then check the map)
   await page.reload({ waitUntil: 'load' });
-  await page.waitForSelector('#screen-map.screen--active', { timeout: 15_000 });
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 15_000 });
+  await page.click('.bottomnav__tab[data-nav="map"]');
+  await page.waitForSelector('#screen-map.screen--active', { timeout: 8000 });
   const savedName = await page.locator('#map-name').textContent();
   const unlockedAfter = await page.locator('.node--locked').count();
   console.log(`  after reload    name="${savedName}" locked=${unlockedAfter}`);
   if (savedName !== 'Tester') problems.push(`[${label}] profile did not persist (got "${savedName}")`);
-  if (unlockedAfter !== 8) {
+  if (unlockedAfter !== 198) {
     problems.push(`[${label}] level 2 should be unlocked after clearing 1 (locked=${unlockedAfter})`);
   }
   await page.screenshot({ path: `${SHOTS}/${label}-11-reloaded.png` });

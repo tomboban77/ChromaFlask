@@ -1,5 +1,7 @@
-import { applyPour, canonicalKey, cloneBoard, countRuns, isSolved, usefulMoves } from './board';
-import type { Board, Move } from './types';
+import {
+  DEFAULT_RULES, applyPour, canonicalKey, cloneBoard, countRuns, isSolved, usefulMoves,
+} from './board';
+import type { Board, BoardRules, Move } from './types';
 
 /** Binary min-heap keyed on a numeric priority. */
 class MinHeap {
@@ -64,6 +66,8 @@ export interface SolveOptions {
    */
   weight?: number;
   maxNodes?: number;
+  /** Rule variations (cauldron etc.). Classic rules when omitted. */
+  rules?: BoardRules;
 }
 
 export interface SolveResult {
@@ -80,6 +84,15 @@ function colorCount(board: Board): number {
   return seen.size;
 }
 
+/** Colour runs inside one tube. */
+function runsIn(tube: readonly number[]): number {
+  let runs = 0;
+  for (let i = 0; i < tube.length; i++) {
+    if (i === 0 || tube[i] !== tube[i - 1]) runs++;
+  }
+  return runs;
+}
+
 /**
  * Admissible heuristic: total colour runs minus the number of colours.
  *
@@ -87,9 +100,18 @@ function colorCount(board: Board): number {
  * one pair of runs, so it can reduce this count by at most 1 - meaning the
  * estimate never overshoots the true remaining move count. It is also
  * consistent, so a closed-set A* is safe.
+ *
+ * Under cauldron rules a second independent lower bound applies: every run
+ * inside the cauldron needs at least one pour to leave it (a pour-out moves at
+ * most one run, and pours-in only add more). The max of two admissible,
+ * consistent bounds is itself admissible and consistent - and it prunes the
+ * cauldron's exploded branching hard. Note the two must NOT be summed: a
+ * single pour out of the cauldron can reduce both bounds at once.
  */
-function heuristic(board: Board, colors: number): number {
-  return countRuns(board) - colors;
+function heuristic(board: Board, colors: number, rules: BoardRules): number {
+  const base = countRuns(board) - colors;
+  if (!rules.cauldron) return base;
+  return Math.max(base, runsIn(board[0] as number[]));
 }
 
 /**
@@ -99,9 +121,10 @@ function heuristic(board: Board, colors: number): number {
 export function solve(board: Board, opts: SolveOptions = {}): SolveResult | null {
   const weight = opts.weight ?? 1;
   const maxNodes = opts.maxNodes ?? 200_000;
+  const rules = opts.rules ?? DEFAULT_RULES;
   const colors = colorCount(board);
 
-  if (isSolved(board)) return { solution: [], nodesExpanded: 0, optimal: true };
+  if (isSolved(board, rules)) return { solution: [], nodesExpanded: 0, optimal: true };
 
   const boards: Board[] = [cloneBoard(board)];
   const parent: number[] = [-1];
@@ -109,10 +132,10 @@ export function solve(board: Board, opts: SolveOptions = {}): SolveResult | null
   const gScore: number[] = [0];
 
   const open = new MinHeap();
-  open.push(weight * heuristic(board, colors), 0);
+  open.push(weight * heuristic(board, colors, rules), 0);
 
   const bestG = new Map<string, number>();
-  bestG.set(canonicalKey(board), 0);
+  bestG.set(canonicalKey(board, rules), 0);
 
   let expanded = 0;
 
@@ -121,11 +144,11 @@ export function solve(board: Board, opts: SolveOptions = {}): SolveResult | null
     const current = boards[id] as Board;
     const g = gScore[id] as number;
 
-    const key = canonicalKey(current);
+    const key = canonicalKey(current, rules);
     // A stale queue entry for a state we have since reached more cheaply.
     if ((bestG.get(key) as number) < g) continue;
 
-    if (isSolved(current)) {
+    if (isSolved(current, rules)) {
       const solution: Move[] = [];
       for (let n = id; n !== 0 && n !== -1; n = parent[n] as number) {
         solution.push(viaMove[n] as Move);
@@ -137,10 +160,10 @@ export function solve(board: Board, opts: SolveOptions = {}): SolveResult | null
     expanded++;
     if (expanded > maxNodes) return null;
 
-    for (const move of usefulMoves(current)) {
+    for (const move of usefulMoves(current, rules)) {
       const next = cloneBoard(current);
-      applyPour(next, move.from, move.to);
-      const nextKey = canonicalKey(next);
+      applyPour(next, move.from, move.to, rules);
+      const nextKey = canonicalKey(next, rules);
       const nextG = g + 1;
 
       const known = bestG.get(nextKey);
@@ -152,7 +175,7 @@ export function solve(board: Board, opts: SolveOptions = {}): SolveResult | null
       parent.push(id);
       viaMove.push(move);
       gScore.push(nextG);
-      open.push(nextG + weight * heuristic(next, colors), nid);
+      open.push(nextG + weight * heuristic(next, colors, rules), nid);
     }
   }
 
@@ -163,15 +186,15 @@ export function solve(board: Board, opts: SolveOptions = {}): SolveResult | null
  * Best next move from an arbitrary position, for the Hint powerup.
  * Falls back to a fast weighted search if the optimal one is too expensive.
  */
-export function findHint(board: Board): Move | null {
-  const fast = solve(board, { weight: 2, maxNodes: 60_000 });
+export function findHint(board: Board, rules: BoardRules = DEFAULT_RULES): Move | null {
+  const fast = solve(board, { weight: 2, maxNodes: 60_000, rules });
   if (fast && fast.solution.length > 0) return fast.solution[0] as Move;
-  const exact = solve(board, { weight: 1, maxNodes: 150_000 });
+  const exact = solve(board, { weight: 1, maxNodes: 150_000, rules });
   if (exact && exact.solution.length > 0) return exact.solution[0] as Move;
   return null;
 }
 
 /** Whether a winning line exists from here (used to warn before a dead end). */
-export function isSolvable(board: Board): boolean {
-  return solve(board, { weight: 2, maxNodes: 80_000 }) !== null;
+export function isSolvable(board: Board, rules: BoardRules = DEFAULT_RULES): boolean {
+  return solve(board, { weight: 2, maxNodes: 80_000, rules }) !== null;
 }

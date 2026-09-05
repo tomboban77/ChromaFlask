@@ -1,13 +1,26 @@
 import { Container, Graphics, Point, Rectangle } from 'pixi.js';
 import { TUBE_CAPACITY } from '@/core/board';
 import type { ColorId } from '@/core/types';
-import { BOTTLE, GLASS, bottleHeight, colorOf, type GlyphKind } from './theme';
+import {
+  GLASS, colorOf, vesselHeight, vesselSpec,
+  type GlyphKind, type VesselVariant,
+} from './theme';
 
 /** A contiguous run of one colour. `amount` may be fractional mid-pour. */
 export interface Band {
   color: ColorId;
   amount: number;
 }
+
+/** A band resolved for drawing: murky bands render concealed. */
+interface DrawBand {
+  color: ColorId;
+  amount: number;
+  murky: boolean;
+}
+
+/** Concealed liquid: a neutral murk no palette colour can be confused with. */
+const MURK = { base: 0x4a4462, light: 0x6f688c, dark: 0x2e2a44 } as const;
 
 interface Geometry {
   bodyW: number;
@@ -27,26 +40,27 @@ interface Geometry {
   bottomR: number;
 }
 
-function computeGeometry(bodyW: number): Geometry {
+function computeGeometry(bodyW: number, variant: VesselVariant): Geometry {
+  const v = vesselSpec(variant);
   const t = GLASS.thickness;
-  const yCollar = BOTTLE.collarH * bodyW;
-  const yNeck = yCollar + BOTTLE.neckH * bodyW;
-  const yBody = yNeck + BOTTLE.shoulderH * bodyW;
-  const yBottom = yBody + BOTTLE.bodyH * bodyW;
+  const yCollar = v.collarH * bodyW;
+  const yNeck = yCollar + v.neckH * bodyW;
+  const yBody = yNeck + v.shoulderH * bodyW;
+  const yBottom = yBody + v.bodyH * bodyW;
   return {
     bodyW,
-    totalH: bottleHeight(bodyW),
+    totalH: vesselHeight(bodyW, variant),
     yCollar,
     yNeck,
     yBody,
     yBottom,
-    collarW: BOTTLE.collarW * bodyW,
-    neckW: BOTTLE.neckW * bodyW,
+    collarW: v.collarW * bodyW,
+    neckW: v.neckW * bodyW,
     ix: -bodyW / 2 + t,
     iy: yBody,
     iw: bodyW - 2 * t,
     ih: yBottom - t - yBody,
-    bottomR: Math.max(2, BOTTLE.bottomRadius * bodyW - t),
+    bottomR: Math.max(2, v.bottomRadius * bodyW - t),
   };
 }
 
@@ -62,6 +76,8 @@ export class BottleView extends Container {
 
   private geo: Geometry;
   private bands: Band[] = [];
+  /** Units concealed at the bottom of this tube (murky levels), else 0. */
+  private hidden = 0;
 
   private readonly cavity = new Graphics();
   private readonly liquidLayer = new Container();
@@ -78,10 +94,13 @@ export class BottleView extends Container {
   private colorblind = false;
   private lastRotation = 0;
 
-  constructor(index: number, bodyWidth: number) {
+  readonly variant: VesselVariant;
+
+  constructor(index: number, bodyWidth: number, variant: VesselVariant = 'bottle') {
     super();
     this.index = index;
-    this.geo = computeGeometry(bodyWidth);
+    this.variant = variant;
+    this.geo = computeGeometry(bodyWidth, variant);
 
     this.liquidLayer.addChild(this.liquid);
     this.liquidLayer.addChild(this.liquidMask);
@@ -107,7 +126,7 @@ export class BottleView extends Container {
   }
 
   resize(bodyWidth: number): void {
-    this.geo = computeGeometry(bodyWidth);
+    this.geo = computeGeometry(bodyWidth, this.variant);
     this.redrawChrome();
     this.dirty = true;
   }
@@ -168,6 +187,13 @@ export class BottleView extends Container {
     this.dirty = true;
   }
 
+  /** How many bottom units render concealed (murky levels). */
+  setHidden(count: number): void {
+    if (this.hidden === count) return;
+    this.hidden = count;
+    this.dirty = true;
+  }
+
   /** Kick the surface into motion - called on landing, lifting and settling. */
   agitate(strength = 1): void {
     this.wobble = Math.min(1, this.wobble + strength);
@@ -221,6 +247,7 @@ export class BottleView extends Container {
    */
   private outline(g: Graphics, inset = 0): void {
     const geo = this.geo;
+    const v = vesselSpec(this.variant);
     const w = geo.bodyW - inset * 2;
     const cw = Math.max(4, geo.collarW - inset * 2);
     const nw = Math.max(3, geo.neckW - inset * 2);
@@ -231,8 +258,8 @@ export class BottleView extends Container {
     const y3 = geo.yBody;
     const y4 = geo.yBottom - inset;
 
-    const br = Math.max(1, BOTTLE.bottomRadius * geo.bodyW - inset);
-    const cr = Math.min(BOTTLE.collarRadius * geo.bodyW, cw / 2 - 0.5);
+    const br = Math.max(1, v.bottomRadius * geo.bodyW - inset);
+    const cr = Math.min(v.collarRadius * geo.bodyW, cw / 2 - 0.5);
 
     g.moveTo(-cw / 2 + cr, y0)
       .lineTo(cw / 2 - cr, y0)
@@ -273,21 +300,41 @@ export class BottleView extends Container {
       .rect(g.ix, g.iy, g.iw, g.ih - g.bottomR)
       .fill(0xffffff);
 
-    // --- glass
+    // --- glass (or, for the cauldron, gold-trimmed enchanted metal)
+    const isCauldron = this.variant === 'cauldron';
     const gl = this.glass;
     gl.clear();
 
-    // faint fill over the whole silhouette so the glass has body
-    this.outline(gl, 0);
-    gl.fill({ color: 0x9ec7e8, alpha: 0.06 });
-    this.outline(gl, 0);
-    gl.stroke({ width: 2.4, color: GLASS.rim, alpha: GLASS.rimAlpha, alignment: 0.5 });
+    // side handles sit behind the body, so they are drawn first
+    if (isCauldron) {
+      const hr = Math.max(4, g.bodyW * 0.13);
+      const hy = g.yNeck + g.bodyW * 0.3;
+      gl.circle(-g.bodyW / 2 - hr * 0.35, hy, hr)
+        .stroke({ width: Math.max(3, hr * 0.5), color: 0xd9a542, alpha: 0.95 });
+      gl.circle(g.bodyW / 2 + hr * 0.35, hy, hr)
+        .stroke({ width: Math.max(3, hr * 0.5), color: 0xd9a542, alpha: 0.95 });
+    }
 
-    // collar ring, slightly brighter than the rest of the glass
+    // faint fill over the whole silhouette so the vessel has body
+    this.outline(gl, 0);
+    gl.fill(
+      isCauldron ? { color: 0x352a5e, alpha: 0.45 } : { color: 0x9ec7e8, alpha: 0.06 },
+    );
+    this.outline(gl, 0);
+    gl.stroke({
+      width: isCauldron ? 3.4 : 2.4,
+      color: isCauldron ? 0xf0b43c : GLASS.rim,
+      alpha: isCauldron ? 0.95 : GLASS.rimAlpha,
+      alignment: 0.5,
+    });
+
+    // collar ring - bright glass on bottles, a solid gold rim on the cauldron
     gl.roundRect(
       -g.collarW / 2, 0, g.collarW, g.yCollar,
-      Math.min(BOTTLE.collarRadius * g.bodyW, g.yCollar / 2),
-    ).fill({ color: 0xbcdcf5, alpha: 0.2 });
+      Math.min(vesselSpec(this.variant).collarRadius * g.bodyW, g.yCollar / 2),
+    ).fill(
+      isCauldron ? { color: 0xffc531, alpha: 0.9 } : { color: 0xbcdcf5, alpha: 0.2 },
+    );
 
     // highlight riding over the shoulder curve
     gl.moveTo(-g.bodyW / 2 + t, g.yBody)
@@ -366,6 +413,40 @@ export class BottleView extends Container {
    * the clip mask working exactly as it does when upright - counter-rotating the
    * graphics instead let the liquid escape the glass.
    */
+  /**
+   * Split the colour bands at the concealment boundary so the bottom `hidden`
+   * units draw as murk, and merge adjacent murky spans into one seamless band.
+   */
+  private resolveBands(): DrawBand[] {
+    const out: DrawBand[] = [];
+    const h = this.hidden;
+    let acc = 0;
+    for (const band of this.bands) {
+      const start = acc;
+      const end = acc + band.amount;
+      acc = end;
+      if (band.amount <= 0.0001) continue;
+
+      const push = (amount: number, murky: boolean) => {
+        if (amount <= 0.0001) return;
+        const last = out[out.length - 1];
+        if (last && ((murky && last.murky) || (!murky && !last.murky && last.color === band.color))) {
+          last.amount += amount;
+        } else {
+          out.push({ color: band.color, amount, murky });
+        }
+      };
+
+      if (end <= h + 0.0001) push(band.amount, true);
+      else if (start >= h - 0.0001) push(band.amount, false);
+      else {
+        push(h - start, true);
+        push(end - h, false);
+      }
+    }
+    return out;
+  }
+
   private redrawLiquid(): void {
     const gfx = this.liquid;
     gfx.clear();
@@ -390,13 +471,13 @@ export class BottleView extends Container {
 
     const unitH = span / TUBE_CAPACITY;
     const waveAmp = Math.min(unitH * 0.3, g.iw * 0.12) * this.wobble;
-    const topIndex = this.bands.length - 1;
+    const bands = this.resolveBands();
+    const topIndex = bands.length - 1;
 
     let cum = 0;
-    for (let i = 0; i < this.bands.length; i++) {
-      const band = this.bands[i] as Band;
-      if (band.amount <= 0.0001) continue;
-      const col = colorOf(band.color);
+    for (let i = 0; i < bands.length; i++) {
+      const band = bands[i] as DrawBand;
+      const col = band.murky ? MURK : colorOf(band.color);
 
       const yBottom = maxY - (cum / TUBE_CAPACITY) * span;
       cum += band.amount;
@@ -430,13 +511,35 @@ export class BottleView extends Container {
         gfx.fill({ color: col.light, alpha: 0.9 });
       }
 
-      if (this.colorblind && bandH > unitH * 0.55) {
+      if (band.murky) {
+        // One "?" per concealed unit, so the count of hidden layers reads.
+        const units = Math.round(band.amount);
+        for (let u = 0; u < units; u++) {
+          const mid = yBottom - ((u + 0.5) / band.amount) * bandH;
+          this.drawQuestion(gfx, nx * mid, ny * mid, Math.min(unitH * 0.42, g.iw * 0.3));
+        }
+      } else if (this.colorblind && bandH > unitH * 0.55) {
         const mid = (yTop + yBottom) / 2;
         this.drawGlyph(
-          gfx, col.glyph, nx * mid, ny * mid, Math.min(unitH * 0.4, g.iw * 0.3),
+          gfx, (col as ReturnType<typeof colorOf>).glyph, nx * mid, ny * mid,
+          Math.min(unitH * 0.4, g.iw * 0.3),
         );
       }
     }
+  }
+
+  /** A "?" marker on concealed liquid: hook, stem and dot, stroke-drawn. */
+  private drawQuestion(gfx: Graphics, cx: number, cy: number, size: number): void {
+    const r = size / 2;
+    const w = Math.max(1.6, r * 0.32);
+    // Hook: sweeps from the left, over the top, down the right side.
+    gfx.arc(cx, cy - r * 0.32, r * 0.58, Math.PI, Math.PI * 2.45)
+      .stroke({ width: w, color: 0xffffff, alpha: 0.5, cap: 'round' });
+    // Stem down to just above the dot.
+    gfx.moveTo(cx + r * 0.02, cy + r * 0.02)
+      .lineTo(cx, cy + r * 0.34)
+      .stroke({ width: w, color: 0xffffff, alpha: 0.5, cap: 'round' });
+    gfx.circle(cx, cy + r * 0.82, w * 0.62).fill({ color: 0xffffff, alpha: 0.55 });
   }
 
   /**

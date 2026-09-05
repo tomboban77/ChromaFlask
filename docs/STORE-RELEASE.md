@@ -1,0 +1,83 @@
+# ChromaFlask — Store Release & Compliance Checklist
+
+A working checklist for shipping ChromaFlask to Google Play and the Apple App
+Store without policy or legal trouble. Revisit before every store submission.
+
+## 1. Original IP (avoiding legal disputes)
+
+ChromaFlask uses **only original assets**, all authored in this repository:
+
+- **Name**: "ChromaFlask" — run a trademark search (USPTO TESS, EUIPO, and the
+  app stores themselves) before launch and register the mark if the game gains
+  traction.
+- **Characters**: the "Chroma Drops" (three droplet mascots) are original
+  vector art defined in `index.html` (`#cf-drop`). They are deliberately *not*
+  cats, wizards, or anything resembling the mascots of existing sort games.
+- **Logo / splash / shop / UI**: all drawn in code (SVG + CSS). No third-party
+  images, fonts beyond system fonts, or sounds are bundled.
+- **Game mechanics are not copyrightable** — a liquid-sort puzzle is fine to
+  make — but *expression* is protected. Never copy another game's art, sounds,
+  wording, store screenshots, or trade dress. Reference screenshots are used
+  for layout inspiration only; nothing is traced or reproduced.
+- Keep proof of authorship: this git history documents that every asset was
+  created here.
+
+## 2. Payments (hard store requirements)
+
+- **Digital goods must use platform billing.** Google Play requires Play
+  Billing; Apple requires StoreKit/In-App Purchase. Never link to an external
+  checkout for coins/boosters — this is the single fastest way to get removed.
+- The code enforces this: `src/services/Payments.ts` only has store-billing
+  drivers. The web build shows "purchases unavailable" instead of a card form.
+- **Google Play**: ship as a TWA (e.g. Bubblewrap) with the
+  `PLAY_BILLING` feature enabled; create the five product ids from
+  `IAP_CATALOG` in the Play Console as *consumable* in-app products. The
+  `PlayBillingDriver` picks them up automatically and shows localized prices.
+- **iOS**: wrap with Capacitor and implement a `StoreKitDriver` conforming to
+  `PaymentDriver`; create matching product ids in App Store Connect.
+- **Server-side receipt validation** is strongly recommended before granting
+  large coin packs at scale — plan a small backend endpoint before revenue
+  grows (client-only grants are acceptable for launch, but are spoofable).
+- **No deceptive pricing**: do not show fake "90% OFF" strikethrough prices
+  unless there is a genuine former price. We use "Popular"/"Best value" badges
+  instead.
+- Restore/refund behaviour: all our products are consumables, consumed on
+  grant. Document this in the store listing FAQ.
+
+## 3. Store listing requirements
+
+- [ ] **Privacy policy URL** (required by both stores, even with no data
+      collection). State plainly: progress stored on-device (localStorage),
+      no personal data leaves the device, analytics are local/console today.
+      Update it before wiring a real analytics backend.
+- [ ] **Google Play Data safety form** / **Apple privacy nutrition label** —
+      must match reality. Currently: no data collected, no data shared.
+- [ ] **Content rating questionnaires** (IARC on Play): puzzle, no violence —
+      expect Everyone/4+. Declare that the app contains in-app purchases.
+- [ ] **"Contains ads" declaration**: currently *no ads*. If ads are added
+      later, redo the data-safety forms and choose a family-safe ad SDK
+      configuration.
+- [ ] **Families/children**: the art style appeals to kids. If you declare a
+      target age group that includes children, both stores restrict IAP
+      prompts, analytics, and ads sharply. Recommended: target 13+ in the
+      questionnaire unless you specifically design for kids.
+- [ ] Screenshots/feature graphic: use only our own captures of ChromaFlask.
+
+## 4. Monetization fairness (policy + player trust)
+
+- Hearts regenerate for free (1 per 30 min, max 5) and level 1 + the tutorial
+  never cost a heart — the game is fully playable without paying.
+- Every real-money item can also be earned: coins come from wins; boosters
+  are purchasable with coins.
+- Prices, free allowances, and regen timing are tunable in
+  `src/core/progression.ts` and via `RemoteConfig` without a client update.
+
+## 5. Technical pre-flight
+
+- [ ] `npm run build` clean; `npm run test:core` and `npm run test:e2e` pass.
+- [ ] Test on a low-end Android device (Pixi WebGL fallback, 60fps pours).
+- [ ] TWA: verify `assetlinks.json` digital asset links, offline behaviour,
+      and that the Digital Goods API returns the five SKUs.
+- [ ] iOS wrapper: audio unlock on first gesture, safe-area insets, StoreKit
+      sandbox purchase of each product.
+- [ ] Version bump in `package.json` + store build numbers.

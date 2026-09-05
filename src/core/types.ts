@@ -36,6 +36,24 @@ export interface LevelSpec {
   /** Reject generated boards easier than this (in optimal moves). */
   readonly minPar: number;
   readonly name: string;
+  /**
+   * Murky potion: everything below each tube's top unit starts concealed and
+   * is revealed as it surfaces. Purely visual - the board, solver and par are
+   * unaffected - but it forces players to plan under uncertainty.
+   */
+  readonly murky?: boolean;
+  /**
+   * The Cauldron: an extra vessel (always tube index 0) that accepts any
+   * colour on top - but the level only counts as won once it is empty again.
+   * Flexible space that turns into a liability if used carelessly.
+   */
+  readonly cauldron?: boolean;
+}
+
+/** Rule variations that change what the engine considers legal or solved. */
+export interface BoardRules {
+  /** When true, tube 0 is the Cauldron: accepts any colour, must end empty. */
+  readonly cauldron: boolean;
 }
 
 /** A generated, verified-solvable puzzle. */

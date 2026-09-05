@@ -13,11 +13,13 @@ interface Step {
   /** Event that advances this step, or null to auto-advance after `hold`. */
   advanceOn: TutorialTrigger | null;
   hold?: number;
+  /** Which bottle of the current best move the hand pointer should tap. */
+  pointer?: 'from' | 'to';
 }
 
 const STEPS: readonly Step[] = [
-  { text: 'Tap a bottle to pick up its top colour', advanceOn: 'select' },
-  { text: 'Now tap another bottle to pour it in', advanceOn: 'pour' },
+  { text: 'Tap the bottle to pick it up', advanceOn: 'select', pointer: 'from' },
+  { text: 'Now tap the other bottle to pour', advanceOn: 'pour', pointer: 'to' },
   { text: 'Liquid only pours onto the same colour, or into an empty bottle', advanceOn: null, hold: 3200 },
   { text: 'Fill every bottle with a single colour to win', advanceOn: null, hold: 3000 },
 ];
@@ -39,6 +41,12 @@ export class Tutorial {
 
   get active(): boolean {
     return this.running;
+  }
+
+  /** Where the hand pointer should aim during the current step, if anywhere. */
+  get pointer(): 'from' | 'to' | null {
+    if (!this.running) return null;
+    return STEPS[this.index]?.pointer ?? null;
   }
 
   start(): void {

@@ -1,27 +1,120 @@
 import type { LevelSpec } from './types';
 
 /**
- * Difficulty curve for the launch set.
+ * The 200-level campaign.
  *
- * Two dials drive difficulty: colour count (raw complexity) and empty-tube
- * count (working space). Alternating them keeps the ramp from feeling linear -
- * levels 5 and 7 are deliberate "squeeze" levels that drop to a single empty
- * tube rather than simply adding another colour.
+ * Difficulty comes from three dials, moved on a sawtooth rather than a line so
+ * the ramp has rhythm instead of a grind:
+ *
+ *  - colour count: raw combinatorial complexity (2 -> 8 across the campaign)
+ *  - empty tubes:  working space; 3 = breather, 2 = standard, 1 = squeeze
+ *  - minPar:       the generator rejects boards whose optimal line is shorter,
+ *                  so late levels are *provably* deep, not just "probably"
+ *  - murky:        from level 36, colours below each tube's mouth start hidden
+ *
+ * Every spec is deterministic (id seeds the generator) and machine-verified by
+ * `npm run test:core`: solvable, meets minPar, conserves units, and generates
+ * fast enough for on-device use. Retune here, re-run the test, ship.
  */
-export const LEVELS: readonly LevelSpec[] = [
+
+const ADJ = [
+  'Amber', 'Misty', 'Twisted', 'Royal', 'Silent', 'Blazing', 'Frozen', 'Gilded',
+  'Stormy', 'Velvet', 'Lucky', 'Crystal', 'Ancient', 'Bubbly', 'Cosmic', 'Molten',
+  'Radiant', 'Emerald', 'Curious', 'Golden',
+] as const;
+
+const NOUN = [
+  'Brew', 'Elixir', 'Cascade', 'Vials', 'Tonic', 'Draught', 'Potion', 'Essence',
+  'Nectar', 'Serum', 'Infusion', 'Tincture', 'Mixture', 'Charm', 'Remedy',
+  'Arcanum', 'Swirl', 'Ripple', 'Alembic', 'Decoction',
+] as const;
+
+function nameFor(id: number): string {
+  return `${ADJ[(id * 7) % ADJ.length]} ${NOUN[(id * 13) % NOUN.length]}`;
+}
+
+/** Hand-tuned opening: teaches the game and ramps to six colours by level 10. */
+const OPENING: readonly LevelSpec[] = [
   { id: 1, colors: 2, empties: 2, minPar: 2, name: 'First Pour' },
   { id: 2, colors: 3, empties: 2, minPar: 4, name: 'Triple Trouble' },
   { id: 3, colors: 3, empties: 1, minPar: 6, name: 'Tight Fit' },
   { id: 4, colors: 4, empties: 2, minPar: 7, name: 'Four Corners' },
-  { id: 5, colors: 4, empties: 1, minPar: 9, name: 'The Squeeze' },
-  { id: 6, colors: 5, empties: 2, minPar: 10, name: 'Spectrum' },
-  { id: 7, colors: 5, empties: 1, minPar: 12, name: 'Narrow Margin' },
-  { id: 8, colors: 6, empties: 2, minPar: 13, name: 'Six Shades' },
-  { id: 9, colors: 7, empties: 2, minPar: 15, name: 'Prism' },
-  { id: 10, colors: 8, empties: 2, minPar: 17, name: 'Alchemist' },
+  { id: 5, colors: 4, empties: 2, minPar: 8, name: 'Steady Hand' },
+  { id: 6, colors: 4, empties: 1, minPar: 9, name: 'The Squeeze' },
+  { id: 7, colors: 5, empties: 2, minPar: 10, name: 'Spectrum' },
+  { id: 8, colors: 5, empties: 2, minPar: 11, name: 'Five Shades' },
+  { id: 9, colors: 5, empties: 1, minPar: 12, name: 'Narrow Margin' },
+  { id: 10, colors: 6, empties: 2, minPar: 13, name: 'Alchemist' },
 ] as const;
 
-export const LEVEL_COUNT = LEVELS.length;
+/** Campaign curve for levels 11-200. */
+function specFor(id: number): LevelSpec {
+  // Base colour band. The palette holds 8 colours; past that point the heat
+  // comes from minPar, squeezes, the cauldron and the murky mechanic instead.
+  const colors = id <= 30 ? 6 : id <= 55 ? 7 : 8;
+
+  // Cauldron every 10 levels from 22: it replaces one empty tube with a
+  // vessel that takes anything but must end empty. Introduced well clear of
+  // the murky mechanic's debut (36) so players meet one new idea at a time.
+  // Capped at 6 colours: the cauldron's any-colour branching makes bigger
+  // exact solves take seconds on-device, and one empty tube plus a
+  // must-empty cauldron carries plenty of heat on its own.
+  if (id >= 22 && id % 10 === 2) {
+    return {
+      id, colors: 6, empties: 1, cauldron: true,
+      minPar: id <= 60 ? 13 : 15,
+      name: nameFor(id), murky: isMurky(id),
+    };
+  }
+
+  // Base par floor per band, rising slowly inside the final band so level 190
+  // is measurably deeper than level 60.
+  let minPar = colors === 6 ? 13 : colors === 7 ? 15 : 17;
+  if (colors === 8) minPar += Math.min(4, Math.floor((id - 56) / 30));
+  else minPar += Math.min(2, Math.floor((id % 30) / 12));
+
+  let empties = 2;
+
+  // Breather every 10 levels: extra tube, fewer colours, gentler par.
+  // Capped at 7 colours: an 11-tube 8-colour board makes the optimal solve
+  // explode (seconds of generation on-device) without feeling any easier.
+  if (id % 10 === 4) {
+    const c = Math.min(colors, 7);
+    return {
+      id, colors: c, empties: 3,
+      minPar: c === 7 ? 13 : 11,
+      name: nameFor(id), murky: isMurky(id),
+    };
+  }
+
+  // Squeeze every 10 levels: one empty tube. Colours are capped because
+  // single-empty boards get vanishingly rare to deal beyond six colours.
+  if (id % 10 === 8) {
+    empties = 1;
+    const squeezed = id <= 30 ? 5 : 6;
+    minPar = squeezed === 5 ? 11 : 14;
+    return { id, colors: squeezed, empties, minPar, name: nameFor(id), murky: isMurky(id) };
+  }
+
+  return { id, colors, empties, minPar, name: nameFor(id), murky: isMurky(id) };
+}
+
+/** Murky cadence: introduced at 36, common by 70, dominant past 120. */
+function isMurky(id: number): boolean {
+  if (id < 36) return false;
+  if (id <= 70) return id % 5 === 1;
+  if (id <= 120) return id % 3 === 0;
+  return id % 3 !== 1;
+}
+
+export const LEVEL_COUNT = 200;
+
+export const LEVELS: readonly LevelSpec[] = [
+  ...OPENING,
+  ...Array.from({ length: LEVEL_COUNT - OPENING.length }, (_, i) =>
+    specFor(OPENING.length + 1 + i),
+  ),
+];
 
 export function getLevelSpec(id: number): LevelSpec {
   const spec = LEVELS[id - 1];

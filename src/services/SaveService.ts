@@ -5,6 +5,8 @@
  * writing one new driver - not touching game code.
  */
 
+import { LIVES_MAX, LIVES_REGEN_MS } from '@/core/progression';
+
 export interface SaveProfile {
   name: string;
   avatar: string;
@@ -25,6 +27,29 @@ export interface GameSettings {
   reducedMotion: boolean;
 }
 
+/** Owned powerup uses bought in the shop, spent after the per-level free uses. */
+export type Inventory = Record<'undo' | 'hint' | 'bottle', number>;
+
+export interface LivesState {
+  count: number;
+  /** Epoch ms the next heart arrives, or 0 while at full hearts. */
+  nextRegenAt: number;
+  /** Epoch ms until which hearts are unlimited, or 0. */
+  infiniteUntil: number;
+}
+
+/** Lifetime play counters, shown on the profile card. */
+export interface LifetimeStats {
+  plays: number;
+  wins: number;
+  perfects: number;
+  pours: number;
+  hintsUsed: number;
+  /** Consecutive wins without abandoning or failing a level. */
+  streak: number;
+  bestStreak: number;
+}
+
 export interface SaveData {
   version: number;
   profile: SaveProfile | null;
@@ -32,9 +57,16 @@ export interface SaveData {
   levels: Record<string, LevelRecord>;
   settings: GameSettings;
   tutorialDone: boolean;
+  inventory: Inventory;
+  lives: LivesState;
+  stats: LifetimeStats;
+  /** Whether the murky-potion mechanic has been introduced with a toast. */
+  murkySeen: boolean;
+  /** Whether the cauldron mechanic has been introduced with a toast. */
+  cauldronSeen: boolean;
 }
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 4;
 
 export function defaultSave(startingCoins: number): SaveData {
   return {
@@ -50,6 +82,11 @@ export function defaultSave(startingCoins: number): SaveData {
       reducedMotion: false,
     },
     tutorialDone: false,
+    inventory: { undo: 0, hint: 0, bottle: 0 },
+    lives: { count: LIVES_MAX, nextRegenAt: 0, infiniteUntil: 0 },
+    stats: { plays: 0, wins: 0, perfects: 0, pours: 0, hintsUsed: 0, streak: 0, bestStreak: 0 },
+    murkySeen: false,
+    cauldronSeen: false,
   };
 }
 
@@ -135,6 +172,13 @@ export class SaveService {
       levels: parsed.levels ?? {},
       settings: { ...fallback.settings, ...(parsed.settings ?? {}) },
       tutorialDone: parsed.tutorialDone ?? false,
+      // v1 saves predate the shop and lives; start them full, not empty.
+      inventory: { ...fallback.inventory, ...(parsed.inventory ?? {}) },
+      lives: { ...fallback.lives, ...(parsed.lives ?? {}) },
+      // v2 saves predate lifetime stats; start the counters at zero.
+      stats: { ...fallback.stats, ...(parsed.stats ?? {}) },
+      murkySeen: parsed.murkySeen ?? false,
+      cauldronSeen: parsed.cauldronSeen ?? false,
     };
   }
 
@@ -211,5 +255,111 @@ export class SaveService {
 
   get totalStars(): number {
     return Object.values(this.data.levels).reduce((sum, r) => sum + r.stars, 0);
+  }
+
+  // ------------------------------------------------------------------ stats
+  bumpStat(key: keyof LifetimeStats, delta = 1): void {
+    this.update((d) => {
+      d.stats[key] += delta;
+    });
+  }
+
+  recordWinForStreak(): void {
+    this.update((d) => {
+      d.stats.streak += 1;
+      d.stats.bestStreak = Math.max(d.stats.bestStreak, d.stats.streak);
+    });
+  }
+
+  breakStreak(): void {
+    this.update((d) => {
+      d.stats.streak = 0;
+    });
+  }
+
+  // ------------------------------------------------------------- inventory
+  inventoryCount(id: keyof Inventory): number {
+    return this.data.inventory[id] ?? 0;
+  }
+
+  addInventory(id: keyof Inventory, count: number): void {
+    this.update((d) => {
+      d.inventory[id] = Math.max(0, (d.inventory[id] ?? 0) + count);
+    });
+  }
+
+  /** Returns false (and changes nothing) if none are owned. */
+  tryUseInventory(id: keyof Inventory): boolean {
+    if (this.inventoryCount(id) <= 0) return false;
+    this.addInventory(id, -1);
+    return true;
+  }
+
+  // ------------------------------------------------------------------ lives
+  /**
+   * Regeneration is computed lazily against the wall clock, so hearts refill
+   * while the app is closed without any background work.
+   */
+  private settleLives(): void {
+    const l = this.data.lives;
+    const now = Date.now();
+    if (l.infiniteUntil && l.infiniteUntil <= now) {
+      this.update((d) => {
+        d.lives.infiniteUntil = 0;
+      });
+    }
+    if (l.count >= LIVES_MAX || l.nextRegenAt === 0) return;
+    let gained = 0;
+    let next = l.nextRegenAt;
+    while (next <= now && l.count + gained < LIVES_MAX) {
+      gained += 1;
+      next += LIVES_REGEN_MS;
+    }
+    if (gained === 0) return;
+    this.update((d) => {
+      d.lives.count = Math.min(LIVES_MAX, d.lives.count + gained);
+      d.lives.nextRegenAt = d.lives.count >= LIVES_MAX ? 0 : next;
+    });
+  }
+
+  get lives(): Readonly<LivesState> {
+    this.settleLives();
+    return this.data.lives;
+  }
+
+  get hasInfiniteLives(): boolean {
+    return this.lives.infiniteUntil > Date.now();
+  }
+
+  get canPlay(): boolean {
+    return this.hasInfiniteLives || this.lives.count > 0;
+  }
+
+  /** No-op while an unlimited-hearts boost is active. */
+  loseLife(): void {
+    if (this.hasInfiniteLives) return;
+    this.settleLives();
+    this.update((d) => {
+      if (d.lives.count <= 0) return;
+      d.lives.count -= 1;
+      if (d.lives.nextRegenAt === 0) d.lives.nextRegenAt = Date.now() + LIVES_REGEN_MS;
+    });
+  }
+
+  refillLives(): void {
+    this.update((d) => {
+      d.lives.count = LIVES_MAX;
+      d.lives.nextRegenAt = 0;
+    });
+  }
+
+  addInfiniteLives(hours: number): void {
+    this.update((d) => {
+      const base = Math.max(Date.now(), d.lives.infiniteUntil);
+      d.lives.infiniteUntil = base + hours * 3_600_000;
+      // Hearts should read "full" underneath the boost, not tick down to zero.
+      d.lives.count = LIVES_MAX;
+      d.lives.nextRegenAt = 0;
+    });
   }
 }

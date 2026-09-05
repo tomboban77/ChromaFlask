@@ -11,7 +11,13 @@ export type AnalyticsEvent =
   | { type: 'level_stuck'; level: number; moves: number }
   | { type: 'powerup_used'; level: number; powerup: string; paid: boolean }
   | { type: 'tutorial_step'; step: number }
-  | { type: 'tutorial_done' };
+  | { type: 'tutorial_done' }
+  | { type: 'shop_open'; source: string }
+  | { type: 'shop_coin_spend'; item: string; price: number }
+  | { type: 'iap_start'; product: string }
+  | { type: 'iap_result'; product: string; ok: boolean; reason?: string }
+  | { type: 'life_lost'; level: number; cause: 'quit' | 'failed' }
+  | { type: 'out_of_lives'; level: number };
 
 export interface AnalyticsDriver {
   track(event: AnalyticsEvent): void;

@@ -25,6 +25,53 @@ export const DEFAULT_ECONOMY: EconomyConfig = {
   maxExtraTubes: 2,
 };
 
+// ------------------------------------------------------------------- lives
+export const LIVES_MAX = 5;
+export const LIVES_REGEN_MS = 30 * 60 * 1000;
+
+// ---------------------------------------------------------- coin shop items
+/** Items bought with earned/purchased coins (soft currency), never real money. */
+export interface CoinShopItem {
+  readonly id: string;
+  readonly title: string;
+  readonly desc: string;
+  readonly price: number;
+  readonly grant:
+    | { kind: 'powerup'; powerup: PowerupId; count: number }
+    | { kind: 'refillLives' };
+}
+
+export const COIN_SHOP: readonly CoinShopItem[] = [
+  {
+    id: 'lives.refill',
+    title: 'Refill hearts',
+    desc: 'Back to full hearts instantly',
+    price: 500,
+    grant: { kind: 'refillLives' },
+  },
+  {
+    id: 'undo.x3',
+    title: 'Undo ×3',
+    desc: 'Take back your last pours',
+    price: 80,
+    grant: { kind: 'powerup', powerup: 'undo', count: 3 },
+  },
+  {
+    id: 'hint.x3',
+    title: 'Hint ×3',
+    desc: 'Reveals a winning move',
+    price: 200,
+    grant: { kind: 'powerup', powerup: 'hint', count: 3 },
+  },
+  {
+    id: 'bottle.x3',
+    title: 'Bottle ×3',
+    desc: 'Extra room when you need it',
+    price: 320,
+    grant: { kind: 'powerup', powerup: 'bottle', count: 3 },
+  },
+];
+
 /**
  * Stars from move efficiency. `par` is the proven optimal solution length, so
  * three stars means the player played at or near a mathematically perfect line.

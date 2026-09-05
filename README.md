@@ -4,6 +4,14 @@ A mobile-first liquid-sort puzzle for the web. PixiJS renders the board, GSAP
 choreographs the pours, and the HUD is plain DOM so text stays crisp and
 accessible.
 
+A 200-level campaign with two signature twists — **the Cauldron** (accepts any
+colour, must be emptied to win) and **murky potions** (colours hidden until
+they surface) — plus hearts, coins, a store-billing shop, tutorial, and a full
+candy-style UI.
+
+- **What's done / what's left:** [docs/STATUS.md](docs/STATUS.md)
+- **Store submission & legal checklist:** [docs/STORE-RELEASE.md](docs/STORE-RELEASE.md)
+
 ## Running it
 
 ```bash
@@ -29,23 +37,24 @@ relative (`base: './'`), so it also works from a subdirectory.
 ```
 src/
   core/        Pure TS. No engine imports, no DOM. Portable and unit-testable.
-    board.ts        pour rules, win + deadlock detection, canonical hashing
-    solver.ts       A* with an admissible heuristic -> optimal move counts
+    board.ts        pour rules (incl. cauldron BoardRules), win/deadlock, hashing
+    solver.ts       A* with admissible heuristics -> optimal move counts
     generator.ts    seeded deal, validated solvable, computes par
-    levels.ts       the 10-level difficulty curve
-    progression.ts  stars and coin economy
+    levels.ts       the 200-level campaign curve (breathers, squeezes, twists)
+    progression.ts  stars, coin economy, lives constants, coin-shop catalog
   services/    Driver-based seams. Swap a driver, not the call sites.
     SaveService     LocalStorage | in-memory fallback | (later) cloud
     AuthService     guest profile | (later) OAuth
     Analytics       console | (later) GA4/Amplitude
     RemoteConfig    static defaults | (later) fetched live tuning
+    Payments        Google Play Billing | dev simulator | unavailable on web
   render/      PixiJS layer.
     GameStage       renderer, layer stack, frame loop, resize
-    BottleView      glass silhouette, liquid, wobble, colourblind glyphs
-    BoardView       layout, input, GSAP pour choreography, powerups
+    BottleView      bottle + cauldron silhouettes, liquid, murk, glyphs
+    BoardView       layout, input, GSAP pour choreography, powerups, rules
     effects.ts      pour stream, particles, starfield
-    theme.ts        palette and bottle proportions
-  ui/          DOM overlay: screens, modals, toasts, tutorial
+    theme.ts        palette and vessel proportions
+  ui/          DOM overlay: screens, modals, toasts, tutorial, confetti
   audio/       Fully synthesised SFX and music (no audio assets at all)
 ```
 
@@ -57,15 +66,18 @@ touches only `render/`.
 
 **Every level is provably solvable.** `generateLevel` deals a seeded random
 board and then actually solves it before accepting it. Generation is
-deterministic per level id, so all players get identical boards. Worst case is
-~25 ms, fast enough to build at level start with no loading screen.
+deterministic per level id, so all players get identical boards. Typical cost
+is well under 100 ms at level start; the single worst campaign seed (a deep
+cauldron board) is ~1 s on desktop.
 
 **Par is genuinely optimal.** The solver is A* over states canonicalised by
 sorting tube contents (tubes are interchangeable, which collapses a huge amount
 of the search space). Its heuristic — total colour runs minus colour count — is
-admissible, because a single pour merges at most one pair of runs. The core test
-suite audits the result against an independent BFS, so a 3-star target is a real
-mathematical claim, not a guess.
+admissible, because a single pour merges at most one pair of runs. Under
+cauldron rules a second admissible bound applies (every run inside the cauldron
+needs a pour to leave), and the max of the two is used. The core test suite
+audits pars against an independent BFS under both rule sets, so a 3-star target
+is a real mathematical claim, not a guess.
 
 **The liquid surface stays level while the bottle tilts.** Bands are emitted in
 bottle-local space as quads between two parallel lines whose normal is
@@ -99,6 +111,12 @@ back to memory in private browsing, with the player warned), the profile is a
 local guest identity, and analytics logs to the console in dev. Each of these
 sits behind a driver interface, so adding real auth, cloud save or an analytics
 vendor means writing one driver rather than editing gameplay code.
+
+Real-money purchases only exist through platform billing: the Play Billing
+driver activates inside an Android TWA, dev builds simulate the store behind an
+explicit confirm dialog, and plain-web production hides paid items entirely.
+There is deliberately no card/PSP checkout — both app stores forbid it for
+in-game digital goods. Details and remaining launch work: [docs/STATUS.md](docs/STATUS.md).
 
 ## Toolchain notes
 

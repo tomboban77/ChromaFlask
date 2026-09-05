@@ -14,22 +14,105 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
+    <!-- Entry art paints first; home art warms up during the splash. -->
+    <link rel="preload" as="image" href="/Entry.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/home.webp" />
     <title>ChromaFlask</title>
   </head>
   <body>
+    <!-- =================================================== SHARED SVG ART
+         All characters and art are original ChromaFlask designs (the "Chroma
+         Drops": Splash, Berry and Sunny) - nothing here derives from any
+         third-party game asset. -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <defs>
+        <!-- Droplet mascot. Body colour comes from CSS `color` on the <use>. -->
+        <g id="cf-drop">
+          <path
+            d="M50 6 C63 22 82 38 82 62 A32 32 0 1 1 18 62 C18 38 37 22 50 6 Z"
+            fill="currentColor"
+          />
+          <path
+            d="M50 6 C63 22 82 38 82 62 A32 32 0 1 1 18 62 C18 38 37 22 50 6 Z"
+            fill="none" stroke="rgba(20,24,70,0.5)" stroke-width="3.5"
+          />
+          <ellipse cx="37" cy="40" rx="9" ry="15" fill="#fff" opacity="0.32"
+            transform="rotate(-18 37 40)" />
+          <circle cx="40" cy="58" r="6.6" fill="#fff" />
+          <circle cx="60" cy="58" r="6.6" fill="#fff" />
+          <circle cx="41.5" cy="59.5" r="3.5" fill="#1d2145" />
+          <circle cx="61.5" cy="59.5" r="3.5" fill="#1d2145" />
+          <circle cx="40" cy="56.6" r="1.3" fill="#fff" />
+          <circle cx="60" cy="56.6" r="1.3" fill="#fff" />
+          <path d="M42 71.5 Q50 79 58 71.5" fill="none" stroke="#1d2145"
+            stroke-width="3.2" stroke-linecap="round" />
+          <circle cx="31" cy="67" r="4.4" fill="#fff" opacity="0.28" />
+          <circle cx="69" cy="67" r="4.4" fill="#fff" opacity="0.28" />
+        </g>
+
+        <!-- Conical flask with layered rainbow liquid. -->
+        <clipPath id="cf-flask-clip">
+          <path d="M86 46 L60 152 Q54 174 74 174 L126 174 Q146 174 140 152 L114 46 Z" />
+        </clipPath>
+        <linearGradient id="cf-gold" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffe08a" />
+          <stop offset="1" stop-color="#f5a10c" />
+        </linearGradient>
+        <g id="cf-flask">
+          <g clip-path="url(#cf-flask-clip)">
+            <rect x="40" y="146" width="120" height="30" fill="#ffb020" />
+            <rect x="40" y="122" width="120" height="24" fill="#f5365c" />
+            <rect x="40" y="98" width="120" height="24" fill="#a855f7" />
+            <rect x="40" y="76" width="120" height="22" fill="#22d3ee" />
+            <circle cx="82" cy="112" r="5" fill="#fff" opacity="0.4" />
+            <circle cx="112" cy="136" r="4" fill="#fff" opacity="0.35" />
+            <circle cx="98" cy="90" r="3.4" fill="#fff" opacity="0.45" />
+            <circle cx="120" cy="104" r="2.6" fill="#fff" opacity="0.4" />
+            <path d="M76 62 L68 138" stroke="#fff" stroke-width="6" stroke-linecap="round"
+              opacity="0.3" />
+          </g>
+          <path
+            d="M86 46 L60 152 Q54 174 74 174 L126 174 Q146 174 140 152 L114 46 Z"
+            fill="rgba(255,255,255,0.06)" stroke="rgba(230,240,255,0.75)" stroke-width="5"
+            stroke-linejoin="round"
+          />
+          <path d="M86 18 h28 v30 h-28 Z" fill="rgba(255,255,255,0.06)"
+            stroke="rgba(230,240,255,0.75)" stroke-width="5" stroke-linejoin="round" />
+          <rect x="78" y="8" width="44" height="14" rx="7" fill="#c9d6ff" />
+        </g>
+
+        <!-- Small UI glyphs -->
+        <path id="cf-heart" d="M12 21S4.5 16.4 2 11.4C.6 8 2.6 4.5 6.2 4.5c2.2 0 3.7 1.2 4.8 2.9
+          1.1-1.7 2.6-2.9 4.8-2.9 3.6 0 5.6 3.5 4.2 6.9C19.5 16.4 12 21 12 21Z" />
+        <path id="cf-bag" d="M7.5 9V7a4.5 4.5 0 0 1 9 0v2h2.1l.9 10.3A2.4 2.4 0 0 1 17.1 22H6.9
+          a2.4 2.4 0 0 1-2.4-2.7L5.4 9h2.1Zm2 0h5V7a2.5 2.5 0 0 0-5 0v2Z" />
+        <path id="cf-house" d="M12 3.2 21 11h-2.6v8.6a1.2 1.2 0 0 1-1.2 1.2h-3.4v-6h-3.6v6H6.8
+          a1.2 1.2 0 0 1-1.2-1.2V11H3l9-7.8Z" />
+        <path id="cf-grid" d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" />
+        <path id="cf-gear" d="M19.14 12.94c.04-.31.06-.62.06-.94 0-.32-.02-.63-.06-.94l2.03-1.58
+          a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94
+          l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.62.94
+          l-2.39-.96a.5.5 0 0 0-.61.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94
+          0 .32.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.33.61.22l2.39-.96
+          c.5.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54
+          c.59-.24 1.13-.56 1.62-.94l2.39.96c.23.09.47 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64
+          l-2.03-1.58ZM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2Z" />
+      </defs>
+    </svg>
+
     <div id="app">
-      <!-- ============================================================ BOOT -->
+      <!-- ========================================================== SPLASH
+           Full-bleed entry art (public/Entry.webp) carries the branding;
+           only the live loading bar sits over it. -->
       <section class="screen screen--active" id="screen-boot">
-        <div class="boot">
-          <div class="boot__logo" aria-hidden="true">
-            <span class="boot__flask boot__flask--1"></span>
-            <span class="boot__flask boot__flask--2"></span>
-            <span class="boot__flask boot__flask--3"></span>
+        <h1 class="sr-only">ChromaFlask</h1>
+        <div class="splash">
+          <div class="splash__bar" role="progressbar" aria-label="Loading">
+            <i id="boot-bar"></i>
           </div>
-          <h1 class="boot__title">Chroma<span>Flask</span></h1>
-          <p class="boot__sub">Pour. Sort. Solve.</p>
-          <div class="boot__bar"><i></i></div>
+          <p class="splash__pct" id="boot-pct">Mixing colours… 0%</p>
         </div>
       </section>
 
@@ -62,8 +145,40 @@
         </div>
       </section>
 
+      <!-- ============================================================ HOME -->
+      <section class="screen screen--nav" id="screen-home">
+        <header class="topbar">
+          <button class="avatarframe" id="home-profile" aria-label="Profile and settings">
+            <span id="home-avatar">🐱</span>
+          </button>
+          <div class="topbar__spacer"></div>
+          <button class="chip chip--btn" id="home-coins-chip" aria-label="Coins - open shop">
+            <span class="chip__icon chip__icon--coin chip__icon--lead"></span>
+            <span id="home-coins">0</span>
+            <span class="chip__plus">+</span>
+          </button>
+          <button class="chip chip--btn" id="home-lives-chip" aria-label="Hearts - open shop">
+            <span class="heartbadge">
+              <svg viewBox="0 0 24 24"><use href="#cf-heart" /></svg>
+              <b id="home-lives">5</b>
+            </span>
+            <span class="chip__sub" id="home-lives-sub">Full</span>
+            <span class="chip__plus">+</span>
+          </button>
+          <button class="iconbtn" id="btn-settings-home" aria-label="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-gear" /></svg>
+          </button>
+        </header>
+
+        <div class="home">
+          <div class="home__progress" id="home-progress">★ 0/30 · 0 levels cleared</div>
+
+          <button class="btn btn--success btn--play" id="btn-play">Level 1</button>
+        </div>
+      </section>
+
       <!-- ============================================================= MAP -->
-      <section class="screen" id="screen-map">
+      <section class="screen screen--nav" id="screen-map">
         <header class="topbar">
           <div class="chip chip--profile" id="map-profile">
             <span class="chip__avatar" id="map-avatar">🐱</span>
@@ -75,15 +190,11 @@
             <span id="map-stars">0</span>
           </div>
           <div class="chip chip--stat" id="map-coins-chip">
-            <span class="chip__icon chip__icon--coin">●</span>
+            <span class="chip__icon chip__icon--coin chip__icon--lead"></span>
             <span id="map-coins">0</span>
           </div>
           <button class="iconbtn" id="btn-settings-map" aria-label="Settings">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm8.4-2.6.1-.9-.1-.9 1.9-1.5-1.9-3.3-2.3.8a7.6 7.6 0 0 0-1.5-.9L16.2 4h-3.8l-.4 2.2c-.5.2-1 .5-1.5.9l-2.3-.8L6.3 9.6l1.9 1.5-.1.9.1.9-1.9 1.5 1.9 3.3 2.3-.8c.5.4 1 .7 1.5.9l.4 2.2h3.8l.4-2.2c.5-.2 1-.5 1.5-.9l2.3.8 1.9-3.3-1.9-1.5Z"
-              />
-            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-gear" /></svg>
           </button>
         </header>
 
@@ -94,19 +205,49 @@
         </div>
       </section>
 
+      <!-- ============================================================ SHOP -->
+      <section class="screen" id="screen-shop">
+        <header class="topbar">
+          <div class="chip chip--stat">
+            <span class="chip__icon chip__icon--coin chip__icon--lead"></span>
+            <span id="shop-coins">0</span>
+          </div>
+          <div class="topbar__spacer"></div>
+          <h2 class="shop__title">Shop</h2>
+          <div class="topbar__spacer"></div>
+          <button class="iconbtn iconbtn--danger" id="btn-shop-close" aria-label="Close shop">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.6"
+                stroke-linecap="round" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="shop" id="shop-scroll">
+          <div id="shop-iap"></div>
+          <h3 class="shop__section">Use your coins</h3>
+          <div id="shop-coin-items"></div>
+          <p class="shop__legal">
+            Purchases are processed by your app store. Coins and boosters have no cash value
+            and can only be used inside ChromaFlask.
+          </p>
+        </div>
+      </section>
+
       <!-- ============================================================ GAME -->
       <section class="screen" id="screen-game">
         <header class="topbar topbar--game">
-          <button class="iconbtn" id="btn-back" aria-label="Back to levels">
+          <button class="iconbtn" id="btn-back" aria-label="Back to home">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M15.5 4 7 12l8.5 8" fill="none" stroke="currentColor" stroke-width="2.4"
                 stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </button>
-          <div class="chip chip--stat">
-            <span class="chip__icon chip__icon--coin">●</span>
+          <button class="chip chip--stat chip--btn" id="game-coins-chip" aria-label="Coins - open shop">
+            <span class="chip__icon chip__icon--coin chip__icon--lead"></span>
             <span id="game-coins">0</span>
-          </div>
+            <span class="chip__plus">+</span>
+          </button>
           <div class="topbar__spacer"></div>
           <div class="levelpill">
             <span id="game-level-label">Level 1</span>
@@ -120,16 +261,22 @@
             </svg>
           </button>
           <button class="iconbtn" id="btn-settings-game" aria-label="Settings">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm8.4-2.6.1-.9-.1-.9 1.9-1.5-1.9-3.3-2.3.8a7.6 7.6 0 0 0-1.5-.9L16.2 4h-3.8l-.4 2.2c-.5.2-1 .5-1.5.9l-2.3-.8L6.3 9.6l1.9 1.5-.1.9.1.9-1.9 1.5 1.9 3.3 2.3-.8c.5.4 1 .7 1.5.9l.4 2.2h3.8l.4-2.2c.5-.2 1-.5 1.5-.9l2.3.8 1.9-3.3-1.9-1.5Z"
-              />
-            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-gear" /></svg>
           </button>
         </header>
 
         <!-- Pixi canvas mounts here -->
         <div class="board-host" id="board-host"></div>
+
+        <!-- Tutorial hand pointer, positioned over the target bottle from JS -->
+        <div class="hand" id="tutorial-hand" hidden aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <path
+              d="M26 8c2.8 0 4.8 2 4.8 4.8v17l3.4-.8V15.5c0-3 4.8-3 4.8 0V28l3.2-.6v-8.2c0-2.8 4.6-2.8 4.6 0V30l2.6-.4c2.2 0 3.6 1.5 3.6 3.4 0 .9-.3 1.8-.9 2.6l-8.2 10.6C42.3 48.4 39.6 50 36.4 50h-7.2c-4.2 0-7.8-2.6-9.3-6.5l-5.2-13.4c-.8-2.1.5-4.1 2.6-4.1 1.2 0 2.3.6 3 1.7l2.9 4.4V12.8C23.2 10 24.2 8 26 8Z"
+              fill="#fff" stroke="#1d2145" stroke-width="2.4" stroke-linejoin="round"
+            />
+          </svg>
+        </div>
 
         <div class="coach" id="coach" hidden>
           <p class="coach__text" id="coach-text"></p>
@@ -169,7 +316,24 @@
         </footer>
       </section>
 
+      <!-- ======================================================= BOTTOM NAV -->
+      <nav class="bottomnav" id="bottomnav" hidden>
+        <button class="bottomnav__tab" data-nav="shop" aria-label="Shop">
+          <svg viewBox="0 0 24 24"><use href="#cf-bag" /></svg>
+          <span>Shop</span>
+        </button>
+        <button class="bottomnav__tab bottomnav__tab--active" data-nav="home" aria-label="Home">
+          <svg viewBox="0 0 24 24"><use href="#cf-house" /></svg>
+          <span>Home</span>
+        </button>
+        <button class="bottomnav__tab" data-nav="map" aria-label="Levels">
+          <svg viewBox="0 0 24 24"><use href="#cf-grid" /></svg>
+          <span>Levels</span>
+        </button>
+      </nav>
+
       <div id="modal-root" class="modal-root"></div>
+      <canvas id="fx-confetti" class="fx-confetti" aria-hidden="true"></canvas>
       <div id="toast-root" class="toast-root" aria-live="polite"></div>
     </div>
 

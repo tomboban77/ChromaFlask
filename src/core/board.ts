@@ -1,7 +1,20 @@
-import type { Board, ColorId, Move, TopRun, Tube } from './types';
+import type { Board, BoardRules, ColorId, LevelSpec, Move, TopRun, Tube } from './types';
 
 /** Units a tube holds when full. Every colour contributes exactly this many. */
 export const TUBE_CAPACITY = 4;
+
+/** Classic rules: every vessel is an ordinary tube. */
+export const DEFAULT_RULES: BoardRules = { cauldron: false };
+
+/** The rules a level spec plays under. */
+export function rulesFor(spec: Pick<LevelSpec, 'cauldron'>): BoardRules {
+  return spec.cauldron ? { cauldron: true } : DEFAULT_RULES;
+}
+
+/** Index of the cauldron under these rules, or -1 when there is none. */
+function cauldronIndex(rules: BoardRules): number {
+  return rules.cauldron ? 0 : -1;
+}
 
 export function cloneBoard(board: Board): Board {
   return board.map((tube) => tube.slice());
@@ -32,13 +45,16 @@ export function isComplete(tube: Tube): boolean {
 
 /**
  * Game rule: a pour is legal when the source has liquid, the target has room,
- * and the target is either empty or its top colour matches.
+ * and the target is either empty, colour-matched - or the Cauldron, which
+ * accepts anything.
  *
  * Deliberately permissive - it mirrors what a player is allowed to tap, which
  * includes some pointless-but-legal moves. The solver filters those separately
  * via `usefulMoves`.
  */
-export function canPour(board: Board, from: number, to: number): boolean {
+export function canPour(
+  board: Board, from: number, to: number, rules: BoardRules = DEFAULT_RULES,
+): boolean {
   if (from === to) return false;
   const src = board[from];
   const dst = board[to];
@@ -46,12 +62,15 @@ export function canPour(board: Board, from: number, to: number): boolean {
   if (src.length === 0) return false;
   if (dst.length >= TUBE_CAPACITY) return false;
   if (dst.length === 0) return true;
+  if (to === cauldronIndex(rules)) return true;
   return src[src.length - 1] === dst[dst.length - 1];
 }
 
 /** How many units would actually transfer. 0 when the pour is illegal. */
-export function pourAmount(board: Board, from: number, to: number): number {
-  if (!canPour(board, from, to)) return 0;
+export function pourAmount(
+  board: Board, from: number, to: number, rules: BoardRules = DEFAULT_RULES,
+): number {
+  if (!canPour(board, from, to, rules)) return 0;
   const src = board[from] as Tube;
   const dst = board[to] as Tube;
   const run = topRun(src) as TopRun;
@@ -62,8 +81,10 @@ export function pourAmount(board: Board, from: number, to: number): number {
  * Mutates `board`, moving the top run from `from` into `to`.
  * Returns the resulting Move, or null if the pour was not legal.
  */
-export function applyPour(board: Board, from: number, to: number): Move | null {
-  const count = pourAmount(board, from, to);
+export function applyPour(
+  board: Board, from: number, to: number, rules: BoardRules = DEFAULT_RULES,
+): Move | null {
+  const count = pourAmount(board, from, to, rules);
   if (count === 0) return null;
   const src = board[from] as Tube;
   const dst = board[to] as Tube;
@@ -79,8 +100,13 @@ export function undoPour(board: Board, move: Move): void {
   for (let i = 0; i < move.count; i++) src.push(dst.pop() as ColorId);
 }
 
-/** Won when every non-empty tube is full and single-coloured. */
-export function isSolved(board: Board): boolean {
+/**
+ * Won when every non-empty tube is full and single-coloured - and, under
+ * cauldron rules, the cauldron itself has been emptied out again.
+ */
+export function isSolved(board: Board, rules: BoardRules = DEFAULT_RULES): boolean {
+  const ci = cauldronIndex(rules);
+  if (ci >= 0 && (board[ci] as Tube).length > 0) return false;
   for (const tube of board) {
     if (tube.length === 0) continue;
     if (!isComplete(tube)) return false;
@@ -89,11 +115,11 @@ export function isSolved(board: Board): boolean {
 }
 
 /** Every pour the player could legally tap right now. */
-export function legalMoves(board: Board): Move[] {
+export function legalMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Move[] {
   const moves: Move[] = [];
   for (let from = 0; from < board.length; from++) {
     for (let to = 0; to < board.length; to++) {
-      const count = pourAmount(board, from, to);
+      const count = pourAmount(board, from, to, rules);
       if (count > 0) {
         const src = board[from] as Tube;
         moves.push({ from, to, count, color: src[src.length - 1] as ColorId });
@@ -104,20 +130,26 @@ export function legalMoves(board: Board): Move[] {
 }
 
 /** True when the player is stuck: not solved and nothing legal remains. */
-export function isDeadlocked(board: Board): boolean {
-  return !isSolved(board) && legalMoves(board).length === 0;
+export function isDeadlocked(board: Board, rules: BoardRules = DEFAULT_RULES): boolean {
+  return !isSolved(board, rules) && legalMoves(board, rules).length === 0;
 }
 
 /**
  * Search-space version of `legalMoves`, pruned of provably useless pours:
- *  - never disturb a finished tube,
- *  - never move a whole uniform tube into an empty one (pure relabelling),
- *  - only ever use the first empty tube, since empty tubes are interchangeable.
+ *  - never disturb a finished tube (the cauldron is never "finished" - even
+ *    full and uniform it still has to be emptied),
+ *  - never move a whole uniform tube into empty space (pure relabelling; into
+ *    the empty cauldron it is strictly worse, since it must come back out) -
+ *    except *out of* the cauldron, where that exact move is required progress,
+ *  - only ever use the first empty ordinary tube, since those are
+ *    interchangeable (the empty cauldron is not: it plays by other rules).
  */
-export function usefulMoves(board: Board): Move[] {
+export function usefulMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Move[] {
+  const ci = cauldronIndex(rules);
   const moves: Move[] = [];
   let firstEmpty = -1;
   for (let i = 0; i < board.length; i++) {
+    if (i === ci) continue;
     if ((board[i] as Tube).length === 0) {
       firstEmpty = i;
       break;
@@ -127,20 +159,19 @@ export function usefulMoves(board: Board): Move[] {
   for (let from = 0; from < board.length; from++) {
     const src = board[from] as Tube;
     if (src.length === 0) continue;
-    if (isComplete(src)) continue;
+    if (from !== ci && isComplete(src)) continue;
 
     const run = topRun(src) as TopRun;
-    // Emptying a uniform tube into empty space achieves nothing.
     const srcUniform = run.count === src.length;
 
     for (let to = 0; to < board.length; to++) {
       if (to === from) continue;
       const dst = board[to] as Tube;
       if (dst.length === 0) {
-        if (srcUniform) continue;
-        if (to !== firstEmpty) continue; // empties are interchangeable
+        if (srcUniform && from !== ci) continue;
+        if (to !== firstEmpty && to !== ci) continue;
       }
-      const count = pourAmount(board, from, to);
+      const count = pourAmount(board, from, to, rules);
       if (count > 0) moves.push({ from, to, count, color: run.color });
     }
   }
@@ -148,15 +179,21 @@ export function usefulMoves(board: Board): Move[] {
 }
 
 /**
- * Order-independent board fingerprint. Tubes are interchangeable, so sorting
- * their encodings collapses huge numbers of equivalent states - this is the
- * single biggest win in the solver.
+ * Order-independent board fingerprint. Ordinary tubes are interchangeable, so
+ * sorting their encodings collapses huge numbers of equivalent states - this
+ * is the single biggest win in the solver. The cauldron is *not*
+ * interchangeable, so it is fingerprinted separately in front.
  */
-export function canonicalKey(board: Board): string {
-  const parts = new Array<string>(board.length);
-  for (let i = 0; i < board.length; i++) parts[i] = (board[i] as Tube).join(',');
+export function canonicalKey(board: Board, rules: BoardRules = DEFAULT_RULES): string {
+  const ci = cauldronIndex(rules);
+  const start = ci >= 0 ? 1 : 0;
+  const parts = new Array<string>(board.length - start);
+  for (let i = start; i < board.length; i++) {
+    parts[i - start] = (board[i] as Tube).join(',');
+  }
   parts.sort();
-  return parts.join('|');
+  const rest = parts.join('|');
+  return ci >= 0 ? `${(board[ci] as Tube).join(',')}#${rest}` : rest;
 }
 
 /** Total contiguous colour runs on the board. Equals colour count when solved. */

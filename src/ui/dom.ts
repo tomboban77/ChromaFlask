@@ -71,6 +71,9 @@ export interface ModalOptions {
   /** Two buttons side by side rather than stacked. */
   inlineButtons?: boolean;
   dismissable?: boolean;
+  /** Round red X in the top corner. */
+  closeButton?: boolean;
+  /** Cleanup hook - always runs when the dialog leaves the screen. */
   onClose?: () => void;
 }
 
@@ -95,7 +98,7 @@ export class ModalHost {
   }
 
   open(options: ModalOptions): HTMLElement {
-    this.close(true);
+    this.close();
     this.lastFocus = document.activeElement as HTMLElement | null;
     this.dismissable = options.dismissable ?? true;
     this.onCloseCb = options.onClose ?? null;
@@ -103,6 +106,16 @@ export class ModalHost {
     const modal = el('div', 'modal');
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
+
+    if (options.closeButton) {
+      const x = el('button', 'modal__x');
+      x.setAttribute('aria-label', 'Close');
+      x.innerHTML =
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" ' +
+        'fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
+      x.addEventListener('click', () => this.close());
+      modal.appendChild(x);
+    }
 
     const title = el('h2', 'modal__title', options.title);
     modal.appendChild(title);
@@ -136,7 +149,7 @@ export class ModalHost {
     return modal;
   }
 
-  close(silent = false): void {
+  close(): void {
     if (!this.current) return;
     this.current.remove();
     this.current = null;
@@ -145,6 +158,8 @@ export class ModalHost {
     this.onCloseCb = null;
     this.lastFocus?.focus?.();
     this.lastFocus = null;
-    if (!silent) cb?.();
+    // Always run: onClose is a cleanup hook (timers etc.), and skipping it when
+    // one dialog replaces another would leak whatever the first one started.
+    cb?.();
   }
 }

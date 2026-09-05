@@ -1,11 +1,11 @@
 import { Container, Point } from 'pixi.js';
 import gsap from 'gsap';
 import {
-  TUBE_CAPACITY, applyPour, cloneBoard, isComplete, isDeadlocked, isSolved,
-  pourAmount, undoPour,
+  DEFAULT_RULES, TUBE_CAPACITY, applyPour, cloneBoard, isComplete, isDeadlocked,
+  isSolved, pourAmount, rulesFor, undoPour,
 } from '@/core/board';
 import { findHint } from '@/core/solver';
-import type { Board, ColorId, GeneratedLevel, Move } from '@/core/types';
+import type { Board, BoardRules, ColorId, GeneratedLevel, Move } from '@/core/types';
 import { audio } from '@/audio/AudioEngine';
 import { BottleView, type Band } from './BottleView';
 import type { ParticleField, StreamView } from './effects';
@@ -53,6 +53,14 @@ export class BoardView {
   private slots: Slot[] = [];
   private board: Board = [];
   private history: Move[] = [];
+  /**
+   * Murky levels: units still concealed at the bottom of each tube. A unit is
+   * revealed permanently once it surfaces; undo never re-conceals. Purely
+   * visual - the board itself always knows the truth.
+   */
+  private hidden: number[] = [];
+  /** Rule variations for the mounted level (cauldron etc.). */
+  private rules: BoardRules = DEFAULT_RULES;
 
   private selected: number | null = null;
   private busy = false;
@@ -84,12 +92,18 @@ export class BoardView {
   mount(level: GeneratedLevel, colorblind: boolean): void {
     this.teardown();
     this.board = cloneBoard(level.board);
+    this.rules = rulesFor(level.spec);
     this.history = [];
     this.selected = null;
     this.busy = false;
 
+    this.hidden = this.board.map((tube) =>
+      level.spec.murky ? Math.max(0, tube.length - 1) : 0,
+    );
+
     for (let i = 0; i < this.board.length; i++) {
       this.addBottleView(i, colorblind);
+      this.bottles[i]?.setHidden(this.hidden[i] ?? 0);
     }
     this.syncAll();
     // The game screen may still be display:none, in which case the host
@@ -98,8 +112,15 @@ export class BoardView {
     this.layout(this.viewW, this.viewH, false);
   }
 
+  /** The cauldron, when present, is always tube 0. */
+  private isCauldron(index: number): boolean {
+    return this.rules.cauldron && index === 0;
+  }
+
   private addBottleView(index: number, colorblind: boolean): BottleView {
-    const view = new BottleView(index, this.bodyW);
+    const view = new BottleView(
+      index, this.bodyW, this.isCauldron(index) ? 'cauldron' : 'bottle',
+    );
     view.setColorblind(colorblind);
     view.on('pointertap', () => this.handleTap(index));
     this.layer.addChild(view);
@@ -169,6 +190,11 @@ export class BoardView {
 
   get isBusy(): boolean {
     return this.busy;
+  }
+
+  /** True when no legal pour exists and the board is not solved. */
+  get isDead(): boolean {
+    return isDeadlocked(this.board, this.rules);
   }
 
   snapshot(): Board {
@@ -259,7 +285,8 @@ export class BoardView {
         this.rejectTap(index);
         return;
       }
-      if (isComplete(tube)) {
+      // A full uniform cauldron is NOT locked in - it still has to be emptied.
+      if (isComplete(tube) && !this.isCauldron(index)) {
         this.rejectTap(index);
         return;
       }
@@ -275,14 +302,14 @@ export class BoardView {
     }
 
     const from = this.selected;
-    if (pourAmount(this.board, from, index) > 0) {
+    if (pourAmount(this.board, from, index, this.rules) > 0) {
       void this.pour(from, index);
       return;
     }
 
     // Not a legal target. If it could be a source, treat the tap as changing
     // your mind rather than as an error - far less punishing than a buzz.
-    if (tube.length > 0 && !isComplete(tube)) {
+    if (tube.length > 0 && (!isComplete(tube) || this.isCauldron(index))) {
       this.select(index);
       audio.play('swap');
       return;
@@ -351,14 +378,14 @@ export class BoardView {
     const dstSlot = this.slots[to];
     if (!src || !dst || !srcSlot || !dstSlot) return;
 
-    const amount = pourAmount(this.board, from, to);
+    const amount = pourAmount(this.board, from, to, this.rules);
     if (amount === 0) return;
 
     const srcBefore = [...(this.board[from] as ColorId[])];
     const dstBefore = [...(this.board[to] as ColorId[])];
     const color = srcBefore[srcBefore.length - 1] as ColorId;
 
-    const move = applyPour(this.board, from, to);
+    const move = applyPour(this.board, from, to, this.rules);
     if (!move) return;
     this.history.push(move);
 
@@ -501,12 +528,30 @@ export class BoardView {
     }
   }
 
+  /** Reveal any concealed unit that has surfaced; never re-conceals. */
+  private settleHidden(): void {
+    for (let i = 0; i < this.board.length; i++) {
+      const cap = Math.max(0, (this.board[i]?.length ?? 0) - 1);
+      const current = this.hidden[i] ?? 0;
+      if (current > cap) {
+        this.hidden[i] = cap;
+        const view = this.bottles[i];
+        if (view) {
+          view.setHidden(cap);
+          view.agitate(0.5);
+        }
+      }
+    }
+  }
+
   /** Completion, win and deadlock checks, run once the liquid has landed. */
   private afterMove(move: Move, target: number): void {
+    this.settleHidden();
     this.callbacks.onMove?.(move, this.history.length);
 
+    // The cauldron never "completes" - even full and uniform it must empty out.
     const tube = this.board[target];
-    if (tube && isComplete(tube)) {
+    if (tube && isComplete(tube) && !this.isCauldron(target)) {
       const view = this.bottles[target];
       const slot = this.slots[target];
       if (view && slot) {
@@ -526,14 +571,14 @@ export class BoardView {
       this.callbacks.onTubeComplete?.(target);
     }
 
-    if (isSolved(this.board)) {
+    if (isSolved(this.board, this.rules)) {
       // Awarding the reward twice would be a real economy bug; latch it.
       if (this.resolved) return;
       this.resolved = true;
       this.callbacks.onWin?.();
       return;
     }
-    if (isDeadlocked(this.board)) {
+    if (isDeadlocked(this.board, this.rules)) {
       this.callbacks.onStuck?.();
     }
   }
@@ -547,6 +592,7 @@ export class BoardView {
 
     undoPour(this.board, move);
     this.resolved = false;
+    this.settleHidden();
     this.select(null);
 
     for (const idx of [move.from, move.to]) {
@@ -574,6 +620,7 @@ export class BoardView {
     if (this.busy) return false;
     this.clearHint();
     this.board.push([]);
+    this.hidden.push(0);
     const view = this.addBottleView(this.board.length - 1, colorblind);
     view.alpha = 0;
     this.layout(this.viewW, this.viewH, true);
@@ -592,7 +639,7 @@ export class BoardView {
   showHint(): boolean {
     if (this.busy) return false;
     this.clearHint();
-    const move = findHint(this.board);
+    const move = findHint(this.board, this.rules);
     if (!move) return false;
 
     this.hintPair = { from: move.from, to: move.to };
@@ -630,7 +677,37 @@ export class BoardView {
 
   /** Whether a winning line still exists - drives the "restart?" nudge. */
   hasSolution(): boolean {
-    return findHint(this.board) !== null || isSolved(this.board);
+    return findHint(this.board, this.rules) !== null || isSolved(this.board, this.rules);
+  }
+
+  /** Next move of a winning line without any visual effect (tutorial hand). */
+  hintMove(): Move | null {
+    return findHint(this.board, this.rules);
+  }
+
+  /** Any tube the given tube may legally pour into right now. */
+  firstLegalTarget(from: number): number | null {
+    for (let i = 0; i < this.board.length; i++) {
+      if (i !== from && pourAmount(this.board, from, i, this.rules) > 0) return i;
+    }
+    return null;
+  }
+
+  get selectedIndex(): number | null {
+    return this.selected;
+  }
+
+  /**
+   * A tube's centre in canvas CSS pixels (autoDensity makes global Pixi
+   * coordinates equal CSS pixels), for positioning DOM overlays like the
+   * tutorial hand.
+   */
+  tubeScreenPosition(index: number): { x: number; y: number; height: number } | null {
+    const slot = this.slots[index];
+    const view = this.bottles[index];
+    if (!slot || !view) return null;
+    const global = this.layer.toGlobal(new Point(slot.x, slot.y));
+    return { x: global.x, y: global.y, height: view.totalHeight };
   }
 
   celebrate(width: number): void {

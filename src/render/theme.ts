@@ -54,25 +54,63 @@ export const GLASS = {
 export const STAGE_BG = 0x0a0e2a;
 
 /**
- * Bottle proportions, as multiples of body width, measured top-down:
+ * Vessel proportions, as multiples of body width, measured top-down:
  * collar (lip) -> neck -> flared shoulder -> straight body -> rounded base.
  * The shoulder is what makes the silhouette read as a bottle rather than as a
  * narrow box sitting on a wide one.
  */
-export const BOTTLE = {
+export interface VesselSpec {
+  readonly collarW: number;
+  readonly collarH: number;
+  readonly neckW: number;
+  readonly neckH: number;
+  /** Vertical run of the curve that flares the neck out to the full body. */
+  readonly shoulderH: number;
+  /** Straight-sided section that holds the liquid. */
+  readonly bodyH: number;
+  readonly bottomRadius: number;
+  readonly collarRadius: number;
+}
+
+export const BOTTLE: VesselSpec = {
   collarW: 0.44,
   collarH: 0.12,
   neckW: 0.30,
   neckH: 0.14,
-  /** Vertical run of the curve that flares the neck out to the full body. */
   shoulderH: 0.26,
-  /** Straight-sided section that holds the liquid. */
   bodyH: 2.42,
   bottomRadius: 0.30,
   collarRadius: 0.05,
 } as const;
 
-/** Overall bottle height for a given body width. */
+/**
+ * The Cauldron: wide gold-trimmed rim, a short tucked neck, and a round-
+ * bellied pot. Deliberately squatter than a bottle so it reads as a different
+ * kind of vessel at a glance.
+ */
+export const CAULDRON: VesselSpec = {
+  collarW: 1.04,
+  collarH: 0.15,
+  neckW: 0.80,
+  neckH: 0.06,
+  shoulderH: 0.24,
+  bodyH: 2.05,
+  bottomRadius: 0.48,
+  collarRadius: 0.07,
+} as const;
+
+export type VesselVariant = 'bottle' | 'cauldron';
+
+export function vesselSpec(variant: VesselVariant): VesselSpec {
+  return variant === 'cauldron' ? CAULDRON : BOTTLE;
+}
+
+export function vesselHeight(bodyWidth: number, variant: VesselVariant): number {
+  const v = vesselSpec(variant);
+  return bodyWidth * (v.collarH + v.neckH + v.shoulderH + v.bodyH);
+}
+
+/** Overall bottle height for a given body width (drives the board layout). */
 export function bottleHeight(bodyWidth: number): number {
-  return bodyWidth * (BOTTLE.collarH + BOTTLE.neckH + BOTTLE.shoulderH + BOTTLE.bodyH);
+  return vesselHeight(bodyWidth, 'bottle');
 }
