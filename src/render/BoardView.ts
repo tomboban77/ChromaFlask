@@ -24,6 +24,13 @@ function pourRiseFor(bodyW: number): number {
   return Math.max(24, bodyW * POUR_RISE_FACTOR) + CAP_HEADROOM;
 }
 
+/**
+ * Horizontal room a vessel takes, in body widths. The cauldron's gold rim is
+ * 1.04 wide and its handles reach ~0.71 from the centre line, so it needs a
+ * wider slot than a bottle or it sits on top of its neighbour.
+ */
+const CAULDRON_FOOTPRINT = 1.44;
+
 export interface BoardCallbacks {
   onMove?: (move: Move, moveCount: number) => void;
   onWin?: () => void;
@@ -352,10 +359,19 @@ export class BoardView {
     const gapX = Math.min(Math.max(width * 0.028, 8), 22);
     const gapY = Math.min(Math.max(height * 0.06, 16), 46);
 
+    // Each vessel's slot width in body widths; the widest row sets the size.
+    const footprint = (i: number): number => (this.isCauldron(i) ? CAULDRON_FOOTPRINT : 1);
+    let widestRow = 0;
+    for (let r = 0; r < rows; r++) {
+      let units = 0;
+      for (let i = r * perRow; i < Math.min(n, (r + 1) * perRow); i++) units += footprint(i);
+      widestRow = Math.max(widestRow, units);
+    }
+
     // Width-constrained size (capped so a five-wide row stays compact), then
     // shrink further if the rows plus the pour headroom will not fit.
     const unitH = bottleHeight(1);
-    let bodyW = Math.min((width - gapX * (perRow + 1)) / perRow, 96);
+    let bodyW = Math.min((width - gapX * (perRow + 1)) / widestRow, 96);
     // A pouring bottle rises `pourRise` above the target's mouth and the cork
     // overshoots the mouth when it seals, so the top row needs that much clear
     // canvas above it or the pour happens out of frame. Solve for the size
@@ -381,11 +397,15 @@ export class BoardView {
     let placed = 0;
     for (let r = 0; r < rows; r++) {
       const inRow = Math.min(perRow, n - placed);
-      const rowW = inRow * bodyW + (inRow - 1) * gapX;
-      const startX = (width - rowW) / 2 + bodyW / 2;
+      let rowW = (inRow - 1) * gapX;
+      for (let c = 0; c < inRow; c++) rowW += footprint(placed + c) * bodyW;
+      // Walk the row, giving each vessel its own footprint and centring in it.
+      let cursor = (width - rowW) / 2;
       const y = startY + r * (h + gapY);
       for (let c = 0; c < inRow; c++) {
-        this.slots.push({ x: startX + c * (bodyW + gapX), y });
+        const w = footprint(placed + c) * bodyW;
+        this.slots.push({ x: cursor + w / 2, y });
+        cursor += w + gapX;
       }
       placed += inRow;
     }

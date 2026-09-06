@@ -1457,8 +1457,11 @@ body {
   color: var(--brown-soft);
 }
 
-/* Chapter and level as an eyebrow under the title. */
+/* Chapter and level as an eyebrow under the title. Positioned so it paints
+   above the sunburst and the stars, which are also positioned. */
 .win__name {
+  position: relative;
+  z-index: 2;
   margin: -8px 0 6px;
   font-size: 12.5px;
   letter-spacing: 0.12em;
@@ -1467,9 +1470,11 @@ body {
 }
 
 /* Stars in an arc: the middle star is the biggest and sits highest. */
-.stars--arc { position: relative; align-items: center; gap: 8px; margin: 2px 0 8px; }
+.stars--arc { position: relative; align-items: flex-end; gap: 8px; margin: 10px 0 8px; }
 .stars--arc i { font-size: 44px; }
-.stars--arc i:nth-child(2) { font-size: 60px; margin-top: -18px; }
+/* The middle star is taller and sits higher; the row grows to hold it rather
+   than the star climbing into the eyebrow above. */
+.stars--arc i:nth-child(2) { font-size: 60px; margin-bottom: 8px; }
 .stars--arc i:not(.on) {
   color: rgba(20, 8, 50, 0.45);
   -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.28);
