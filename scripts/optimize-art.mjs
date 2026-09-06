@@ -26,6 +26,9 @@ const SETTINGS = {
   logo: { width: 1080, quality: 72 },
   Entry: { width: 1170, quality: 74 },
   home: { width: 1170, quality: 74 },
+  // Aspect variants: 9:20 splash for tall phones, 3:4 home for tablets.
+  'Entry-tall': { width: 1170, quality: 74 },
+  'home-wide': { width: 1536, quality: 74 },
 };
 const DEFAULT = { width: 1170, quality: 80 };
 

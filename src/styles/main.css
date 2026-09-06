@@ -121,6 +121,15 @@ body {
     url('/Entry.webp') center top / cover no-repeat,
     linear-gradient(180deg, #3b1d96 0%, #221060 45%, #0f0840 100%);
 }
+/* Phones taller than 2:1 (19.5:9, 20:9) get the 9:20 export, so `cover` no
+   longer has to crop the sides of the 9:16 scene. */
+@media (max-aspect-ratio: 1/2) {
+  #screen-boot {
+    background-image:
+      url('/Entry-tall.webp'),
+      linear-gradient(180deg, #3b1d96 0%, #221060 45%, #0f0840 100%);
+  }
+}
 
 /* Visually hidden, still read by screen readers (the art bakes the logo in). */
 .sr-only {
@@ -1679,11 +1688,20 @@ body {
    The purple gradient stays underneath as the paint while the image loads. */
 #screen-home {
   /* Anchored a third of the way down rather than at the top: the scene is
-     9:16, so on a wider screen (tablets) `cover` crops height, and this way
-     it takes it from both ends instead of dropping the whole bottom. */
+     9:16, so on a wider screen `cover` crops height, and this way it takes it
+     from both ends instead of dropping the whole bottom. */
   background:
     url('/home.webp') center 30% / cover no-repeat,
     linear-gradient(180deg, #b06ef0 0%, #8b48d8 42%, #6a2fb8 78%, #57249c 100%);
+}
+/* Tablets and desktop (wider than 2:3) get the 3:4 composition of the scene. */
+@media (min-aspect-ratio: 2/3) {
+  #screen-home {
+    background-image:
+      url('/home-wide.webp'),
+      linear-gradient(180deg, #b06ef0 0%, #8b48d8 42%, #6a2fb8 78%, #57249c 100%);
+    background-position: center center, center;
+  }
 }
 
 /* Soft scrim behind the HUD pills so they read over bright art. */
