@@ -61,12 +61,6 @@
           <stop offset="0" stop-color="#ffe08a" />
           <stop offset="1" stop-color="#f5a10c" />
         </linearGradient>
-        <!-- Shaded heart fill so the hearts badge reads like the bevelled coin, not a flat glyph. -->
-        <radialGradient id="cf-heart-shade" cx="0.36" cy="0.28" r="0.85">
-          <stop offset="0" stop-color="#ff8fa3" />
-          <stop offset="0.45" stop-color="#ff3b55" />
-          <stop offset="1" stop-color="#c8102e" />
-        </radialGradient>
         <g id="cf-flask">
           <g clip-path="url(#cf-flask-clip)">
             <rect x="40" y="146" width="120" height="30" fill="#ffb020" />
@@ -88,6 +82,25 @@
           <path d="M86 18 h28 v30 h-28 Z" fill="rgba(255,255,255,0.06)"
             stroke="rgba(230,240,255,0.75)" stroke-width="5" stroke-linejoin="round" />
           <rect x="78" y="8" width="44" height="14" rx="7" fill="#c9d6ff" />
+        </g>
+
+        <!-- Big candy heart for the hearts badge and the More Lives dialog:
+             bevelled base, gradient body, gloss. The 24-unit #cf-heart glyph
+             below stays for small inline uses. -->
+        <linearGradient id="cf-heart-body" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ff8da4" />
+          <stop offset="0.5" stop-color="#ff3d5e" />
+          <stop offset="1" stop-color="#e0173f" />
+        </linearGradient>
+        <linearGradient id="cf-heart-base" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#c2122f" />
+          <stop offset="1" stop-color="#8a0a22" />
+        </linearGradient>
+        <g id="cf-heart-3d">
+          <path d="M50 90 C 22 70, 5 53, 5 33 C 5 18, 16 7, 30 7 C 39 7, 46 12, 50 20 C 54 12, 61 7, 70 7 C 84 7, 95 18, 95 33 C 95 53, 78 70, 50 90 Z" fill="url(#cf-heart-base)" stroke="#7a0a20" stroke-width="3" stroke-linejoin="round" />
+          <path d="M50 90 C 22 70, 5 53, 5 33 C 5 18, 16 7, 30 7 C 39 7, 46 12, 50 20 C 54 12, 61 7, 70 7 C 84 7, 95 18, 95 33 C 95 53, 78 70, 50 90 Z" transform="translate(0 -5)" fill="url(#cf-heart-body)" />
+          <path d="M 22 20 C 30 13, 41 14, 44 24 C 40 30, 26 32, 22 20 Z" fill="#fff" opacity="0.5" />
+          <circle cx="70" cy="18" r="4" fill="#fff" opacity="0.55" />
         </g>
 
         <!-- Small UI glyphs -->
@@ -184,7 +197,7 @@
           </button>
           <button class="chip chip--btn chip--lead" id="home-lives-chip" aria-label="Hearts - open shop" data-i18n-aria="home.heartsAria">
             <span class="heartbadge">
-              <svg viewBox="0.5 3.6 23 18.2" aria-hidden="true"><use href="#cf-heart" /></svg>
+              <svg viewBox="0 0 100 92" aria-hidden="true"><use href="#cf-heart-3d" /></svg>
               <b id="home-lives">5</b>
             </span>
             <span class="chip__sub" id="home-lives-sub">Full</span>
@@ -209,13 +222,6 @@
             <button class="btn btn--success btn--play" id="btn-play">Level 1</button>
           </div>
 
-          <button class="btn btn--daily" id="btn-daily" aria-label="Daily challenge" data-i18n-aria="level.daily">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-calendar" /></svg>
-            <span class="btn--daily__text">
-              <b data-i18n="level.daily">Daily challenge</b>
-              <small id="daily-sub">A new potion every day</small>
-            </span>
-          </button>
         </div>
       </section>
 
@@ -309,6 +315,12 @@
         <!-- Pixi canvas mounts here -->
         <div class="board-host" id="board-host"></div>
 
+        <!-- Level title card that sweeps across the board as a level starts -->
+        <div class="levelintro" id="levelintro" hidden aria-hidden="true">
+          <b id="levelintro-title"></b>
+          <small id="levelintro-sub"></small>
+        </div>
+
         <!-- Tutorial hand pointer, positioned over the target bottle from JS -->
         <div class="hand" id="tutorial-hand" hidden aria-hidden="true">
           <svg viewBox="0 0 64 64">
@@ -370,6 +382,15 @@
         <button class="bottomnav__tab" data-nav="map" aria-label="Levels" data-i18n-aria="nav.levels">
           <svg viewBox="0 0 24 24"><use href="#cf-grid" /></svg>
           <span data-i18n="nav.levels">Levels</span>
+        </button>
+        <!-- The daily challenge lives in the nav so the home art stays clear.
+             #daily-sub keeps the full status sentence for screen readers (and
+             the smoke test); the badge shows the streak or a "new" dot. -->
+        <button class="bottomnav__tab" data-nav="daily" id="btn-daily" aria-label="Daily challenge" data-i18n-aria="level.daily">
+          <svg viewBox="0 0 24 24"><use href="#cf-calendar" /></svg>
+          <span data-i18n="nav.daily">Daily</span>
+          <span class="sr-only" id="daily-sub">A new potion every day</span>
+          <span class="bottomnav__badge" id="daily-badge" aria-hidden="true"></span>
         </button>
       </nav>
 

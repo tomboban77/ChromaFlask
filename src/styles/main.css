@@ -501,16 +501,11 @@ body {
   width: 100%;
   height: 100%;
   overflow: visible;
-  fill: url('#cf-heart-shade');
-  stroke: rgba(255, 255, 255, 0.85);
-  stroke-width: 1.6;
-  stroke-linejoin: round;
-  paint-order: stroke fill;
 }
 
 .heartbadge b {
   position: absolute;
-  inset: 0 0 3px;
+  inset: 0 0 6px;
   display: grid;
   place-items: center;
   color: #fff;
@@ -836,6 +831,65 @@ body {
   text-shadow: 0 1px 0 rgba(20, 90, 10, 0.6);
 }
 
+/* --------------------------------------------------------- level intro -- */
+/* "Level 12 / Chapter name" sweeps in over the board and out again. Pure
+   transform/opacity, so it costs nothing while the bottles drop in below. */
+.levelintro {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 16px 20px;
+  pointer-events: none;
+  z-index: 8;
+  text-align: center;
+  opacity: 0;
+}
+.levelintro[hidden] { display: none; }
+.levelintro::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(20, 6, 50, 0.7) 18%,
+    rgba(20, 6, 50, 0.7) 82%,
+    transparent
+  );
+}
+.levelintro b {
+  font-size: clamp(30px, 9vw, 42px);
+  font-weight: 900;
+  line-height: 1.05;
+  color: #fff;
+  letter-spacing: 0.01em;
+  text-shadow: 0 3px 0 rgba(50, 15, 110, 0.75), 0 10px 26px rgba(0, 0, 0, 0.55);
+}
+.levelintro small {
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+.levelintro--in { animation: introin 0.55s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+.levelintro--out { animation: introout 0.36s ease-in both; }
+@keyframes introin {
+  from { opacity: 0; transform: translateX(-70px) scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes introout {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateX(70px) scale(0.9); }
+}
+
 /* ------------------------------------------------------------ tutorial -- */
 .coach {
   position: absolute;
@@ -966,30 +1020,34 @@ body {
 
 .livesdlg__heart {
   position: relative;
-  width: 86px;
-  height: 86px;
-  filter: drop-shadow(0 4px 6px rgba(120, 0, 20, 0.4));
+  width: 96px;
+  height: 88px;
+  filter: drop-shadow(0 6px 8px rgba(120, 0, 20, 0.35));
+  animation: heartbeat 2.6s ease-in-out infinite;
+}
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  12% { transform: scale(1.06); }
+  24% { transform: scale(1); }
+  36% { transform: scale(1.04); }
+  48% { transform: scale(1); }
 }
 
 .livesdlg__heart svg {
+  display: block;
   width: 100%;
   height: 100%;
-  fill: url('#cf-heart-shade');
-  stroke: rgba(255, 255, 255, 0.85);
-  stroke-width: 1.2;
-  stroke-linejoin: round;
-  paint-order: stroke fill;
 }
 
 .livesdlg__heart b {
   position: absolute;
-  inset: 0 0 12px;
+  inset: 0 0 16px;
   display: grid;
   place-items: center;
   color: #fff;
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 900;
-  text-shadow: 0 2px 3px rgba(120, 0, 20, 0.85);
+  text-shadow: 0 2px 0 rgba(120, 0, 20, 0.9), 0 4px 10px rgba(120, 0, 20, 0.5);
 }
 
 .livesdlg__label {
@@ -1143,12 +1201,69 @@ body {
 }
 
 .stars i {
+  position: relative;
+  z-index: 1;
   font-style: normal;
   font-size: 46px;
   line-height: 1;
   color: rgba(255, 255, 255, 0.16);
   transform: scale(0.4);
   opacity: 0;
+}
+
+/* Shockwave ring as an earned star lands. */
+.stars i.on::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1em;
+  height: 1em;
+  margin: -0.5em 0 0 -0.5em;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 225, 130, 0.95);
+  pointer-events: none;
+  animation: ringout 0.6s ease-out both;
+}
+@keyframes ringout {
+  from { transform: scale(0.4); opacity: 1; }
+  to { transform: scale(2.6); opacity: 0; }
+}
+
+/* Slowly turning sunburst behind the star arc: transform-only, so it is free. */
+.win__burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 240px;
+  height: 240px;
+  margin: -120px 0 0 -120px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  animation: burstin 0.7s ease 0.15s both;
+  -webkit-mask-image: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.7) 30%, transparent 66%);
+  mask-image: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.7) 30%, transparent 66%);
+}
+.win__burst::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 224, 130, 0.5) 0deg 8deg,
+    rgba(255, 224, 130, 0) 8deg 22.5deg
+  );
+  animation: spin 18s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes burstin { to { opacity: 1; } }
+
+.modal--win .modal__title { animation: titlein 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes titlein {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
 
 .stars i.pop {
@@ -1318,7 +1433,9 @@ body {
 .howto p { margin: 0 0 8px; }
 
 /* ------------------------------------------------------------ win screen -- */
-.win { display: flex; flex-direction: column; align-items: stretch; }
+/* Clips the sunburst, which is wider than the dialog on small phones and would
+   otherwise give the scrolling dialog a sideways overflow. */
+.win { position: relative; display: flex; flex-direction: column; align-items: stretch; overflow: hidden; }
 
 /* Chapter completed: a gold ribbon above the stars. */
 .win__chapter {
@@ -1350,7 +1467,7 @@ body {
 }
 
 /* Stars in an arc: the middle star is the biggest and sits highest. */
-.stars--arc { align-items: center; gap: 8px; margin: 2px 0 8px; }
+.stars--arc { position: relative; align-items: center; gap: 8px; margin: 2px 0 8px; }
 .stars--arc i { font-size: 44px; }
 .stars--arc i:nth-child(2) { font-size: 60px; margin-top: -18px; }
 .stars--arc i:not(.on) {
@@ -1574,9 +1691,10 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 0 22px calc(118px + var(--safe-b));
-  /* Bottom scrim anchors the play button against the artwork. */
-  background: linear-gradient(180deg, transparent 46%, rgba(48, 14, 92, 0.62) 100%);
+  padding: 0 22px calc(98px + var(--safe-b));
+  /* Bottom scrim anchors the play button against the artwork; it starts low
+     so the illustration stays clear. */
+  background: linear-gradient(180deg, transparent 62%, rgba(48, 14, 92, 0.62) 100%);
 }
 
 /* One card for the campaign: chapter, stars, a real progress bar, Play. The
@@ -1662,40 +1780,6 @@ body {
 }
 .win__next::after { animation-delay: 1.4s; }
 
-/* Daily challenge: purple companion to the green Play button. */
-.btn--daily {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: min(340px, 100%);
-  min-height: 56px;
-  padding: 8px 18px 8px 14px;
-  border-radius: 18px;
-  border: 2.5px solid var(--gold-hi);
-  background: linear-gradient(180deg, var(--purple-0) 0%, var(--purple-1) 100%);
-  color: #f6efff;
-  text-align: left;
-  box-shadow: inset 0 -4px 0 var(--purple-deep), var(--shadow-md), inset 0 2px 0 rgba(255, 255, 255, 0.3);
-}
-
-.btn--daily:active { box-shadow: inset 0 -2px 0 var(--purple-deep), var(--shadow-md); }
-
-.btn--daily svg {
-  width: 26px;
-  height: 26px;
-  flex: none;
-  color: var(--gold-hi);
-}
-
-.btn--daily__text { display: flex; flex-direction: column; line-height: 1.15; }
-.btn--daily__text b { font-size: 16px; font-weight: 800; }
-.btn--daily__text small {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: #d9c8ff;
-  letter-spacing: 0.02em;
-}
-
 @keyframes playpulse {
   0%, 100% { transform: scale(0.98); opacity: 0; }
   50% { transform: scale(1.04); opacity: 1; }
@@ -1757,6 +1841,7 @@ button.chip:active { transform: scale(0.94); }
 .bottomnav[hidden] { display: none; }
 
 .bottomnav__tab {
+  position: relative;
   flex: 1;
   appearance: none;
   border: 2px solid #9a6fe0;
@@ -1777,6 +1862,32 @@ button.chip:active { transform: scale(0.94); }
 }
 
 .bottomnav__tab svg { width: 25px; height: 25px; fill: currentColor; }
+.bottomnav__tab:active:not(.bottomnav__tab--active) { transform: scale(0.94); }
+
+/* Streak or "new today" marker on the daily tab; empty means nothing to say. */
+.bottomnav__badge {
+  position: absolute;
+  top: -7px;
+  right: 6px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(180deg, #ff5d7d, #d81c46);
+  border: 1.5px solid #fff;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 900;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  font-variant-numeric: tabular-nums;
+  animation: badgein 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.bottomnav__badge:empty { display: none; }
+.bottomnav__badge--done { background: linear-gradient(180deg, var(--green-0), var(--green-1)); }
+.bottomnav__badge--streak { background: linear-gradient(180deg, #ffb340, #ff7a1e); }
+@keyframes badgein { from { transform: scale(0); } to { transform: scale(1); } }
 
 /* The active tab pops up above the bar, reference-style. */
 .bottomnav__tab--active {

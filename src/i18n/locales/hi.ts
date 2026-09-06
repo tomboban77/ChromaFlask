@@ -35,6 +35,7 @@ const table: Record<string, string> = {
   'nav.shop': 'दुकान',
   'nav.home': 'होम',
   'nav.levels': 'लेवल',
+  'nav.daily': 'डेली',
   'common.settings': 'सेटिंग्स',
   'common.cancel': 'रद्द करें',
   'common.back': 'वापस',

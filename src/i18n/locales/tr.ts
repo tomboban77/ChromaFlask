@@ -35,6 +35,7 @@ const table: Record<string, string> = {
   'nav.shop': 'Mağaza',
   'nav.home': 'Ana sayfa',
   'nav.levels': 'Seviyeler',
+  'nav.daily': 'Günlük',
   'common.settings': 'Ayarlar',
   'common.cancel': 'İptal',
   'common.back': 'Geri',

@@ -8,12 +8,13 @@ import { colorOf } from './theme';
  * full re-tessellation and buffer upload, which the profiler showed as the
  * largest steady per-frame JS cost in the game.
  */
-let shapes: { circle: Texture; square: Texture } | null = null;
-function shapeTextures(): { circle: Texture; square: Texture } {
+interface Shapes { circle: Texture; square: Texture; ring: Texture }
+let shapes: Shapes | null = null;
+function shapeTextures(): Shapes {
   if (shapes) return shapes;
   const S = 32;
   const canvas = document.createElement('canvas');
-  canvas.width = S * 2;
+  canvas.width = S * 3;
   canvas.height = S;
   const ctx = canvas.getContext('2d');
   if (ctx) {
@@ -22,11 +23,18 @@ function shapeTextures(): { circle: Texture; square: Texture } {
     ctx.arc(S / 2, S / 2, S / 2 - 1, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillRect(S, 0, S, S);
+    // Thin hoop for shockwaves; scaled up by transform, so the stroke stays crisp enough.
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(S * 2.5, S / 2, S / 2 - 2, 0, Math.PI * 2);
+    ctx.stroke();
   }
   const sheet = Texture.from(canvas);
   shapes = {
     circle: new Texture({ source: sheet.source, frame: new Rectangle(0, 0, S, S) }),
     square: new Texture({ source: sheet.source, frame: new Rectangle(S, 0, S, S) }),
+    ring: new Texture({ source: sheet.source, frame: new Rectangle(S * 2, 0, S, S) }),
   };
   return shapes;
 }
@@ -133,7 +141,7 @@ export class StreamView extends Container {
   }
 }
 
-type ParticleShape = 'rect' | 'circle';
+type ParticleShape = 'rect' | 'circle' | 'ring';
 
 interface Particle {
   x: number;
@@ -150,6 +158,10 @@ interface Particle {
   gravity: number;
   drag: number;
   shape: ParticleShape;
+  /** Size change per second (flames shrink, shockwaves swell). */
+  grow?: number;
+  /** Fade from birth rather than holding full alpha for three quarters of life. */
+  fadeEarly?: boolean;
 }
 
 /**
@@ -236,6 +248,57 @@ export class ParticleField extends Container {
     }
   }
 
+  /**
+   * Rocket exhaust under a climbing cork: hot core, amber flame, a lick of the
+   * liquid's own colour. Shoots downward and dies fast, so it reads as thrust.
+   */
+  exhaust(x: number, y: number, colorId: number, count = 3): void {
+    const col = colorOf(colorId);
+    const flame = [0xffffff, 0xffe08a, 0xffb020, 0xff6a2a, col.light];
+    for (let i = 0; i < count; i++) {
+      const angle = Math.PI / 2 + (Math.random() - 0.5) * 0.7;
+      const speed = 90 + Math.random() * 170;
+      this.spawn({
+        x: x + (Math.random() - 0.5) * 4,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0,
+        maxLife: 0.16 + Math.random() * 0.2,
+        size: 3 + Math.random() * 4,
+        color: flame[Math.floor(Math.random() * flame.length)] as number,
+        alpha: 1,
+        rot: 0,
+        vrot: 0,
+        gravity: -120,
+        drag: 0.9,
+        shape: 'circle',
+        grow: -9,
+        fadeEarly: true,
+      });
+    }
+  }
+
+  /** Expanding hoop: the shockwave of a cork seating or a star landing. */
+  ring(x: number, y: number, color: number, size = 14, grow = 160): void {
+    this.spawn({
+      x, y,
+      vx: 0, vy: 0,
+      life: 0,
+      maxLife: 0.42,
+      size,
+      color,
+      alpha: 1,
+      rot: 0,
+      vrot: 0,
+      gravity: 0,
+      drag: 1,
+      shape: 'ring',
+      grow,
+      fadeEarly: true,
+    });
+  }
+
   /** Level-complete celebration falling from above the viewport. */
   confetti(width: number, count = 90): void {
     const colors = [0xf5365c, 0x22d3ee, 0xffb020, 0xa855f7, 0x2bd97c, 0x4f7cff, 0xff6fb5, 0xffffff];
@@ -285,9 +348,10 @@ export class ParticleField extends Container {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.rot += p.vrot * dt;
+      if (p.grow) p.size = Math.max(0.5, p.size + p.grow * dt);
 
       const t = p.life / p.maxLife;
-      p.alpha = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
+      p.alpha = p.fadeEarly ? 1 - t * t : t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
 
       list[write++] = p;
     }
@@ -303,7 +367,7 @@ export class ParticleField extends Container {
       const p = list[i] as Particle;
       const s = this.spriteAt(i);
       s.visible = true;
-      s.texture = p.shape === 'circle' ? tex.circle : tex.square;
+      s.texture = p.shape === 'circle' ? tex.circle : p.shape === 'ring' ? tex.ring : tex.square;
       s.position.set(p.x, p.y);
       s.rotation = p.rot;
       s.tint = p.color;
@@ -311,7 +375,7 @@ export class ParticleField extends Container {
       // Same footprints as the old Graphics: a disc of diameter `size`, a
       // rectangle `size` wide by two thirds of that tall.
       const w = p.size / SHAPE_PX;
-      s.scale.set(w, p.shape === 'circle' ? w : w * (2 / 3));
+      s.scale.set(w, p.shape === 'rect' ? w * (2 / 3) : w);
     }
     for (let i = list.length; i < this.pool.length; i++) {
       const s = this.pool[i];

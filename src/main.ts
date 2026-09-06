@@ -701,18 +701,6 @@ class App {
       }
     });
 
-    $('#btn-daily').addEventListener('click', () => {
-      audio.play('button');
-      haptic(10);
-      const today = todayDayNumber();
-      const record = this.save.dailyRecord(today);
-      if (record) {
-        this.showDailyDoneDialog(record.stars, record.bestMoves, today);
-      } else {
-        void this.startLevel(dailyId(today));
-      }
-    });
-
     for (const tab of Array.from(document.querySelectorAll<HTMLElement>('.bottomnav__tab'))) {
       tab.addEventListener('click', () => {
         audio.play('button');
@@ -720,6 +708,8 @@ class App {
         const target = tab.dataset.nav;
         if (target === 'shop') {
           this.openShop('nav');
+        } else if (target === 'daily') {
+          this.openDaily();
         } else if (target === 'map') {
           this.renderMap();
           this.show('map');
@@ -728,6 +718,17 @@ class App {
           this.show('home');
         }
       });
+    }
+  }
+
+  /** Today's challenge: play it, or see today's result if it is already done. */
+  private openDaily(): void {
+    const today = todayDayNumber();
+    const record = this.save.dailyRecord(today);
+    if (record) {
+      this.showDailyDoneDialog(record.stars, record.bestMoves, today);
+    } else {
+      void this.startLevel(dailyId(today));
     }
   }
 
@@ -810,20 +811,31 @@ class App {
     });
   }
 
-  /** The daily button's second line: today's state and the streak. */
+  /**
+   * The daily tab's status: the full sentence for screen readers, and a badge
+   * everyone sees - a tick when today is done, the streak while it is alive,
+   * a dot when a fresh potion is waiting.
+   */
   private renderDailyButton(): void {
     const today = todayDayNumber();
     const record = this.save.dailyRecord(today);
     const streak = this.save.dailyStreak(today);
     const sub = $('#daily-sub');
+    const badge = $('#daily-badge');
+    badge.classList.remove('bottomnav__badge--done', 'bottomnav__badge--streak');
     if (record) {
       sub.textContent =
         t('daily.sub.done', { stars: `${'★'.repeat(record.stars)}${'☆'.repeat(3 - record.stars)}` }) +
         (streak > 1 ? t('daily.sub.streakSuffix', { n: streak }) : t('daily.sub.tomorrow'));
+      badge.textContent = '✓';
+      badge.classList.add('bottomnav__badge--done');
     } else if (streak > 0) {
       sub.textContent = t('daily.sub.keep', { n: streak });
+      badge.textContent = `🔥${streak}`;
+      badge.classList.add('bottomnav__badge--streak');
     } else {
       sub.textContent = t('daily.sub.fresh');
+      badge.textContent = '!';
     }
   }
 
@@ -1398,6 +1410,15 @@ class App {
     if (restore) {
       this.toast.show(t('toast.continuing', { label: this.levelLabel(id) }), 'info', 1600);
     } else {
+      const chapter = chapterFor(id);
+      this.showLevelIntro(
+        this.levelLabel(id),
+        isDaily(id)
+          ? formatLongDate(dateFromDay(dayFromDailyId(id)))
+          : chapter
+            ? chapter.name
+            : this.level.spec.name,
+      );
       this.save.bumpStat('plays');
       this.analytics.track({ type: 'level_start', level: id, attempt: this.attempt });
     }
@@ -1441,6 +1462,38 @@ class App {
     }
   }
 
+  private introTimer: number | null = null;
+
+  /** Title card over the board as a level opens; skipped under reduced motion. */
+  private showLevelIntro(title: string, sub: string): void {
+    const node = $('#levelintro');
+    if (this.introTimer !== null) {
+      window.clearTimeout(this.introTimer);
+      this.introTimer = null;
+    }
+    const reduced =
+      this.save.snapshot.settings.reducedMotion ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      node.hidden = true;
+      return;
+    }
+    $('#levelintro-title').textContent = title;
+    $('#levelintro-sub').textContent = sub;
+    node.classList.remove('levelintro--out', 'levelintro--in');
+    node.hidden = false;
+    // Force a style flush so re-adding the class restarts the animation.
+    void node.offsetWidth;
+    node.classList.add('levelintro--in');
+    this.introTimer = window.setTimeout(() => {
+      node.classList.add('levelintro--out');
+      this.introTimer = window.setTimeout(() => {
+        node.hidden = true;
+        this.introTimer = null;
+      }, 380);
+    }, 1350);
+  }
+
   /**
    * "More Lives" dialog: hearts state with a live countdown, a coin refill,
    * and a route to the shop's unlimited-hearts bundles. Doubles as the
@@ -1454,7 +1507,7 @@ class App {
 
     const card = el('div', 'livesdlg__card');
     const heart = el('span', 'livesdlg__heart');
-    heart.innerHTML = `<svg viewBox="0 0 24 24"><use href="#cf-heart"/></svg><b></b>`;
+    heart.innerHTML = `<svg viewBox="0 0 100 92"><use href="#cf-heart-3d"/></svg><b></b>`;
     const heartCount = heart.querySelector('b') as HTMLElement;
     card.appendChild(heart);
     const label = el('div', 'livesdlg__label');
@@ -2038,7 +2091,9 @@ class App {
     }
 
     // Stars in an arc; unearned ones stay as dim outlines so 2/3 reads at a glance.
+    // A slowly turning sunburst sits behind them.
     const starRow = el('div', 'stars stars--arc');
+    starRow.appendChild(el('div', 'win__burst'));
     const starEls: HTMLElement[] = [];
     for (let i = 0; i < 3; i++) {
       const s = el('i', '', '★');
@@ -2081,7 +2136,15 @@ class App {
       content.appendChild(card);
       const counter = big.querySelector('b') as HTMLElement;
       const startAt = reduced ? 0 : 180 + 3 * 260;
-      window.setTimeout(() => this.countUp(counter, w.reward, reduced ? 0 : 700), startAt);
+      // When the count lands, coins fountain up out of the reward card.
+      const shower = (): void => {
+        const r = card.getBoundingClientRect();
+        if (r.width > 0) this.confetti.coins(r.left + r.width / 2, r.top + r.height / 2);
+      };
+      window.setTimeout(
+        () => this.countUp(counter, w.reward, reduced ? 0 : 700, reduced ? undefined : shower),
+        startAt,
+      );
     } else {
       content.appendChild(el('div', 'win__note', t('win.allStars')));
     }
@@ -2163,7 +2226,7 @@ class App {
     }
     content.appendChild(actions);
 
-    this.modal.open({
+    const dialog = this.modal.open({
       title: w.isLast
         ? t('win.titleAll', { n: LEVEL_COUNT })
         : t('win.title', { label: this.levelLabel(this.levelId) }),
@@ -2176,29 +2239,37 @@ class App {
       onClose: () => this.stage.setPaused(this.current !== 'game' || document.hidden),
     });
     this.stage.setPaused(true);
+    dialog.classList.add('modal--win');
 
     // Confetti rains over the dialog itself; a perfect run or a finished
     // chapter gets the big burst.
     this.confetti.burst(w.stars === 3 || w.chapterDone ? 2 : 1);
 
-    // Ring the stars in one at a time so the score lands as a moment.
+    // Ring the stars in one at a time so the score lands as a moment. The
+    // third star of a perfect gets a flash and a second volley.
     starEls.forEach((node, i) => {
       window.setTimeout(() => {
         node.classList.add('pop');
         if (i < w.stars) {
           node.classList.add('on');
           audio.play('star', i);
+          haptic(i === 2 ? 30 : 14);
+          if (i === 2) {
+            this.confetti.flash();
+            this.confetti.burst(2);
+          }
         }
       }, 180 + i * 260);
     });
 
-    window.setTimeout(() => audio.play('unlock'), 180 + 3 * 260 + 200);
+    window.setTimeout(() => audio.play(w.stars === 3 ? 'fanfare' : 'unlock'), 180 + 3 * 260 + 200);
   }
 
   /** Roll a "+N" counter up to its value with coin ticks along the way. */
-  private countUp(node: HTMLElement, to: number, ms: number): void {
+  private countUp(node: HTMLElement, to: number, ms: number, onDone?: () => void): void {
     if (ms <= 0) {
       node.textContent = `+${to}`;
+      onDone?.();
       return;
     }
     const t0 = performance.now();
@@ -2215,6 +2286,7 @@ class App {
         requestAnimationFrame(step);
       } else {
         node.textContent = `+${to}`;
+        onDone?.();
       }
     };
     requestAnimationFrame(step);

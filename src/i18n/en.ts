@@ -45,6 +45,7 @@ export const en = {
   'nav.shop': 'Shop',
   'nav.home': 'Home',
   'nav.levels': 'Levels',
+  'nav.daily': 'Daily',
   'common.settings': 'Settings',
   'common.cancel': 'Cancel',
   'common.back': 'Back',

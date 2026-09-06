@@ -10,7 +10,7 @@ import { solverClient } from '@/services/SolverClient';
 import { audio } from '@/audio/AudioEngine';
 import { BottleView, type Band } from './BottleView';
 import type { ParticleField, StreamView } from './effects';
-import { SKINS, bottleHeight, type GlassSkin } from './theme';
+import { SKINS, bottleHeight, colorOf, type GlassSkin } from './theme';
 
 const POUR_ANGLE = 0.92; // radians, about 53 degrees
 const LIFT = 26;
@@ -715,14 +715,41 @@ export class BoardView {
       const view = this.bottles[target];
       const slot = this.slots[target];
       if (view && slot) {
+        const color = tube[0] as ColorId;
+        const light = colorOf(color).light;
+        // Every seal in a level rings one step higher up the scale, so a run
+        // of completions plays as a rising melody rather than the same ding.
+        const sealIndex = this.bottles.filter((b) => b.isCapped).length;
+        const animate = this.motionScale >= 1;
+        const fx = this.particlesEnabled;
         view.flashComplete();
-        audio.play('tubeComplete');
-        // The cork rockets in and seals the bottle; the pop lands ~0.5 s later.
-        view.setCapped(true, this.motionScale >= 1, () => audio.play('cork'));
-        if (this.particlesEnabled) {
-          this.particles.sparkle(slot.x, slot.y + view.totalHeight * 0.55, tube[0] as ColorId, 20);
+        audio.play('tubeComplete', sealIndex);
+
+        // Ignition: a puff under the base as the cork launches from it.
+        if (animate) {
+          audio.play('whoosh');
+          if (fx) this.particles.exhaust(slot.x, slot.y + view.totalHeight + 2, color, 12);
         }
-        if (this.motionScale >= 1) {
+        // Exhaust trails under the cork while it is out in the open above the
+        // neck (behind the glass it would just read as fire in the liquid).
+        const trail = (rising: boolean): void => {
+          if (!fx || !rising) return;
+          const base = view.capY + view.capHeight / 2;
+          if (base > view.collarY) return;
+          const at = this.layer.toLocal(view.toGlobal(new Point(0, base)), undefined, new Point());
+          this.particles.exhaust(at.x, at.y, color, 2);
+        };
+        // Touchdown: the pop, a shockwave off the mouth and a spray of sparks.
+        const landed = (): void => {
+          audio.play('cork');
+          if (!fx) return;
+          this.particles.ring(slot.x, slot.y, light, 12, 170);
+          this.particles.ring(slot.x, slot.y, 0xffffff, 6, 110);
+          this.particles.sparkle(slot.x, slot.y, color, 14);
+        };
+        view.setCapped(true, animate, landed, animate ? trail : undefined);
+        if (fx) this.particles.sparkle(slot.x, slot.y + view.totalHeight * 0.55, color, 20);
+        if (animate) {
           gsap.fromTo(
             view.scale,
             { x: 1, y: 1 },

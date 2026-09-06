@@ -35,6 +35,7 @@ const table: Record<string, string> = {
   'nav.shop': 'Toko',
   'nav.home': 'Beranda',
   'nav.levels': 'Level',
+  'nav.daily': 'Harian',
   'common.settings': 'Pengaturan',
   'common.cancel': 'Batal',
   'common.back': 'Kembali',

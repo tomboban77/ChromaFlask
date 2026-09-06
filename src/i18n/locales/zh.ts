@@ -35,6 +35,7 @@ const table: Record<string, string> = {
   'nav.shop': '商店',
   'nav.home': '主页',
   'nav.levels': '关卡',
+  'nav.daily': '每日',
   'common.settings': '设置',
   'common.cancel': '取消',
   'common.back': '返回',

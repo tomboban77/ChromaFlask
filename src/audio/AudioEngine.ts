@@ -10,7 +10,7 @@
 export type SfxName =
   | 'select' | 'deselect' | 'swap' | 'pour' | 'land' | 'invalid'
   | 'tubeComplete' | 'star' | 'win' | 'coin' | 'button' | 'powerup'
-  | 'stuck' | 'unlock' | 'cork';
+  | 'stuck' | 'unlock' | 'cork' | 'whoosh' | 'fanfare';
 
 interface ToneOptions {
   freq: number;
@@ -252,11 +252,35 @@ export class AudioEngine {
         break;
 
       case 'tubeComplete': {
-        const notes = [784, 988, 1175]; // G5 B5 D6
-        notes.forEach((f, i) =>
-          this.tone({ freq: f, dur: 0.3, type: 'sine', gain: 0.13, delay: i * 0.055 }),
+        // intensity is the seal's index within the level: each one starts its
+        // arpeggio a step higher up a pentatonic ladder, so sealing five
+        // bottles in a row plays a rising tune.
+        const ladder = [67, 69, 71, 74, 76, 79, 81, 83, 86, 88]; // G4 A4 B4 D5 E5 G5 ...
+        const root = ladder[Math.min(ladder.length - 1, Math.max(0, Math.round(intensity)))] ?? 67;
+        [0, 4, 7].forEach((step, i) =>
+          this.tone({ freq: noteHz(root + 12 + step), dur: 0.32, type: 'sine', gain: 0.13, delay: i * 0.055 }),
         );
+        this.tone({ freq: noteHz(root + 24), dur: 0.5, type: 'sine', gain: 0.045, delay: 0.17 });
         this.noise({ dur: 0.3, from: 3000, to: 6000, gain: 0.03, kind: 'highpass', delay: 0.05 });
+        break;
+      }
+
+      case 'whoosh':
+        // Cork ignition: a rising air rush with a thin ascending whistle.
+        this.noise({ dur: 0.34, from: 320, to: 2600, gain: 0.09, q: 1.6 });
+        this.tone({ freq: 220, glideTo: 980, dur: 0.3, type: 'sine', gain: 0.05, attack: 0.03 });
+        break;
+
+      case 'fanfare': {
+        // Three-star finish: a brighter, longer run that lands on a held chord.
+        const run = [523, 659, 784, 1046, 1318, 1568]; // C E G C E G
+        run.forEach((f, i) =>
+          this.tone({ freq: f, dur: 0.42, type: 'triangle', gain: 0.13, delay: i * 0.065 }),
+        );
+        [1046, 1318, 1568, 2093].forEach((f, i) =>
+          this.tone({ freq: f, dur: 1.3, type: 'sine', gain: 0.07 - i * 0.01, delay: 0.42, attack: 0.05 }),
+        );
+        this.noise({ dur: 1.1, from: 2500, to: 8000, gain: 0.035, kind: 'highpass', delay: 0.3 });
         break;
       }
 
@@ -302,10 +326,12 @@ export class AudioEngine {
         break;
 
       case 'cork':
-        // A cork seating: a short woody thump with a bright click on top.
-        this.noise({ dur: 0.08, from: 1400, to: 300, gain: 0.14, q: 1.2, kind: 'lowpass' });
-        this.tone({ freq: 560, glideTo: 240, dur: 0.11, type: 'sine', gain: 0.12 });
-        this.tone({ freq: 1500, dur: 0.035, type: 'triangle', gain: 0.045, delay: 0.005 });
+        // A cork seating: a woody thump, a bright click, and a short hollow
+        // ring from the sealed bottle so the pop has a body to it.
+        this.noise({ dur: 0.08, from: 1400, to: 300, gain: 0.16, q: 1.2, kind: 'lowpass' });
+        this.tone({ freq: 560, glideTo: 240, dur: 0.11, type: 'sine', gain: 0.13 });
+        this.tone({ freq: 1500, dur: 0.035, type: 'triangle', gain: 0.05, delay: 0.005 });
+        this.tone({ freq: 392, glideTo: 370, dur: 0.22, type: 'sine', gain: 0.04, delay: 0.03 });
         break;
     }
   }

@@ -97,6 +97,8 @@ export class BottleView extends Container {
   private capH = 0;
   /** Cap y when seated in the neck (cap is centred, so this is above the mouth). */
   private capRestY = 0;
+  /** The seal animation in flight, if any; killed on unseal, reseal and destroy. */
+  private capTl: gsap.core.Timeline | null = null;
 
   /** Surface agitation, 0..1, decaying. Drives the sine wave on the top band. */
   private wobble = 0;
@@ -140,6 +142,8 @@ export class BottleView extends Container {
   override destroy(options?: Parameters<Container['destroy']>[0]): void {
     // A cork mid-flight (or a padlock mid-unlock) must not keep tweening a
     // destroyed display object.
+    this.capTl?.kill();
+    this.capTl = null;
     gsap.killTweensOf(this.cap);
     gsap.killTweensOf(this.cap.scale);
     gsap.killTweensOf(this.lockPlate);
@@ -329,15 +333,37 @@ export class BottleView extends Container {
     return this.capped;
   }
 
+  /** Height of the cork, for effects that need to aim at its base. */
+  get capHeight(): number {
+    return this.capH;
+  }
+
+  /** Local y of the cork's centre right now (only meaningful while capped). */
+  get capY(): number {
+    return this.cap.y;
+  }
+
+  /** Local y of the top of the collar: above this the cork is out in the open. */
+  get collarY(): number {
+    return this.geo.yCollar;
+  }
+
   /**
    * Seal (or unseal) the bottle. With `animate`, the cork launches from the
    * bottle's base *behind* the glass, overshoots the mouth with a stretch,
    * then drops into the neck and squashes home - a rocket that lands as a
-   * seal. `onLanded` fires once when it seats (for the pop sound).
+   * seal. `onLanded` fires once when it seats (for the pop sound); `onFrame`
+   * runs every animation frame with `rising` true during the climb, so the
+   * board can trail exhaust under the cork while it is out in the open.
    */
-  setCapped(on: boolean, animate: boolean, onLanded?: () => void): void {
+  setCapped(
+    on: boolean, animate: boolean, onLanded?: () => void,
+    onFrame?: (rising: boolean) => void,
+  ): void {
     if (this.capped === on) return;
     this.capped = on;
+    this.capTl?.kill();
+    this.capTl = null;
     gsap.killTweensOf(this.cap);
     gsap.killTweensOf(this.cap.scale);
 
@@ -364,8 +390,10 @@ export class BottleView extends Container {
     this.cap.scale.set(0.8, 1.3);
     const apex = this.capRestY - this.geo.bodyW * 0.55;
 
-    gsap
-      .timeline()
+    const tl = gsap.timeline({ onComplete: () => { this.capTl = null; } });
+    this.capTl = tl;
+    if (onFrame) tl.eventCallback('onUpdate', () => onFrame(tl.time() < 0.3));
+    tl
       .to(this.cap, { alpha: 1, duration: 0.08 }, 0)
       .to(this.cap, { y: apex, duration: 0.3, ease: 'power3.out' }, 0)
       .to(this.cap.scale, { x: 0.85, y: 1.25, duration: 0.15 }, 0)
