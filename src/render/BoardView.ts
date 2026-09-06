@@ -368,10 +368,12 @@ export class BoardView {
       widestRow = Math.max(widestRow, units);
     }
 
-    // Width-constrained size (capped so a five-wide row stays compact), then
-    // shrink further if the rows plus the pour headroom will not fit.
+    // Width-constrained size (capped so a five-wide row stays compact; the cap
+    // steps up on tablets so the board fills the canvas rather than floating
+    // in it), then shrink further if the rows plus the pour headroom will not fit.
     const unitH = bottleHeight(1);
-    let bodyW = Math.min((width - gapX * (perRow + 1)) / widestRow, 96);
+    const maxBodyW = width >= 700 ? 124 : 96;
+    let bodyW = Math.min((width - gapX * (perRow + 1)) / widestRow, maxBodyW);
     // A pouring bottle rises `pourRise` above the target's mouth and the cork
     // overshoots the mouth when it seals, so the top row needs that much clear
     // canvas above it or the pour happens out of frame. Solve for the size

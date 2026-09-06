@@ -1678,8 +1678,11 @@ body {
 /* Full-bleed illustrated scene (public/home.png); UI floats on top of it.
    The purple gradient stays underneath as the paint while the image loads. */
 #screen-home {
+  /* Anchored a third of the way down rather than at the top: the scene is
+     9:16, so on a wider screen (tablets) `cover` crops height, and this way
+     it takes it from both ends instead of dropping the whole bottom. */
   background:
-    url('/home.webp') center top / cover no-repeat,
+    url('/home.webp') center 30% / cover no-repeat,
     linear-gradient(180deg, #b06ef0 0%, #8b48d8 42%, #6a2fb8 78%, #57249c 100%);
 }
 
@@ -2340,6 +2343,23 @@ button.chip:active { transform: scale(0.94); }
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Tablets: one size step up so cards, dialogs and the nav stop looking like
+   a phone layout floating in the middle of a large screen. */
+@media (min-width: 700px) {
+  .panel { width: min(560px, 100%); }
+  .modal { width: min(480px, 100%); }
+  .shop { max-width: 600px; }
+  .map__grid { max-width: 680px; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+  .homecard { width: min(440px, 100%); }
+  .home { padding-bottom: calc(112px + var(--safe-b)); }
+  .bottomnav { justify-content: center; gap: 12px; }
+  .bottomnav__tab { flex: 0 1 150px; }
+  .topbar { padding-left: 20px; padding-right: 20px; }
+  .toast { max-width: 420px; }
+  .coach__text { font-size: 22px; }
+  .levelintro b { font-size: 48px; }
 }
 
 /* Short viewports (landscape phones): reclaim vertical space. */
