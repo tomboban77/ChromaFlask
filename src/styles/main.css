@@ -358,7 +358,9 @@ body {
 }
 
 .btn:active { transform: translateY(2px) scale(0.99); }
-.btn:disabled { opacity: 0.45; cursor: default; transform: none; }
+/* Opacity alone leaves a blue or purple button looking merely "quiet"; drain
+   the colour too so every disabled button reads as off, whatever its hue. */
+.btn:disabled { opacity: 0.45; filter: saturate(0.25); cursor: default; transform: none; }
 .btn--wide { width: 100%; }
 
 .btn--primary {
@@ -1471,7 +1473,9 @@ body {
 .win__name {
   position: relative;
   z-index: 2;
-  margin: -8px 0 6px;
+  /* No negative top margin: .win clips overflow (for the burst), so anything
+     pulled above its top edge loses its upper half. */
+  margin: 0 0 6px;
   font-size: 12.5px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
