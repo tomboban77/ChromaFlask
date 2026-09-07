@@ -1,17 +1,21 @@
 ext {
     junitVersion = project.hasProperty('junitVersion') ? rootProject.ext.junitVersion : '4.13.2'
-    androidxAppCompatVersion = project.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.0'
+    androidxAppCompatVersion = project.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.1'
     playServicesGamesVersion = project.hasProperty('playServicesGamesVersion') ? rootProject.ext.playServicesGamesVersion : '20.1.2'
 }
 
 buildscript {
+    // Same Kotlin as the other Kotlin plugin in the app (@capacitor-community/admob):
+    // two Kotlin Gradle plugin versions in one build is a hard error. Defined
+    // here because buildscript {} is evaluated before the ext {} block above.
+    ext.kotlin_version = project.hasProperty('kotlin_version') ? rootProject.ext.kotlin_version : '2.2.20'
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.5.0'
-        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24'
+        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
 
@@ -20,16 +24,17 @@ apply plugin: 'kotlin-android'
 
 android {
     namespace 'com.chromaflask.cloudsave'
-    compileSdk project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 34
+    compileSdk project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
     defaultConfig {
-        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 23
-        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 34
+        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
+        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
     }
+    // Capacitor 8 modules compile for Java 21; match them.
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
-    kotlinOptions { jvmTarget = '17' }
+    kotlinOptions { jvmTarget = JavaVersion.VERSION_21 }
 }
 
 repositories {
@@ -41,6 +46,7 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(':capacitor-android')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     // Play Games Services v2: sign-in + Saved Games (SnapshotsClient).
     implementation "com.google.android.gms:play-services-games-v2:$playServicesGamesVersion"
     testImplementation "junit:junit:$junitVersion"

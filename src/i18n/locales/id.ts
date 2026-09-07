@@ -365,5 +365,19 @@ const table: Record<string, string> = {
     <h3>Kejutan</h3>
     <p><b>Kuali</b> berbingkai emas menerima warna apa pun di atasnya tapi harus kosong untuk menang. <b>Ramuan keruh</b> menyembunyikan warnanya sampai mencapai permukaan. <b>Botol terkunci</b> tidak bisa diisi atau dituang sampai kamu menyegel sejumlah botol sesuai titik di bawah gemboknya. <b>Botol satu arah</b> berwarna toska menerima tuangan tapi tidak pernah mengembalikannya, dan level baru dimenangkan saat botol itu penuh: pilih warnanya dengan cermat.</p>
   </div>`,
+  // ads
+  'ads.watchHeart': 'Tonton iklan untuk satu hati',
+  'ads.outTitle': '{name} habis',
+  'ads.outBody': 'Tonton iklan singkat untuk mendapatkan satu lagi, atau beli di toko.',
+  'ads.watchPowerup': 'Tonton iklan · +1 {name}',
+  'ads.shop': 'Ke toko',
+  'ads.loading': 'Memuat iklan…',
+  'ads.unavailable': 'Tidak ada iklan yang tersedia saat ini. Coba lagi sebentar',
+  'ads.rewardHeart': '+1 hati. Terima kasih sudah menonton!',
+  'ads.rewardPowerup': '+1 {name}. Terima kasih sudah menonton!',
+  'ads.privacy': 'Privasi iklan',
+  'ads.privacyDesc': 'Lihat atau ubah persetujuan iklan yang dipersonalisasi',
+  'ads.privacyBtn': 'Kelola',
+
 };
 export default table;

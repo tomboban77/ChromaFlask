@@ -373,5 +373,19 @@ const table: Record<string, string> = {
     <h3>Variantes</h3>
     <p>Le <b>chaudron</b> cerclé d'or accepte n'importe quelle couleur dessus mais doit être vide pour gagner. Les <b>potions troubles</b> cachent leurs couleurs jusqu'à ce qu'elles remontent en surface. Une <b>bouteille verrouillée</b> ne peut ni recevoir ni donner tant que tu n'as pas scellé le nombre de bouteilles indiqué par les points sous son cadenas. La <b>fiole à sens unique</b> turquoise reçoit les versements sans jamais les rendre, et le niveau n'est gagné qu'une fois qu'elle est pleine : choisis sa couleur avec soin.</p>
   </div>`,
+  // ads
+  'ads.watchHeart': 'Regarder une pub pour un cœur',
+  'ads.outTitle': 'Plus de {name}',
+  'ads.outBody': 'Regardez une courte publicité pour en obtenir un de plus, ou faites le plein dans la boutique.',
+  'ads.watchPowerup': 'Regarder une pub · +1 {name}',
+  'ads.shop': 'Aller à la boutique',
+  'ads.loading': 'Chargement de la publicité…',
+  'ads.unavailable': 'Aucune publicité disponible pour le moment. Réessayez dans un instant',
+  'ads.rewardHeart': '+1 cœur. Merci d’avoir regardé !',
+  'ads.rewardPowerup': '+1 {name}. Merci d’avoir regardé !',
+  'ads.privacy': 'Confidentialité des publicités',
+  'ads.privacyDesc': 'Consultez ou modifiez votre consentement aux publicités personnalisées',
+  'ads.privacyBtn': 'Gérer',
+
 };
 export default table;

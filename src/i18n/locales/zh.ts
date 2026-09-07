@@ -365,5 +365,19 @@ const table: Record<string, string> = {
     <h3>变化规则</h3>
     <p>金边的<b>大锅</b>顶部接受任何颜色，但获胜时必须为空。<b>浑浊药水</b>在颜色浮到表面前一直隐藏。<b>上锁的瓶子</b>在你封好其锁下圆点所示数量的其他瓶子之前，既不能倒入也不能倒出。青色的<b>单向烧瓶</b>只进不出，且只有它装满时关卡才算获胜 - 请谨慎选择它的颜色。</p>
   </div>`,
+  // ads
+  'ads.watchHeart': '观看广告获得一颗爱心',
+  'ads.outTitle': '{name}用完了',
+  'ads.outBody': '观看一段短广告再得一个，或到商店补货。',
+  'ads.watchPowerup': '观看广告 · +1 {name}',
+  'ads.shop': '前往商店',
+  'ads.loading': '正在加载广告…',
+  'ads.unavailable': '暂时没有可用的广告，请稍后再试',
+  'ads.rewardHeart': '+1 爱心，感谢观看！',
+  'ads.rewardPowerup': '+1 {name}，感谢观看！',
+  'ads.privacy': '广告隐私',
+  'ads.privacyDesc': '查看或更改个性化广告的授权',
+  'ads.privacyBtn': '管理',
+
 };
 export default table;

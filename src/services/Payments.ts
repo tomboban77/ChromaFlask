@@ -32,6 +32,7 @@
  */
 
 import type { PowerupId } from '@/core/progression';
+import { isNativeApp, platform } from './Platform';
 
 export type ProductId =
   | 'cf.bundle.starter'
@@ -108,6 +109,11 @@ export interface PaymentDriver {
   listPending(): Promise<PendingPurchase[]>;
   /** Marks a consumable as delivered so it can be bought again. */
   consume(token: string): Promise<void>;
+  /**
+   * Purchases the store completes outside `purchase()` - an interrupted
+   * checkout, Ask to Buy approved later. Optional; only StoreKit has them.
+   */
+  onPending?(cb: (p: PendingPurchase) => void): void;
 }
 
 // ------------------------------------------------------- Play Billing (TWA)
@@ -254,7 +260,125 @@ class UnavailableDriver implements PaymentDriver {
   }
 }
 
+// ------------------------------------------------ store billing (Capacitor)
+/** Loaded on demand: the web bundle never carries the billing wrapper. */
+const loadNativePurchases = () => import('@capgo/native-purchases');
+type NativePurchasesModule = Awaited<ReturnType<typeof loadNativePurchases>>;
+
+/**
+ * Google Play Billing and StoreKit 2 through @capgo/native-purchases, inside
+ * the Capacitor wrapper. Consumables only. Loaded on demand so the web bundle
+ * never carries it.
+ *
+ * Android: `purchaseProduct` returns the purchase token; the app grants, then
+ * `consume` calls `consumePurchase`, which acknowledges and releases the SKU
+ * for repurchase. Anything left unconsumed (app died between the sheet and
+ * the grant) is still owned, shows up in `getPurchases`, and is settled by
+ * the boot-time restore.
+ *
+ * iOS: the plugin finishes the StoreKit transaction itself inside
+ * `purchaseProduct`, so `consume` is a no-op and the token is the transaction
+ * id (still recorded by the app, so a grant is never repeated). Transactions
+ * that complete outside the flow - an interrupted checkout, Ask to Buy
+ * approved later - arrive through the plugin's `transactionUpdated` event and
+ * are forwarded via `onPending`.
+ */
+export class NativeBillingDriver implements PaymentDriver {
+  readonly name = 'native-billing';
+  private mod: NativePurchasesModule | null = null;
+  private pendingCb: ((p: PendingPurchase) => void) | null = null;
+  private readonly ios = platform() === 'ios';
+
+  async isAvailable(): Promise<boolean> {
+    if (!isNativeApp()) return false;
+    try {
+      this.mod = await loadNativePurchases();
+      const { isBillingSupported } = await this.mod.NativePurchases.isBillingSupported();
+      if (isBillingSupported && this.ios) {
+        await this.mod.NativePurchases.addListener('transactionUpdated', (tx) => {
+          if (isProductId(tx.productIdentifier) && tx.transactionId) {
+            this.pendingCb?.({ productId: tx.productIdentifier, token: tx.transactionId });
+          }
+        });
+      }
+      return isBillingSupported;
+    } catch {
+      return false;
+    }
+  }
+
+  onPending(cb: (p: PendingPurchase) => void): void {
+    this.pendingCb = cb;
+  }
+
+  async getPrices(ids: readonly ProductId[]): Promise<Partial<Record<ProductId, string>>> {
+    const out: Partial<Record<ProductId, string>> = {};
+    if (!this.mod) return out;
+    try {
+      const { products } = await this.mod.NativePurchases.getProducts({
+        productIdentifiers: [...ids],
+        productType: this.mod.PURCHASE_TYPE.INAPP,
+      });
+      for (const p of products) {
+        if (isProductId(p.identifier) && p.priceString) out[p.identifier] = p.priceString;
+      }
+    } catch {
+      /* fall back to catalog prices */
+    }
+    return out;
+  }
+
+  async purchase(id: ProductId): Promise<PurchaseResult> {
+    if (!this.mod) return { ok: false, reason: 'unavailable' };
+    try {
+      // Deliberately NOT `isConsumable: true`: that makes the plugin consume
+      // inside this call, before the app has granted anything, so a crash in
+      // between would lose the goods. Left owned (and acknowledged, so Play
+      // never auto-refunds), the purchase is consumed by `consume` after the
+      // grant, or by the boot-time restore if this session dies first.
+      const tx = await this.mod.NativePurchases.purchaseProduct({
+        productIdentifier: id,
+        productType: this.mod.PURCHASE_TYPE.INAPP,
+        quantity: 1,
+      });
+      const token = (this.ios ? tx.transactionId : tx.purchaseToken) || tx.transactionId || null;
+      return { ok: true, productId: id, token };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, reason: /cancel/i.test(message) ? 'cancelled' : 'failed' };
+    }
+  }
+
+  async listPending(): Promise<PendingPurchase[]> {
+    // iOS transactions are finished by the plugin; late ones come via onPending.
+    if (!this.mod || this.ios) return [];
+    try {
+      const { purchases } = await this.mod.NativePurchases.getPurchases({
+        productType: this.mod.PURCHASE_TYPE.INAPP,
+      });
+      const out: PendingPurchase[] = [];
+      for (const p of purchases) {
+        // Play's PurchaseState: 1 = purchased, 2 = pending (not yet paid).
+        if (p.purchaseState !== undefined && p.purchaseState !== '1') continue;
+        if (isProductId(p.productIdentifier) && p.purchaseToken) {
+          out.push({ productId: p.productIdentifier, token: p.purchaseToken });
+        }
+      }
+      return out;
+    } catch {
+      return [];
+    }
+  }
+
+  async consume(token: string): Promise<void> {
+    if (!this.mod) throw new Error('billing unavailable');
+    if (this.ios) return;
+    await this.mod.NativePurchases.consumePurchase({ purchaseToken: token });
+  }
+}
+
 async function pickDriver(): Promise<PaymentDriver> {
+  if (isNativeApp()) return new NativeBillingDriver();
   const play = new PlayBillingDriver();
   if (await play.isAvailable()) return play;
   if (import.meta.env.DEV) return new SimulatedDriver();
@@ -266,12 +390,19 @@ export class Payments {
   private ready = false;
   private prices: Partial<Record<ProductId, string>> = {};
 
+  /**
+   * A purchase the store completed outside `purchase()` (see
+   * `PaymentDriver.onPending`). The app settles it like a restored one.
+   */
+  onPending: ((p: PendingPurchase) => void) | null = null;
+
   /** Never blocks boot; the shop shows coin items either way. */
   async init(): Promise<void> {
     try {
       this.driver = await pickDriver();
       this.ready = await this.driver.isAvailable();
       if (this.ready) {
+        this.driver.onPending?.((p) => this.onPending?.(p));
         this.prices = await this.driver.getPrices(IAP_CATALOG.map((p) => p.id));
       }
     } catch {

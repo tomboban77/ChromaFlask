@@ -29,17 +29,18 @@ ChromaFlask uses **only original assets**, all authored in this repository:
   checkout for coins/boosters — this is the single fastest way to get removed.
 - The code enforces this: `src/services/Payments.ts` only has store-billing
   drivers. The web build shows "purchases unavailable" instead of a card form.
-- **Google Play**: ship as a TWA (e.g. Bubblewrap) with the
-  `PLAY_BILLING` feature enabled; create the five product ids from
-  `IAP_CATALOG` in the Play Console as *consumable* in-app products. The
-  `PlayBillingDriver` picks them up automatically and shows localized prices.
-- **iOS**: wrap with Capacitor and implement a `StoreKitDriver` conforming to
-  `PaymentDriver`; create matching product ids in App Store Connect.
-  Set the Xcode deployment target to **iOS 15.4 or later** (Capacitor's
-  default is 14.0): the stylesheet relies on `inset`, flex `gap`,
-  `aspect-ratio` and unprefixed `appearance`, and on 14.0 the layout
-  collapses entirely. Set `ios.scrollEnabled: false` in `capacitor.config`
-  so the web view itself never rubber-bands; the map, shop and dialogs scroll
+- **Both stores ship the Capacitor wrapper** ([NATIVE-BUILD.md](NATIVE-BUILD.md)).
+  Inside it `NativeBillingDriver` talks to Google Play Billing and StoreKit 2
+  through `@capgo/native-purchases` and shows the store's localized prices.
+  Create the five product ids from `IAP_CATALOG` as *consumable* in-app
+  products in **both** the Play Console and App Store Connect - ids must
+  match exactly. (The older `PlayBillingDriver` remains for a web-only TWA
+  listing, see WRAP-ANDROID.md.)
+- **iOS**: the Xcode deployment target is set to **iOS 15.4** (Capacitor's
+  default is 15.0): the stylesheet relies on `inset`, flex `gap`,
+  `aspect-ratio` and unprefixed `appearance`, and below 15.4 the layout
+  collapses. `ios.scrollEnabled: false` in `capacitor.config.ts` keeps the
+  web view itself from rubber-banding; the map, shop and dialogs scroll
   internally.
 - **Android**: the CSS floor is Chrome 105 (`:has()` is gone, but
   `aspect-ratio`/`inset` still need 88+). Chrome auto-updates, so this only
@@ -80,12 +81,23 @@ ChromaFlask uses **only original assets**, all authored in this repository:
       analytics and app functionality; deletable by the player (Settings →
       Reset progress does not clear it — say so, or wire a "delete my data"
       request to your PostHog project). No data is collected while the
-      Settings toggle is off.
+      Settings toggle is off. **The native apps also embed Google AdMob**:
+      declare its collection (advertising ID, device identifiers, app
+      activity for ads) as *shared with Google* for advertising, per
+      Google's published AdMob data-safety guidance, and on iOS answer the
+      privacy label's tracking questions accordingly (ATT is requested).
 - [ ] **Content rating questionnaires** (IARC on Play): puzzle, no violence —
-      expect Everyone/4+. Declare that the app contains in-app purchases.
-- [ ] **"Contains ads" declaration**: currently *no ads*. If ads are added
-      later, redo the data-safety forms and choose a family-safe ad SDK
-      configuration.
+      expect Everyone/4+. Declare that the app contains in-app purchases
+      **and ads**.
+- [ ] **"Contains ads" declaration**: **yes** for the native apps (AdMob
+      rewarded video and interstitials; see NATIVE-BUILD.md for the policy).
+      The web build has no ads. Ads are capped to `MaxAdContentRating.General`
+      in code; keep the AdMob console's app-level rating in step.
+- [ ] **Ads consent**: the UMP consent form is shown where the law requires
+      it (EEA/UK) and "Ad privacy choices" appears in Settings there; the
+      privacy policy must mention AdMob and personalised/non-personalised
+      ads. Set up the GDPR and US-state messages in AdMob → Privacy &
+      messaging before release, or `canRequestAds` stays false in Europe.
 - [ ] **Families/children**: the art style appeals to kids. If you declare a
       target age group that includes children, both stores restrict IAP
       prompts, analytics, and ads sharply. Recommended: target 13+ in the

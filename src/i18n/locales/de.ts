@@ -373,5 +373,19 @@ const table: Record<string, string> = {
     <h3>Besonderheiten</h3>
     <p>Der goldgeränderte <b>Kessel</b> nimmt oben jede Farbe an, muss aber leer sein, um zu gewinnen. <b>Trübe Tränke</b> verbergen ihre Farben, bis sie an die Oberfläche kommen. Eine <b>gesperrte Flasche</b> kann weder befüllt noch geleert werden, bis du so viele andere Flaschen versiegelt hast, wie die Punkte unter ihrem Schloss zeigen. Das türkise <b>Einwegfläschchen</b> nimmt Güsse an, gibt sie aber nie zurück, und das Level ist erst gewonnen, wenn es voll ist – wähle seine Farbe mit Bedacht.</p>
   </div>`,
+  // ads
+  'ads.watchHeart': 'Werbung ansehen für ein Herz',
+  'ads.outTitle': 'Keine {name} mehr',
+  'ads.outBody': 'Sieh dir eine kurze Werbung an und erhalte eins dazu, oder stock dich im Shop auf.',
+  'ads.watchPowerup': 'Werbung ansehen · +1 {name}',
+  'ads.shop': 'Zum Shop',
+  'ads.loading': 'Werbung wird geladen…',
+  'ads.unavailable': 'Gerade ist keine Werbung verfügbar. Versuch es gleich noch einmal',
+  'ads.rewardHeart': '+1 Herz. Danke fürs Zuschauen!',
+  'ads.rewardPowerup': '+1 {name}. Danke fürs Zuschauen!',
+  'ads.privacy': 'Datenschutz bei Werbung',
+  'ads.privacyDesc': 'Einwilligung zu personalisierter Werbung ansehen oder ändern',
+  'ads.privacyBtn': 'Verwalten',
+
 };
 export default table;

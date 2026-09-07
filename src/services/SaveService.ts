@@ -512,6 +512,15 @@ export class SaveService {
     return this.data.grantedPurchaseTokens.includes(token);
   }
 
+  /**
+   * Whether any real-money purchase was ever granted on this save. The token
+   * ledger is trimmed but never emptied, so it doubles as a lifetime flag;
+   * paying players are never shown interstitials.
+   */
+  get hasEverPurchased(): boolean {
+    return this.data.grantedPurchaseTokens.length > 0;
+  }
+
   markPurchaseGranted(token: string): void {
     this.update((d) => {
       if (d.grantedPurchaseTokens.includes(token)) return;
@@ -752,6 +761,16 @@ export class SaveService {
     this.update((d) => {
       d.lives.count = LIVES_MAX;
       d.lives.nextRegenAt = 0;
+    });
+  }
+
+  /** A rewarded ad's heart(s): never past the cap, and full hearts stop the regen clock. */
+  addLives(n: number): void {
+    if (n <= 0) return;
+    this.settleLives();
+    this.update((d) => {
+      d.lives.count = Math.min(LIVES_MAX, d.lives.count + n);
+      if (d.lives.count >= LIVES_MAX) d.lives.nextRegenAt = 0;
     });
   }
 

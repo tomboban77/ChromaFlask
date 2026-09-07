@@ -113,9 +113,10 @@ Any rejection is treated by the game as "not available right now".
 
 ## Follow-ups
 
-- **Wrap with Capacitor** for both stores; port the Play Billing driver from
-  the Digital Goods API to a Capacitor billing plugin, and add the StoreKit
-  driver for iOS (both already have seams in `Payments.ts`).
+- ~~Wrap with Capacitor~~ Done - `android/` and `ios/` exist and the plugin is
+  installed as the local package `capacitor-cloudsave` (see
+  [NATIVE-BUILD.md](NATIVE-BUILD.md)). Billing moved to `NativeBillingDriver`
+  (`@capgo/native-purchases`) for both platforms.
 - **Leaderboards** can reuse the same Play Games / Game Center sign-in.
 - **Transfer code** (export/import the save as a text code) would give web
   players a no-account fallback; not built.

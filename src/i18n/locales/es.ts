@@ -373,5 +373,19 @@ const table: Record<string, string> = {
     <h3>Giros</h3>
     <p>El <b>caldero</b> con borde dorado acepta cualquier color encima, pero debe estar vacío para ganar. Las <b>pociones turbias</b> ocultan sus colores hasta que llegan a la superficie. Una <b>botella bloqueada</b> no admite vertidos hacia dentro ni hacia fuera hasta que hayas sellado el número de botellas que indican los puntos bajo su candado. El <b>frasco de un solo sentido</b> turquesa recibe vertidos pero nunca los devuelve, y el nivel solo se gana cuando está lleno: elige su color con cuidado.</p>
   </div>`,
+  // ads
+  'ads.watchHeart': 'Ver un anuncio por un corazón',
+  'ads.outTitle': 'Sin {name}',
+  'ads.outBody': 'Mira un anuncio corto para conseguir uno más, o abastécete en la tienda.',
+  'ads.watchPowerup': 'Ver un anuncio · +1 {name}',
+  'ads.shop': 'Ir a la tienda',
+  'ads.loading': 'Cargando anuncio…',
+  'ads.unavailable': 'Ahora mismo no hay ningún anuncio disponible. Inténtalo en un momento',
+  'ads.rewardHeart': '+1 corazón. ¡Gracias por mirar!',
+  'ads.rewardPowerup': '+1 {name}. ¡Gracias por mirar!',
+  'ads.privacy': 'Privacidad de los anuncios',
+  'ads.privacyDesc': 'Revisa o cambia tu consentimiento para anuncios personalizados',
+  'ads.privacyBtn': 'Gestionar',
+
 };
 export default table;

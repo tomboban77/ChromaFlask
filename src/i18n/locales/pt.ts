@@ -373,5 +373,19 @@ const table: Record<string, string> = {
     <h3>Reviravoltas</h3>
     <p>O <b>caldeirão</b> de borda dourada aceita qualquer cor por cima, mas precisa estar vazio para vencer. <b>Poções turvas</b> escondem suas cores até chegarem à superfície. Uma <b>garrafa bloqueada</b> não recebe nem entrega despejos até que você tenha selado o número de garrafas indicado pelos pontos sob o cadeado. O <b>frasco de mão única</b> turquesa recebe despejos mas nunca os devolve, e o nível só é vencido quando ele está cheio: escolha a cor com cuidado.</p>
   </div>`,
+  // ads
+  'ads.watchHeart': 'Ver um anúncio por um coração',
+  'ads.outTitle': 'Sem {name}',
+  'ads.outBody': 'Veja um anúncio curto para ganhar mais um, ou abasteça-se na loja.',
+  'ads.watchPowerup': 'Ver um anúncio · +1 {name}',
+  'ads.shop': 'Ir para a loja',
+  'ads.loading': 'Carregando anúncio…',
+  'ads.unavailable': 'Nenhum anúncio disponível agora. Tente novamente em instantes',
+  'ads.rewardHeart': '+1 coração. Obrigado por assistir!',
+  'ads.rewardPowerup': '+1 {name}. Obrigado por assistir!',
+  'ads.privacy': 'Privacidade dos anúncios',
+  'ads.privacyDesc': 'Reveja ou altere seu consentimento para anúncios personalizados',
+  'ads.privacyBtn': 'Gerenciar',
+
 };
 export default table;

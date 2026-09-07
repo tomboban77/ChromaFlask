@@ -11,6 +11,7 @@ candy-style UI.
 
 - **What's done / what's left:** [docs/STATUS.md](docs/STATUS.md)
 - **Store submission & legal checklist:** [docs/STORE-RELEASE.md](docs/STORE-RELEASE.md)
+- **Android / iOS apps (Capacitor):** [docs/NATIVE-BUILD.md](docs/NATIVE-BUILD.md)
 
 ## Running it
 
@@ -49,7 +50,10 @@ src/
     AuthService     guest profile | (later) OAuth
     Analytics       console | (later) GA4/Amplitude
     RemoteConfig    static defaults | (later) fetched live tuning
-    Payments        Google Play Billing | dev simulator | unavailable on web
+    Payments        Play Billing + StoreKit (Capacitor) | Play Billing (TWA) | dev simulator | unavailable on web
+    Ads             AdMob rewarded + interstitial (Capacitor) | simulated (?ads=sim) | none on web
+    CloudSave       Play Games / iCloud through the native bridge | simulated | none on web
+    Platform        one place that knows whether this is the web or the Android/iOS wrapper
   render/      PixiJS layer.
     GameStage       renderer, layer stack, frame loop, resize
     BottleView      bottle + cauldron silhouettes, liquid, murk, glyphs

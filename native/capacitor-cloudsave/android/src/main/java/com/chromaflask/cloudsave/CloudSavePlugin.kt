@@ -35,16 +35,26 @@ class CloudSavePlugin : Plugin() {
         private const val DESCRIPTION = "ChromaFlask progress"
     }
 
+    /** False when the SDK refused to start (e.g. a missing or placeholder APP_ID). */
+    private var sdkReady = false
+
     override fun load() {
-        // Required once per process before any Play Games client is used.
-        PlayGamesSdk.initialize(context)
+        // Required once per process before any Play Games client is used. A
+        // bad manifest APP_ID must degrade to "cloud save unavailable", never
+        // take the whole app down at start-up.
+        sdkReady = try {
+            PlayGamesSdk.initialize(context)
+            true
+        } catch (err: Exception) {
+            false
+        }
     }
 
     // ---------------------------------------------------------------- state
     @PluginMethod
     fun isAvailable(call: PluginCall) {
         val status = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context)
-        call.resolve(JSObject().put("available", status == ConnectionResult.SUCCESS))
+        call.resolve(JSObject().put("available", sdkReady && status == ConnectionResult.SUCCESS))
     }
 
     @PluginMethod

@@ -33,7 +33,11 @@ export type AnalyticsEvent =
   | { type: 'support_email_open'; level: number }
   | { type: 'support_code_redeemed'; action: string }
   | { type: 'progress_reset'; source: 'settings' | 'support_code' }
-  | { type: 'cloud_sync'; reason: 'boot' | 'signin' | 'manual' | 'choice'; result: string };
+  | { type: 'cloud_sync'; reason: 'boot' | 'signin' | 'manual' | 'choice'; result: string }
+  /** Player asked to watch a rewarded ad; `outcome` is what the SDK reported. */
+  | { type: 'ad_rewarded'; placement: string; outcome: string }
+  /** Interstitial gate fired on leaving a win screen (skips are not tracked). */
+  | { type: 'ad_interstitial'; level: number; outcome: 'shown' | 'failed' };
 
 export interface AnalyticsDriver {
   track(event: AnalyticsEvent): void;

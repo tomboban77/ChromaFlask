@@ -1,4 +1,5 @@
 /** Small DOM helpers plus the toast and modal hosts. */
+import type { NotificationType as HapticNotificationType } from '@capacitor/haptics';
 
 export function $<T extends HTMLElement = HTMLElement>(selector: string): T {
   const el = document.querySelector<T>(selector);
@@ -30,13 +31,55 @@ export function setHapticsEnabled(on: boolean): void {
   hapticsEnabled = on;
 }
 
-/** Short vibration where supported. Silently ignored on iOS Safari. */
-export function haptic(pattern: number | number[]): void {
+/** What a multi-pulse pattern means, for engines that play cues rather than patterns. */
+export type HapticCue = 'success' | 'warning' | 'error';
+
+type NativeHaptics = (pattern: number | number[], cue: HapticCue) => Promise<void>;
+let nativeHaptics: NativeHaptics | null = null;
+
+/**
+ * Short vibration where supported. Browsers and the Android wrapper play the
+ * pattern through the Vibration API (silently ignored on iOS Safari); the iOS
+ * wrapper routes through the Taptic Engine once `installNativeHaptics` has
+ * run. Single pulses are taps (light/medium/heavy by length), patterns are
+ * notification cues - pass `cue` for anything that is not a warning.
+ */
+export function haptic(pattern: number | number[], cue: HapticCue = 'warning'): void {
   if (!hapticsEnabled) return;
+  if (nativeHaptics) {
+    void nativeHaptics(pattern, cue).catch(() => undefined);
+    return;
+  }
   try {
     navigator.vibrate?.(pattern);
   } catch {
     /* not supported */
+  }
+}
+
+/**
+ * iOS has no Vibration API; the Capacitor Haptics plugin reaches the Taptic
+ * Engine instead. Loaded on demand so the web bundle never carries it. Any
+ * failure leaves the Vibration API path in place.
+ */
+export async function installNativeHaptics(): Promise<void> {
+  try {
+    const { Haptics, ImpactStyle, NotificationType } = await import('@capacitor/haptics');
+    const cues: Record<HapticCue, HapticNotificationType> = {
+      success: NotificationType.Success,
+      warning: NotificationType.Warning,
+      error: NotificationType.Error,
+    };
+    nativeHaptics = async (pattern, cue) => {
+      if (Array.isArray(pattern)) {
+        await Haptics.notification({ type: cues[cue] });
+        return;
+      }
+      const style = pattern <= 10 ? ImpactStyle.Light : pattern <= 18 ? ImpactStyle.Medium : ImpactStyle.Heavy;
+      await Haptics.impact({ style });
+    };
+  } catch (err) {
+    console.warn('[haptics] native bridge unavailable', err);
   }
 }
 

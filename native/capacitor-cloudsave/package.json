@@ -9,16 +9,17 @@
     "android/build.gradle",
     "dist/",
     "ios/Plugin/",
+    "Package.swift",
     "CapacitorCloudsave.podspec"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
   "peerDependencies": {
-    "@capacitor/core": ">=6.0.0"
+    "@capacitor/core": ">=8.0.0"
   },
   "devDependencies": {
-    "@capacitor/core": "^6.0.0",
+    "@capacitor/core": "^8.0.0",
     "typescript": "^5.5.0"
   },
   "capacitor": {

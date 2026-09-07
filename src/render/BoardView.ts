@@ -562,6 +562,17 @@ export class BoardView {
     if (!move) return;
     this.history.push(move);
 
+    // Murky levels: the pour moves the whole run of matching colour, which can
+    // include concealed units directly under the visible top. Show them for
+    // what they are *before* the bottle lifts, otherwise two "?" vanish at
+    // once mid-pour and it reads as a glitch rather than a discovery.
+    const revealTo = srcBefore.length - amount;
+    if ((this.hidden[from] ?? 0) > revealTo) {
+      this.hidden[from] = revealTo;
+      src.setHidden(revealTo);
+      src.agitate(0.5);
+    }
+
     this.busy = true;
     if (this.selected !== null) {
       this.bottles[this.selected]?.setSelected(false);

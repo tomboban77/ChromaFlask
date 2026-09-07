@@ -9,7 +9,7 @@ stores:
 The game-side consumer and the full contract are documented in
 [`docs/CLOUD-SAVE.md`](../../docs/CLOUD-SAVE.md).
 
-> **Status: written to the documented APIs, not yet compiled.** There is no
+> **Status: written to the documented APIs; installed in the app as the local package `capacitor-cloudsave` (see docs/NATIVE-BUILD.md). Compile status is tracked in docs/STATUS.md.** There was no
 > Android Studio or Xcode on the machine this was authored on. When the
 > Capacitor wrapper project exists, add this folder as a local plugin
 > (`npm install ./native/capacitor-cloudsave` from the wrapper) and expect a

@@ -190,6 +190,20 @@ export const en = {
   'lives.full': 'Your hearts are full!',
   'lives.next': 'Time to next life',
 
+  // ads (native builds only; a rewarded video is always the player's choice)
+  'ads.watchHeart': 'Watch an ad for a heart',
+  'ads.outTitle': 'Out of {name}',
+  'ads.outBody': 'Watch a short ad for one more, or stock up in the shop.',
+  'ads.watchPowerup': 'Watch an ad · +1 {name}',
+  'ads.shop': 'Go to the shop',
+  'ads.loading': 'Loading ad…',
+  'ads.unavailable': 'No ad is available right now - try again in a moment',
+  'ads.rewardHeart': '+1 heart - thanks for watching!',
+  'ads.rewardPowerup': '+1 {name} - thanks for watching!',
+  'ads.privacy': 'Ad privacy choices',
+  'ads.privacyDesc': 'Review or change your consent for personalised ads',
+  'ads.privacyBtn': 'Manage',
+
   // stuck / quit / restart
   'stuck.title': 'No moves left',
   'stuck.body': 'Every bottle is blocked. Undo a pour, add an empty bottle, or start over.',

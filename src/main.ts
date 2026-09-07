@@ -23,8 +23,10 @@ import { AuthService } from '@/services/AuthService';
 import { Analytics, POSTHOG_KEY, PostHogDriver } from '@/services/Analytics';
 import { RemoteConfig } from '@/services/RemoteConfig';
 import {
-  IAP_CATALOG, Payments, getProduct, type IapProduct, type ProductId,
+  IAP_CATALOG, Payments, getProduct, type IapProduct, type PendingPurchase, type ProductId,
 } from '@/services/Payments';
+import { Ads, pickAdsDriver } from '@/services/Ads';
+import { isNativeApp, platform } from '@/services/Platform';
 import {
   applySupportCode, formatSupportId, supportMailto, verifySupportCode,
 } from '@/services/Support';
@@ -39,7 +41,9 @@ import { GameStage } from '@/render/GameStage';
 import { BoardView } from '@/render/BoardView';
 import { PALETTE, SKINS, cssHex, skinById, type GlassSkin } from '@/render/theme';
 
-import { $, ModalHost, ToastHost, el, escapeHtml, haptic, setHapticsEnabled } from '@/ui/dom';
+import {
+  $, ModalHost, ToastHost, el, escapeHtml, haptic, installNativeHaptics, setHapticsEnabled,
+} from '@/ui/dom';
 import { Tutorial } from '@/ui/Tutorial';
 import { Confetti } from '@/ui/Confetti';
 
@@ -133,6 +137,7 @@ class App {
   private readonly analytics = new Analytics();
   private readonly auth = new AuthService();
   private readonly payments = new Payments();
+  private readonly ads = new Ads(pickAdsDriver());
   private save!: SaveService;
 
   private readonly stage = new GameStage();
@@ -184,7 +189,21 @@ class App {
     this.cloud.onConflict = (cloud, local) => this.showCloudConflict(cloud, local);
     // Off the boot path. Once the store is reachable, settle anything that was
     // paid for but never delivered (see Payments.ts lifecycle notes).
+    this.payments.onPending = (p) => void this.settleLatePurchase(p);
     void this.payments.init().then(() => this.restorePurchases());
+    // Ads: consent, SDK and preloading, all off the boot path. A full-screen
+    // ad silences the game and stops the render loop underneath it.
+    this.ads.onAdStart = () => {
+      audio.suspend();
+      this.stage.setPaused(true);
+    };
+    this.ads.onAdEnd = () => {
+      audio.resume();
+      this.stage.setPaused(this.current !== 'game' || document.hidden);
+    };
+    void this.ads.init();
+    // iOS has no Vibration API; the Taptic Engine is reached through the native bridge.
+    if (platform() === 'ios') void installNativeHaptics();
     // The support ID doubles as the analytics identity, so a support email
     // can be matched to its funnel without collecting anything personal.
     // Gated by the "Share anonymous usage data" setting.
@@ -222,12 +241,12 @@ class App {
         this.updateTutorialHand();
       },
       onTubeComplete: () => haptic(18),
-      onInvalid: () => haptic([12, 40, 12]),
+      onInvalid: () => haptic([12, 40, 12], 'error'),
       onLockedTap: (left) => this.explainLock(left),
       onOneWayTap: () => this.explainOneWay(),
       onUnlocked: () => {
         audio.play('unlock');
-        haptic([10, 30, 20]);
+        haptic([10, 30, 20], 'success');
         this.toast.show(t('toast.padlockOpen'), 'info', 1400);
       },
     });
@@ -270,9 +289,11 @@ class App {
       if (this.tutorial?.active) this.updateTutorialHand();
     }, 1000);
 
-    // Offline support for the installed app. Production only: a worker would
-    // fight the dev server's module graph and HMR.
-    if (!import.meta.env.DEV && 'serviceWorker' in navigator) {
+    // Offline support for the installed web app. Production only: a worker
+    // would fight the dev server's module graph and HMR. Not in the native
+    // wrapper either: its assets ship inside the app, and a worker there
+    // could only serve a stale copy after an update.
+    if (!import.meta.env.DEV && !isNativeApp() && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch((err) => {
         console.warn('[sw] registration failed', err);
       });
@@ -1244,7 +1265,7 @@ class App {
     await this.settlePurchase(result.productId, result.token);
 
     audio.play('unlock');
-    haptic([15, 40, 25]);
+    haptic([15, 40, 25], 'success');
     this.confetti.burst(1);
     this.toast.show(t('shop.addedEnjoy', { title: productTitle(product) }), 'info', 2600);
     this.renderShop();
@@ -1281,6 +1302,19 @@ class App {
       await this.payments.consume(token);
     }
     return !alreadyGranted;
+  }
+
+  /**
+   * A purchase the store completed while the sheet was not up (interrupted
+   * checkout, Ask to Buy approved later): deliver it like a restored one.
+   */
+  private async settleLatePurchase(p: PendingPurchase): Promise<void> {
+    if (!(await this.settlePurchase(p.productId, p.token))) return;
+    this.analytics.track({ type: 'iap_restored', count: 1 });
+    this.toast.show(tp('shop.restored', 1), 'info', 3200);
+    if (this.current === 'shop') this.renderShop();
+    else if (this.current === 'home') this.renderHome();
+    else if (this.current === 'game') this.updateHud();
   }
 
   /** Boot-time sweep of purchases the store still holds as unconsumed. */
@@ -1522,7 +1556,17 @@ class App {
     refillBtn.innerHTML = `${escapeHtml(t('lives.refill'))} ${COIN_ICON} ${formatNumber(refill.price)}`;
     content.appendChild(refillBtn);
 
-    const shopBtn = el('button', 'btn btn--primary btn--wide livesdlg__btn', t('lives.shop'));
+    // Rewarded ad (native builds): a heart for a short video, the player's
+    // choice. With it present the shop steps back to a quiet third option.
+    const adsOn = this.ads.available;
+    const adBtn = el('button', 'btn btn--primary btn--wide livesdlg__btn', t('ads.watchHeart'));
+    adBtn.hidden = !adsOn;
+    content.appendChild(adBtn);
+    let adBusy = false;
+
+    const shopBtn = el(
+      'button', `btn ${adsOn ? 'btn--ghost' : 'btn--primary'} btn--wide livesdlg__btn`, t('lives.shop'),
+    );
     content.appendChild(shopBtn);
 
     const refresh = () => {
@@ -1543,6 +1587,7 @@ class App {
         timeText.textContent = formatCountdown(lives.nextRegenAt - Date.now());
       }
       refillBtn.disabled = full || this.save.coins < refill.price;
+      adBtn.disabled = full || adBusy;
     };
 
     // Set when the dialog hands off somewhere (retry or shop) so the close
@@ -1557,6 +1602,34 @@ class App {
         this.modal.close();
         this.startLevel(retryLevel);
       }
+    });
+    adBtn.addEventListener('click', () => {
+      if (adBusy) return;
+      adBusy = true;
+      audio.play('button');
+      adBtn.textContent = t('ads.loading');
+      refresh();
+      void this.ads.showRewarded('lives').then((outcome) => {
+        adBusy = false;
+        adBtn.textContent = t('ads.watchHeart');
+        this.analytics.track({ type: 'ad_rewarded', placement: 'lives', outcome });
+        if (outcome === 'rewarded') {
+          this.save.addLives(this.remote.current.ads.rewardedLives);
+          audio.play('powerup');
+          haptic(14);
+          this.toast.show(t('ads.rewardHeart'), 'info', 1800);
+          refresh();
+          if (retryLevel !== null && this.save.canPlay) {
+            handedOff = true;
+            this.modal.close();
+            void this.startLevel(retryLevel);
+          }
+          return;
+        }
+        refresh();
+        // Closed early: the player changed their mind, nothing to report.
+        if (outcome !== 'dismissed') this.toast.show(t('ads.unavailable'), 'warn', 3000);
+      });
     });
     shopBtn.addEventListener('click', () => {
       audio.play('button');
@@ -1693,16 +1766,15 @@ class App {
     if (id === 'hint' && this.hintPending) return;
 
     // Spend order: free allowance, then shop-bought stock. Out of both means
-    // the shop opens - powerups are never silently charged to coins.
+    // an offer (rewarded ad where available) or the shop - powerups are never
+    // silently charged to coins.
     let source: 'free' | 'owned';
     if (this.remainingUses(id) > 0) {
       source = 'free';
     } else if (this.save.tryUseInventory(id)) {
       source = 'owned';
     } else {
-      audio.play('invalid');
-      this.toast.show(t('powerup.out', { name: powerupLabel(id) }), 'warn', 2400);
-      this.openShop('powerup');
+      this.offerPowerup(id);
       return;
     }
 
@@ -1753,6 +1825,77 @@ class App {
       paid: source === 'owned',
     });
     this.updateHud();
+  }
+
+  /**
+   * Out of a powerup - free uses and stock both gone. Where ads exist the
+   * player may watch one for a single use, with the shop as the second
+   * choice; elsewhere the shop opens directly. On a dead-ended board the
+   * No-moves dialog returns if nothing was gained, so the player is never
+   * left staring at a lost board with no way out.
+   */
+  private offerPowerup(id: PowerupId): void {
+    const name = powerupLabel(id);
+    audio.play('invalid');
+    if (!this.ads.available) {
+      this.toast.show(t('powerup.out', { name }), 'warn', 2400);
+      this.openShop('powerup');
+      return;
+    }
+    const backToBoard = () => {
+      if (this.current === 'game' && this.board.isLost && !this.modal.isOpen) this.showStuckDialog();
+    };
+    this.modal.open({
+      title: t('ads.outTitle', { name }),
+      bodyHtml: escapeHtml(t('ads.outBody')),
+      inlineButtons: false,
+      buttons: [
+        {
+          label: t('ads.watchPowerup', { name }),
+          kind: 'success',
+          onClick: () => {
+            void this.rewardPowerup(id).then(backToBoard);
+          },
+        },
+        { label: t('ads.shop'), kind: 'primary', onClick: () => this.openShop('powerup') },
+        // The dialog is still closing when onClick runs; re-check after it is gone.
+        { label: t('common.cancel'), kind: 'ghost', onClick: () => void window.setTimeout(backToBoard, 0) },
+      ],
+    });
+  }
+
+  /** Watch for one use, then spend it straight away - that is what the tap asked for. */
+  private async rewardPowerup(id: PowerupId): Promise<void> {
+    const outcome = await this.ads.showRewarded(id);
+    this.analytics.track({ type: 'ad_rewarded', placement: id, outcome });
+    if (outcome === 'rewarded') {
+      this.save.addInventory(id, 1);
+      audio.play('powerup');
+      haptic(14);
+      this.toast.show(t('ads.rewardPowerup', { name: powerupLabel(id) }), 'info', 1800);
+      this.updateHud();
+      if (this.current === 'game') await this.usePowerup(id);
+    } else if (outcome !== 'dismissed') {
+      this.toast.show(t('ads.unavailable'), 'warn', 3000);
+    }
+  }
+
+  /**
+   * Interstitial gate on the way out of a win screen. Campaign and endless
+   * wins count; the daily and the tutorial never do, and a player who has
+   * ever paid is never interrupted (the policy lives in Ads.ts). The next
+   * step runs after the ad closes, or at once when there is none.
+   */
+  private async afterWinAd(next: () => void): Promise<void> {
+    const level = this.levelId;
+    const outcome = await this.ads.maybeShowInterstitial({
+      level,
+      payer: this.save.hasEverPurchased,
+      eligible: !isDaily(level) && this.save.snapshot.tutorialDone,
+      cfg: this.remote.current.ads,
+    });
+    if (outcome !== 'skipped') this.analytics.track({ type: 'ad_interstitial', level, outcome });
+    next();
   }
 
   // -------------------------------------------------------- tutorial hand
@@ -1833,7 +1976,7 @@ class App {
     this.tutorial.finish();
     audio.duckMusic(2.2);
     audio.play('win');
-    haptic([20, 60, 30, 60, 40]);
+    haptic([20, 60, 30, 60, 40], 'success');
     this.board.celebrate(this.stage.width);
 
     this.analytics.track({
@@ -1986,7 +2129,7 @@ class App {
             this.save.addCoins(reward.coins);
             if (reward.refillLives) this.save.refillLives();
             audio.play('coin');
-            haptic([12, 30, 20]);
+            haptic([12, 30, 20], 'success');
             this.confetti.burst(1);
             this.analytics.track({ type: 'login_reward', day, coins: reward.coins });
             this.renderHome();
@@ -2213,15 +2356,20 @@ class App {
       actions.appendChild(row);
     } else {
       // The campaign finale leads into endless mode; everything else leads to the next level.
+      // Every way off this screen passes the interstitial gate (afterWinAd).
       const nextLabel = w.isLast ? t('win.startEndless') : t('win.nextLevel');
       actions.appendChild(
         act(nextLabel, 'btn btn--success btn--wide win__next', () => {
-          void this.startLevel(this.levelId + 1);
+          void this.afterWinAd(() => void this.startLevel(this.levelId + 1));
         }),
       );
       const row = el('div', 'modal__row');
-      row.appendChild(act(t('common.replay'), 'btn btn--ghost', () => this.restartLevel()));
-      row.appendChild(act(t('common.home'), 'btn btn--ghost', () => this.quitToHome()));
+      row.appendChild(
+        act(t('common.replay'), 'btn btn--ghost', () => void this.afterWinAd(() => this.restartLevel())),
+      );
+      row.appendChild(
+        act(t('common.home'), 'btn btn--ghost', () => void this.afterWinAd(() => this.quitToHome())),
+      );
       actions.appendChild(row);
     }
     content.appendChild(actions);
@@ -2305,7 +2453,7 @@ class App {
 
   private onStuck(): void {
     audio.play('stuck');
-    haptic([30, 80, 30]);
+    haptic([30, 80, 30], 'error');
     this.analytics.track({ type: 'level_stuck', level: this.levelId, moves: this.board.moveCount });
     this.showStuckDialog();
   }
@@ -2632,6 +2780,14 @@ class App {
         void this.showPrivacyPolicy(() => this.openSettings()),
       ),
     );
+    // EEA/UK law: consent given to the ads SDK must stay revisitable.
+    if (this.ads.privacyOptionsRequired) {
+      content.appendChild(
+        this.actionRow(t('ads.privacy'), t('ads.privacyDesc'), t('ads.privacyBtn'), 'ghost', () =>
+          void this.ads.showPrivacyOptions(),
+        ),
+      );
+    }
 
     content.appendChild(el('div', 'modal__subhead', t('cloud.head')));
     for (const row of this.buildCloudRows()) content.appendChild(row);
@@ -2933,7 +3089,7 @@ class App {
       );
       if (!result.ok) {
         status.textContent = t(`support.err.${result.reason}`);
-        haptic([12, 40, 12]);
+        haptic([12, 40, 12], 'error');
         return;
       }
       // A support-code reset is a deliberate wipe too: hold cloud uploads until the player decides.

@@ -365,5 +365,19 @@ const table: Record<string, string> = {
     <h3>변형</h3>
     <p>금테를 두른 <b>가마솥</b>은 위에 어떤 색이든 받지만 이기려면 비어 있어야 해요. <b>탁한 포션</b>은 표면에 닿을 때까지 색을 숨겨요. <b>잠긴 병</b>은 자물쇠 아래 점의 개수만큼 다른 병을 봉인하기 전까지 넣을 수도 꺼낼 수도 없어요. 청록색 <b>일방향 플라스크</b>는 붓기를 받지만 절대 돌려주지 않고, 가득 차야만 레벨이 끝나요 - 색을 신중히 고르세요.</p>
   </div>`,
+  // ads
+  'ads.watchHeart': '광고 보고 하트 받기',
+  'ads.outTitle': '{name} 부족',
+  'ads.outBody': '짧은 광고를 보고 하나 더 받거나 상점에서 채우세요.',
+  'ads.watchPowerup': '광고 보기 · +1 {name}',
+  'ads.shop': '상점으로',
+  'ads.loading': '광고 불러오는 중…',
+  'ads.unavailable': '지금은 볼 수 있는 광고가 없습니다. 잠시 후 다시 시도하세요',
+  'ads.rewardHeart': '+1 하트. 시청해 주셔서 감사합니다!',
+  'ads.rewardPowerup': '+1 {name}. 시청해 주셔서 감사합니다!',
+  'ads.privacy': '광고 개인정보 설정',
+  'ads.privacyDesc': '맞춤 광고 동의를 확인하거나 변경합니다',
+  'ads.privacyBtn': '관리',
+
 };
 export default table;

@@ -373,5 +373,19 @@ const table: Record<string, string> = {
     <h3>Varianti</h3>
     <p>Il <b>calderone</b> dal bordo dorato accetta qualsiasi colore in cima, ma deve essere vuoto per vincere. Le <b>pozioni torbide</b> nascondono i colori finché non salgono in superficie. Una <b>bottiglia bloccata</b> non riceve né dà versamenti finché non hai sigillato il numero di bottiglie indicato dai puntini sotto il lucchetto. L'<b>ampolla a senso unico</b> turchese riceve i versamenti ma non li restituisce mai, e il livello si vince solo quando è piena: scegli il suo colore con cura.</p>
   </div>`,
+  // ads
+  'ads.watchHeart': 'Guarda un annuncio per un cuore',
+  'ads.outTitle': '{name} esauriti',
+  'ads.outBody': 'Guarda un breve annuncio per averne uno in più, oppure fai scorta nel negozio.',
+  'ads.watchPowerup': 'Guarda un annuncio · +1 {name}',
+  'ads.shop': 'Vai al negozio',
+  'ads.loading': 'Caricamento annuncio…',
+  'ads.unavailable': 'Nessun annuncio disponibile al momento. Riprova tra poco',
+  'ads.rewardHeart': '+1 cuore. Grazie per aver guardato!',
+  'ads.rewardPowerup': '+1 {name}. Grazie per aver guardato!',
+  'ads.privacy': 'Privacy degli annunci',
+  'ads.privacyDesc': 'Rivedi o modifica il consenso agli annunci personalizzati',
+  'ads.privacyBtn': 'Gestisci',
+
 };
 export default table;

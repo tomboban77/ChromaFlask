@@ -365,5 +365,19 @@ const table: Record<string, string> = {
     <h3>Sürprizler</h3>
     <p>Altın kenarlı <b>kazan</b> üstüne her rengi kabul eder ama kazanmak için boş olmalıdır. <b>Bulanık iksirler</b> yüzeye çıkana dek renklerini gizler. <b>Kilitli şişe</b>, kilidinin altındaki noktaların gösterdiği sayıda şişeyi mühürlemeden ne doldurulabilir ne boşaltılabilir. Turkuaz <b>tek yönlü şişe</b> dökmeleri alır ama asla geri vermez; seviye yalnızca o dolduğunda kazanılır, rengini dikkatle seç.</p>
   </div>`,
+  // ads
+  'ads.watchHeart': 'Bir kalp için reklam izle',
+  'ads.outTitle': '{name} kalmadı',
+  'ads.outBody': 'Bir tane daha kazanmak için kısa bir reklam izle ya da mağazadan stokla.',
+  'ads.watchPowerup': 'Reklam izle · +1 {name}',
+  'ads.shop': 'Mağazaya git',
+  'ads.loading': 'Reklam yükleniyor…',
+  'ads.unavailable': 'Şu anda uygun reklam yok. Biraz sonra tekrar dene',
+  'ads.rewardHeart': '+1 kalp. İzlediğin için teşekkürler!',
+  'ads.rewardPowerup': '+1 {name}. İzlediğin için teşekkürler!',
+  'ads.privacy': 'Reklam gizliliği',
+  'ads.privacyDesc': 'Kişiselleştirilmiş reklam iznini görüntüle veya değiştir',
+  'ads.privacyBtn': 'Yönet',
+
 };
 export default table;

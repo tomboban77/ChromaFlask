@@ -3,7 +3,7 @@
 The living record of what is built, what is deliberately deferred, and what
 comes next. Update this doc whenever a feature lands or a decision is made.
 
-_Last updated: 2026-09-05_
+_Last updated: 2026-09-06_
 
 ---
 
@@ -370,6 +370,40 @@ _Last updated: 2026-09-05_
   (drives the real game in Edge: full flows, economy assertions, tutorial,
   persistence across reload).
 
+### Native wrapper - Android + iOS (Capacitor 8), ads, store billing (2026-09-06)
+- **Projects**: `capacitor.config.ts` (appId `com.chromaflask.app`), `android/`
+  and `ios/` generated and committed; `npm run cap:sync` builds the native
+  flavour of the bundle and copies it in. Android **compiles** (debug APK,
+  JDK 21); iOS needs a Mac. Guide: [NATIVE-BUILD.md](NATIVE-BUILD.md).
+- **Native bundle flavour** (`vite build --mode native`): Capacitor injects its
+  Android bridge as an inline script, which the web CSP's `script-src 'self'`
+  blocks; the native flavour allows inline scripts only. `Platform.ts`
+  (`platform()`, `BUILD_TARGET`) is the one place that knows where we run.
+  The service worker is skipped inside the wrapper.
+- **Billing**: `NativeBillingDriver` (`@capgo/native-purchases`) for Play
+  Billing and StoreKit 2, same grant → record → consume lifecycle and boot
+  restore. Android purchases are deliberately not auto-consumed by the plugin
+  (would lose goods on a crash before the grant); iOS late transactions
+  arrive via `Payments.onPending`.
+- **Ads**: `Ads.ts` seam (NoAds | Simulated `?ads=sim` | AdMob). Rewarded
+  video is player-initiated only: "Watch an ad for a heart" in More Lives,
+  "Watch an ad · +1 X" when a powerup is out (shop second). Interstitial on
+  leaving the win screen under the pure `shouldShowInterstitial` policy (≥
+  level 8, every 3 wins, 180 s gap, never daily/tutorial, never for anyone who
+  has ever paid); knobs in `RemoteConfig.ads`. UMP consent + iOS ATT before
+  init; "Ad privacy choices" in Settings where required. Audio and render loop
+  pause under a full-screen ad. Analytics `ad_rewarded`, `ad_interstitial`.
+  12 new `ads.*` strings in all 13 locales.
+- **Haptics**: `haptic(pattern, cue)`; iOS routes to the Taptic Engine via
+  `@capacitor/haptics`, Android keeps `navigator.vibrate` (permission added).
+- **Cloud save plugin** installed as the local package `capacitor-cloudsave`
+  (Package.swift added for SPM); Kotlin side compiled first time, with
+  `PlayGamesSdk.initialize` now guarded so a bad APP_ID degrades to
+  "unavailable" instead of crashing.
+- Verified: typecheck, lint, i18n:check, test:core (12,351 checks), web +
+  native builds (web entry preloads only pixi/gsap; Capacitor code is lazy),
+  test:e2e, Gradle `assembleDebug`.
+
 ---
 
 ## ⚠️ Known issues / follow-ups
@@ -379,7 +413,10 @@ _Last updated: 2026-09-05_
 | Entry art misspelled | `art/Entry.png` bakes in "CHROME FLASK" (wrong name, and "Chrome" is a Google mark). Regenerate — ideally with **no text** so a code logotype can be overlaid. |
 | Trademark search | Run "ChromaFlask" through USPTO/EUIPO + both app stores before launch. |
 | Translations need native review | All 12 non-English tables in `src/i18n/locales/` were authored in-house, not by native speakers. Before a store listing in each market, have a native speaker read the table (especially `howto.body`, the shop legal text and the consent sentence). English fallback means a deleted line is never a blank, so trimming a doubtful string is always safe. |
-| iOS haptics | Web vibration is unsupported on iOS; the Capacitor wrapper needs a native haptics bridge. |
+| Native wrapper: Android emulator verified, rest pending | 2026-09-07, Android Studio 2025.1.3 + `Medium_Phone_API_36.1` emulator: app boots, campaign and daily play, **rewarded test ads play and grant** in both placements (out-of-hint flow and "Watch an ad for a heart" in More Lives; hearts were lowered via chrome://inspect → localStorage since small levels cannot be lost). Not yet exercised: billing sandbox purchases (no Play products), cloud save sign-in (placeholder project id), UMP consent form (non-EEA), interstitials, a physical phone. `ios/` is generated but uncompiled (needs a Mac). See [NATIVE-BUILD.md](NATIVE-BUILD.md) "Before the first device run". |
+| Murky reveal polish (fixed 2026-09-07) | A pour moves the whole matching run, including concealed units under the visible top; two "?" vanished mid-pour and read as a glitch. `BoardView.pour` now reveals the units about to move before the bottle lifts. Completing a bottle still reveals everything (the cork means one colour). |
+| Smoke test flake | `test:e2e` failed once on 2026-09-06 with `window.__cf` undefined right after `start(2)` (post-resume step) and passed on rerun. Timing, not a regression; if it recurs, lengthen the wait after the level-intro. |
+| Store ids are placeholders | AdMob app/unit ids are Google's sample ids (test mode switches off automatically once replaced), the Play Games project id is zeros, and `appId` `com.chromaflask.app` must be confirmed before the first upload - it is permanent. |
 | Receipt validation | Client-side purchase grants are fine for launch but spoofable; add a server verification endpoint before revenue scales. |
 | Full audit | [AUDIT.md](AUDIT.md) (2026-09-05) — findings by area with a P0/P1/P2 roadmap. P0 and P1 complete (lazy Pixi deferred). P2 in progress: L5 endless mode done; next daily challenge, chapters, achievements. |
 
@@ -399,13 +436,15 @@ _Last updated: 2026-09-05_
 
 ## 🗺️ Next milestones (in order)
 
-1. **Store wrap — your accounts** (code side is ready, see
-   [WRAP-ANDROID.md](WRAP-ANDROID.md)): deploy `dist/` to the final HTTPS
-   domain, Play Console + merchant profile, Bubblewrap init/build, asset
-   links, create the 5 SKUs from `IAP_CATALOG`. iOS afterwards via Capacitor
-   + a `StoreKitDriver` implementing `PaymentDriver`.
-2. **Store listing & compliance** — privacy policy URL, data-safety forms,
-   content rating, screenshots. Checklist: [STORE-RELEASE.md](STORE-RELEASE.md).
+1. **First device run of the native wrapper** (code side is complete, see
+   [NATIVE-BUILD.md](NATIVE-BUILD.md)): Android Studio → run on a phone,
+   then Xcode on a Mac. Fix whatever the real SDKs disagree with, then the
+   accounts: Play Console + merchant profile, App Store Connect, AdMob app +
+   ad units, Play Games project, the 5 SKUs from `IAP_CATALOG` in both
+   consoles, signing keys.
+2. **Store listing & compliance** — privacy policy URL (now mentioning
+   AdMob), data-safety forms with the ads SDK declared, content rating,
+   screenshots. Checklist: [STORE-RELEASE.md](STORE-RELEASE.md).
 3. **Wildcard drop mechanic** — same rigor as the Cauldron (rules, heuristic
    proof, BFS audit).
 4. **Leaderboard** (platform services) → **Collection** → **Teams** (traction-gated).
