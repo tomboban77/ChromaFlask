@@ -64,8 +64,8 @@ Prism Potions uses **only original assets**, all authored in this repository:
 - [ ] **Privacy policy URL** (required by both stores). The page ships with
       the build as `public/privacy.html` and is linked from the consent
       checkbox and Settings; once deployed it lives at
-      `https://YOUR-DOMAIN/privacy.html` — paste that URL into both consoles.
-      Publisher (Tom Boban, Canada), date and the AdMob/consent section were
+      `https://chroma-flask.vercel.app/privacy.html` (Vercel project "chroma-flask", deploys from `main`; move to prismpotions.com later and update AdMob + both consoles) — paste that URL into both consoles.
+      Publisher (Velvea Studios - Tom Boban, Canada; matches the Play developer account name), date and the AdMob/consent section were
       filled in on 2026-09-07; update the date on every change. What it must
       say, because it is what the build does: progress is stored on-device;
       **anonymous usage analytics are sent to PostHog (US)** keyed by the random support ID,

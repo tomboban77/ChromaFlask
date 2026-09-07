@@ -113,9 +113,9 @@ Search for the value to find every spot.
 | What | Where | Placeholder now |
 | --- | --- | --- |
 | **App id / bundle id** (permanent once published) | `capacitor.config.ts`, `android/app/build.gradle` (`applicationId`, `namespace`), `android/app/src/main/res/values/strings.xml`, `ios/App/App.xcodeproj` (`PRODUCT_BUNDLE_IDENTIFIER`) | `com.prismpotions.app` |
-| **AdMob app id, Android** | `android/app/src/main/res/values/strings.xml` → `admob_app_id` | Google sample `ca-app-pub-3940256099942544~3347511713` |
-| **AdMob app id, iOS** | `ios/App/App/Info.plist` → `GADApplicationIdentifier` | Google sample `ca-app-pub-3940256099942544~1458002511` |
-| **AdMob ad unit ids** (rewarded + interstitial, per platform) | `src/services/Ads.ts` → `AD_UNITS` | Google sample units; **test mode turns off by itself** once a real id is pasted |
+| **AdMob app id, Android** | `android/app/src/main/res/values/strings.xml` → `admob_app_id` | **done** 2026-09-07 (`…~7723851386`) |
+| **AdMob app id, iOS** | `ios/App/App/Info.plist` → `GADApplicationIdentifier` | **done** 2026-09-07 (`…~7545204631`) |
+| **AdMob ad unit ids** (rewarded + interstitial, per platform) | `src/services/Ads.ts` → `AD_UNITS` | **done** 2026-09-07; test mode now only in dev builds (emulators are test devices anyway) |
 | **Play Games project id** (cloud save) | `strings.xml` → `game_services_project_id` | `000000000000` - cloud save reports "unavailable" while wrong |
 | **iCloud key-value entitlement** | Xcode → Signing & Capabilities → + iCloud → Key-value storage | not added (needs a signing team) |
 | **In-app products** | Play Console and App Store Connect, consumable, ids from `IAP_CATALOG` | not created |

@@ -404,7 +404,7 @@ _Last updated: 2026-09-06_
   native builds (web entry preloads only pixi/gsap; Capacitor code is lazy),
   test:e2e, Gradle `assembleDebug`.
 - **Store prep (2026-09-07)**: app id `com.prismpotions.app` confirmed by the
-  publisher (Tom Boban, Canada). Real launcher icons and splashes for both
+  publisher (Velvea Studios / Tom Boban, Canada). Real launcher icons and splashes for both
   projects from the repo art (`npm run assets:native`, outputs committed).
   Privacy policy filled in (publisher, date) with an AdMob/consent section.
   Android release config: `versionName 1.0.0`, minify + shrinkResources,
@@ -433,7 +433,7 @@ _Last updated: 2026-09-06_
 | Native wrapper: Android emulator verified, rest pending | 2026-09-07, Android Studio 2025.1.3 + `Medium_Phone_API_36.1` emulator: app boots, campaign and daily play, **rewarded test ads play and grant** in both placements (out-of-hint flow and "Watch an ad for a heart" in More Lives; hearts were lowered via chrome://inspect → localStorage since small levels cannot be lost). Not yet exercised: billing sandbox purchases (no Play products), cloud save sign-in (placeholder project id), UMP consent form (non-EEA), interstitials, a physical phone. `ios/` is generated but uncompiled (needs a Mac). See [NATIVE-BUILD.md](NATIVE-BUILD.md) "Before the first device run". |
 | Murky reveal polish (fixed 2026-09-07) | A pour moves the whole matching run, including concealed units under the visible top; two "?" vanished mid-pour and read as a glitch. `BoardView.pour` now reveals the units about to move before the bottle lifts. Completing a bottle still reveals everything (the cork means one colour). |
 | Smoke test flake | `test:e2e` failed once on 2026-09-06 with `window.__cf` undefined right after `start(2)` (post-resume step) and passed on rerun. Timing, not a regression; if it recurs, lengthen the wait after the level-intro. |
-| Store ids are placeholders | AdMob app/unit ids are Google's sample ids (test mode switches off automatically once replaced), the Play Games project id is zeros, and `appId` `com.prismpotions.app` must be confirmed before the first upload - it is permanent. |
+| Store ids: Play Games still a placeholder | AdMob app + unit ids are real as of 2026-09-07 (account `pub-1046627041489564`, apps "Prism Potions" Android/iOS, approval pending until a store listing exists; GDPR consent message **published**, US-state message saved as draft - publishing it is gated on account approval, non-personalised ads serve there meanwhile). Still zeros: the Play Games project id in `strings.xml`. App id `com.prismpotions.app` is final. |
 | Receipt validation | Client-side purchase grants are fine for launch but spoofable; add a server verification endpoint before revenue scales. |
 | Full audit | [AUDIT.md](AUDIT.md) (2026-09-05) — findings by area with a P0/P1/P2 roadmap. P0 and P1 complete (lazy Pixi deferred). P2 in progress: L5 endless mode done; next daily challenge, chapters, achievements. |
 

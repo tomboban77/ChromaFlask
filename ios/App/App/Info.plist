@@ -22,11 +22,10 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<!-- AdMob APP id (@capacitor-community/admob). Google's public sample app id;
-	     replace with the real one from the AdMob console before release. Ad UNIT
-	     ids live in src/services/Ads.ts (AD_UNITS). -->
+	<!-- AdMob APP id (@capacitor-community/admob): AdMob console -> Prism Potions (iOS)
+	     -> App settings. Ad UNIT ids live in src/services/Ads.ts (AD_UNITS). -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-1046627041489564~7545204631</string>
 	<!-- App Tracking Transparency: shown once, after the UMP consent form. -->
 	<key>NSUserTrackingUsageDescription</key>
 	<string>This lets Prism Potions show ads that are more relevant to you. Your progress and name never leave your device.</string>

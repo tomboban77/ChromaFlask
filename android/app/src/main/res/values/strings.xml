@@ -5,10 +5,9 @@
     <string name="package_name">com.prismpotions.app</string>
     <string name="custom_url_scheme">com.prismpotions.app</string>
 
-    <!-- AdMob APP id (not an ad unit id). This is Google's public sample app id;
-         replace it with the real one from the AdMob console before release.
-         Ad UNIT ids live in src/services/Ads.ts (AD_UNITS). -->
-    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+    <!-- AdMob APP id (not an ad unit id): AdMob console -> Prism Potions (Android)
+         -> App settings. Ad UNIT ids live in src/services/Ads.ts (AD_UNITS). -->
+    <string name="admob_app_id">ca-app-pub-1046627041489564~7723851386</string>
 
     <!-- Play Games Services project id: Play Console -> Play Games Services ->
          Setup and management -> Configuration. Placeholder until then; cloud

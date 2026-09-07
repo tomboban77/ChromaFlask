@@ -122,21 +122,25 @@ export class SimulatedAdsDriver implements AdsDriver {
 }
 
 /**
- * AdMob ad units. Google's public sample units are used until the real ones
- * exist; test mode switches itself off the moment they are replaced. Create
- * the app and units in the AdMob console and paste the unit ids here AND the
- * app ids into the native projects (see docs/NATIVE-BUILD.md):
+ * AdMob ad units (real, created 2026-09-07 in the Velvea Studios AdMob
+ * account). The matching APP ids live in the native projects:
  *   android/app/src/main/res/values/strings.xml  -> admob_app_id
  *   ios/App/App/Info.plist                        -> GADApplicationIdentifier
+ * Test mode: on in dev builds, or automatically whenever a unit here is one
+ * of Google's public sample units (publisher 3940256099942544). Emulators and
+ * simulators are test devices regardless, so testing there never counts as
+ * invalid traffic. Add a real phone via `testingDevices` before testing on it.
  */
 export const AD_UNITS = {
   android: {
-    rewarded: 'ca-app-pub-3940256099942544/5224354917',
-    interstitial: 'ca-app-pub-3940256099942544/1033173712',
+    // AdMob -> Prism Potions (Android) -> Ad units. App id: android/.../strings.xml.
+    rewarded: 'ca-app-pub-1046627041489564/8462217982',
+    interstitial: 'ca-app-pub-1046627041489564/7078300777',
   },
   ios: {
-    rewarded: 'ca-app-pub-3940256099942544/1712485313',
-    interstitial: 'ca-app-pub-3940256099942544/4411468910',
+    // AdMob -> Prism Potions (iOS) -> Ad units. App id: ios/App/App/Info.plist.
+    rewarded: 'ca-app-pub-1046627041489564/3605959623',
+    interstitial: 'ca-app-pub-1046627041489564/3513143632',
   },
 } as const;
 
