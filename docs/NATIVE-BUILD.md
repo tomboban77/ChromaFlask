@@ -50,6 +50,49 @@ and sets `import.meta.env.MODE === 'native'`, which `Platform.ts` exposes as
 The native bundle also skips the service worker (assets ship inside the app;
 a worker could only serve a stale copy after an update).
 
+## Icons and splash screens
+
+`npm run assets:native` (scripts/make-native-assets.mjs) renders every
+launcher icon and splash for both projects from the repo's art and the
+outputs are committed:
+
+- `art/icon.svg` → Android legacy icon; `art/icon-maskable.svg` → iOS icon
+  (flattened, Apple masks the corners), Android round icon, and the adaptive
+  foreground with the flask fitted to the 66/108 safe zone over a matching
+  purple gradient background.
+- `art/Entry.png` → every splash, cover-cropped, so the native splash hands
+  over to the web boot screen (which shows the same art) without a jump.
+  Android 12+ additionally shows the launcher icon on `#0a0e2a` (the boot
+  background) via `windowSplashScreenBackground`.
+
+Re-run after changing any of those sources. Entry.png is 941 px wide, so 3x
+iPhones upscale it - same as the web boot screen does today; higher-res boot
+art improves both at once.
+
+## Release build (Android)
+
+1. Create the upload key once, outside the repo, and back it up with its
+   passwords - losing it means losing the ability to update the app unless
+   Play App Signing is enrolled (it is, by default, for new apps):
+   ```
+   keytool -genkeypair -v -keystore chromaflask-upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. Create `android/keystore.properties` (git-ignored):
+   ```
+   storeFile=../chromaflask-upload.jks
+   storePassword=...
+   keyAlias=upload
+   keyPassword=...
+   ```
+3. Bump `versionCode` (must increase every upload) and `versionName` in
+   `android/app/build.gradle`, run `npm run cap:sync`, then
+   `cd android && gradlew bundleRelease` (JDK 21). The bundle lands in
+   `android/app/build/outputs/bundle/release/app-release.aab`; upload it to
+   Play Console → Testing → Internal testing first.
+
+Release builds are minified and resource-shrunk; every plugin ships its own
+consumer ProGuard rules, so nothing extra is needed in `proguard-rules.pro`.
+
 ## Plugins
 
 | Plugin | Used for | Notes |

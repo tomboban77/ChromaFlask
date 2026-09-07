@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "build:native": "tsc --noEmit && vite build --mode native",
     "cap:sync": "npm run build:native && cap sync",
+    "assets:native": "node scripts/make-native-assets.mjs",
     "android:open": "cap open android",
     "ios:open": "cap open ios",
     "preview": "vite preview",

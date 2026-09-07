@@ -403,6 +403,13 @@ _Last updated: 2026-09-06_
 - Verified: typecheck, lint, i18n:check, test:core (12,351 checks), web +
   native builds (web entry preloads only pixi/gsap; Capacitor code is lazy),
   test:e2e, Gradle `assembleDebug`.
+- **Store prep (2026-09-07)**: app id `com.chromaflask.app` confirmed by the
+  publisher (Tom Boban, Canada). Real launcher icons and splashes for both
+  projects from the repo art (`npm run assets:native`, outputs committed).
+  Privacy policy filled in (publisher, date) with an AdMob/consent section.
+  Android release config: `versionName 1.0.0`, minify + shrinkResources,
+  signing from git-ignored `android/keystore.properties`; `bundleRelease`
+  builds a 24 MB AAB (unsigned until the upload key exists).
 
 ---
 

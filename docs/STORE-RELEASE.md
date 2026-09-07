@@ -65,10 +65,10 @@ ChromaFlask uses **only original assets**, all authored in this repository:
       the build as `public/privacy.html` and is linked from the consent
       checkbox and Settings; once deployed it lives at
       `https://YOUR-DOMAIN/privacy.html` — paste that URL into both consoles.
-      **Fill in the three bracketed placeholders** (date, publisher name,
-      country) before release. What it must say, because it is what
-      the build does: progress is stored on-device; **anonymous usage
-      analytics are sent to PostHog (US)** keyed by the random support ID,
+      Publisher (Tom Boban, Canada), date and the AdMob/consent section were
+      filled in on 2026-09-07; update the date on every change. What it must
+      say, because it is what the build does: progress is stored on-device;
+      **anonymous usage analytics are sent to PostHog (US)** keyed by the random support ID,
       with no name, email or device identifiers; the choice is shown as a
       checkbox (on by default) on the first-run profile screen and can be
       changed any time in Settings → "Share anonymous usage data". If a
