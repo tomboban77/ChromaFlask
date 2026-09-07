@@ -1,4 +1,4 @@
-package com.chromaflask.app;
+package com.prismpotions.app;
 
 import com.getcapacitor.BridgeActivity;
 

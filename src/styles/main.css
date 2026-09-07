@@ -1,5 +1,5 @@
 /* =========================================================================
-   ChromaFlask - UI chrome
+   Prism Potions - UI chrome
    The board is rendered by Pixi on a transparent canvas; everything here is
    the DOM overlay (HUD, menus, modals) so text stays crisp and accessible.
    ========================================================================= */

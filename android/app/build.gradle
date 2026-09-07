@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 // Release signing. The upload keystore and its passwords live OUTSIDE git in
 // android/keystore.properties (see docs/NATIVE-BUILD.md "Release build"):
-//   storeFile=../chromaflask-upload.jks
+//   storeFile=../prismpotions-upload.jks
 //   storePassword=...
 //   keyAlias=upload
 //   keyPassword=...
@@ -15,10 +15,10 @@ if (keystoreFile.exists()) {
 }
 
 android {
-    namespace = "com.chromaflask.app"
+    namespace = "com.prismpotions.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.chromaflask.app"
+        applicationId "com.prismpotions.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Bump versionCode on EVERY Play upload (must strictly increase);

@@ -1,4 +1,4 @@
-# Wrapping ChromaFlask for Google Play (TWA)
+# Wrapping Prism Potions for Google Play (TWA)
 
 > **Superseded for the store build.** Cloud save needs a native bridge that a
 > Trusted Web Activity cannot provide, and iOS needs a WKWebView wrapper in

@@ -1,4 +1,4 @@
-# ChromaFlask — Project Status
+# Prism Potions — Project Status
 
 The living record of what is built, what is deliberately deferred, and what
 comes next. Update this doc whenever a feature lands or a decision is made.
@@ -85,7 +85,7 @@ _Last updated: 2026-09-06_
 - Win screen: date as the eyebrow, "🔥 n-day streak" pill, Home as the
   primary action. Profile shows current and best daily streak.
 - **Share** (daily win screen only) — a few lines of plain text the way word
-  games are shared: "🧪 ChromaFlask Daily · date", "★★★ 21 moves · ideal 21 ·
+  games are shared: "🧪 Prism Potions Daily · date", "★★★ 21 moves · ideal 21 ·
   Perfect!", the streak when above one, and the game link. Native share sheet
   where the browser has one, else clipboard with a toast, else a dialog with
   the text selected. Sharing leaves the win screen open; a dismissed sheet is
@@ -371,7 +371,7 @@ _Last updated: 2026-09-06_
   persistence across reload).
 
 ### Native wrapper - Android + iOS (Capacitor 8), ads, store billing (2026-09-06)
-- **Projects**: `capacitor.config.ts` (appId `com.chromaflask.app`), `android/`
+- **Projects**: `capacitor.config.ts` (appId `com.prismpotions.app`), `android/`
   and `ios/` generated and committed; `npm run cap:sync` builds the native
   flavour of the bundle and copies it in. Android **compiles** (debug APK,
   JDK 21); iOS needs a Mac. Guide: [NATIVE-BUILD.md](NATIVE-BUILD.md).
@@ -403,13 +403,23 @@ _Last updated: 2026-09-06_
 - Verified: typecheck, lint, i18n:check, test:core (12,351 checks), web +
   native builds (web entry preloads only pixi/gsap; Capacitor code is lazy),
   test:e2e, Gradle `assembleDebug`.
-- **Store prep (2026-09-07)**: app id `com.chromaflask.app` confirmed by the
+- **Store prep (2026-09-07)**: app id `com.prismpotions.app` confirmed by the
   publisher (Tom Boban, Canada). Real launcher icons and splashes for both
   projects from the repo art (`npm run assets:native`, outputs committed).
   Privacy policy filled in (publisher, date) with an AdMob/consent section.
   Android release config: `versionName 1.0.0`, minify + shrinkResources,
   signing from git-ignored `android/keystore.properties`; `bundleRelease`
   builds a 24 MB AAB (unsigned until the upload key exists).
+- **Renamed to Prism Potions (2026-09-07).** A Play Store search found an
+  existing liquid-sort game "ChromaFlask: Liquid Sort Lab" by another
+  developer, so the game, package id (`com.prismpotions.app`), native
+  projects, strings in all 13 locales, privacy policy and docs were renamed
+  before anything was uploaded. Checked clear on Google Play, the App Store
+  (US/CA/GB/AU), Steam and itch.io; prismpotions.com/.app/.game unregistered.
+  Deliberately unchanged: the localStorage keys (`chromaflask.save.v1`, cloud
+  meta/sim keys), the service-worker cache name and the support-code secret -
+  existing web players keep their progress and codes. CSS `cf-` prefixes and
+  the GitHub repo name also stay.
 
 ---
 
@@ -418,12 +428,12 @@ _Last updated: 2026-09-06_
 | Item | Detail |
 | --- | --- |
 | Entry art misspelled | `art/Entry.png` bakes in "CHROME FLASK" (wrong name, and "Chrome" is a Google mark). Regenerate — ideally with **no text** so a code logotype can be overlaid. |
-| Trademark search | Run "ChromaFlask" through USPTO/EUIPO + both app stores before launch. |
+| Trademark search | Run "Prism Potions" through USPTO/EUIPO + both app stores before launch. |
 | Translations need native review | All 12 non-English tables in `src/i18n/locales/` were authored in-house, not by native speakers. Before a store listing in each market, have a native speaker read the table (especially `howto.body`, the shop legal text and the consent sentence). English fallback means a deleted line is never a blank, so trimming a doubtful string is always safe. |
 | Native wrapper: Android emulator verified, rest pending | 2026-09-07, Android Studio 2025.1.3 + `Medium_Phone_API_36.1` emulator: app boots, campaign and daily play, **rewarded test ads play and grant** in both placements (out-of-hint flow and "Watch an ad for a heart" in More Lives; hearts were lowered via chrome://inspect → localStorage since small levels cannot be lost). Not yet exercised: billing sandbox purchases (no Play products), cloud save sign-in (placeholder project id), UMP consent form (non-EEA), interstitials, a physical phone. `ios/` is generated but uncompiled (needs a Mac). See [NATIVE-BUILD.md](NATIVE-BUILD.md) "Before the first device run". |
 | Murky reveal polish (fixed 2026-09-07) | A pour moves the whole matching run, including concealed units under the visible top; two "?" vanished mid-pour and read as a glitch. `BoardView.pour` now reveals the units about to move before the bottle lifts. Completing a bottle still reveals everything (the cork means one colour). |
 | Smoke test flake | `test:e2e` failed once on 2026-09-06 with `window.__cf` undefined right after `start(2)` (post-resume step) and passed on rerun. Timing, not a regression; if it recurs, lengthen the wait after the level-intro. |
-| Store ids are placeholders | AdMob app/unit ids are Google's sample ids (test mode switches off automatically once replaced), the Play Games project id is zeros, and `appId` `com.chromaflask.app` must be confirmed before the first upload - it is permanent. |
+| Store ids are placeholders | AdMob app/unit ids are Google's sample ids (test mode switches off automatically once replaced), the Play Games project id is zeros, and `appId` `com.prismpotions.app` must be confirmed before the first upload - it is permanent. |
 | Receipt validation | Client-side purchase grants are fine for launch but spoofable; add a server verification endpoint before revenue scales. |
 | Full audit | [AUDIT.md](AUDIT.md) (2026-09-05) — findings by area with a P0/P1/P2 roadmap. P0 and P1 complete (lazy Pixi deferred). P2 in progress: L5 endless mode done; next daily challenge, chapters, achievements. |
 

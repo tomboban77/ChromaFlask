@@ -555,7 +555,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   const shareLines = shared.split('\n');
   console.log(`  daily share     ${dailyPlay.moves} moves, ${shareLines.length} lines, clipboard ${clip === shared ? 'matches' : 'unreadable here'}: "${shareLines[1] ?? ''}"`);
   if (shareCount !== 1) problems.push(`[${label}] the daily win screen should have one Share button (got ${shareCount})`);
-  if (!shareLines[0]?.startsWith('🧪 ChromaFlask Daily')) problems.push(`[${label}] share text should open with the daily headline, got "${shareLines[0]}"`);
+  if (!shareLines[0]?.startsWith('🧪 Prism Potions Daily')) problems.push(`[${label}] share text should open with the daily headline, got "${shareLines[0]}"`);
   if (!/^★{1,3}☆{0,2} \d+ moves? · ideal \d+/.test(shareLines[1] ?? '')) problems.push(`[${label}] share result line malformed: "${shareLines[1]}"`);
   if (!shareLines.at(-1)?.startsWith('http')) problems.push(`[${label}] share text should end with the game link`);
   const stillWon = await page.evaluate(() => window.__cf.state().modalOpen);

@@ -230,6 +230,8 @@ function pickDriver(): StorageDriver {
   }
 }
 
+// Storage key predates the rename to Prism Potions and must never change:
+// it is where every existing web player's progress lives.
 const KEY = 'chromaflask.save.v1';
 
 export class SaveService {

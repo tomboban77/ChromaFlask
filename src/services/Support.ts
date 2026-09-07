@@ -180,7 +180,7 @@ export function formatSupportId(id: string): string {
 }
 
 export function supportMailto(supportId: string, highestLevel: number, saveVersion: number): string {
-  const subject = `ChromaFlask support (${formatSupportId(supportId)})`;
+  const subject = `Prism Potions support (${formatSupportId(supportId)})`;
   const body = [
     'Tell us what went wrong:',
     '',

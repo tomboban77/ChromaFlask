@@ -1,13 +1,13 @@
-# ChromaFlask — Store Release & Compliance Checklist
+# Prism Potions — Store Release & Compliance Checklist
 
-A working checklist for shipping ChromaFlask to Google Play and the Apple App
+A working checklist for shipping Prism Potions to Google Play and the Apple App
 Store without policy or legal trouble. Revisit before every store submission.
 
 ## 1. Original IP (avoiding legal disputes)
 
-ChromaFlask uses **only original assets**, all authored in this repository:
+Prism Potions uses **only original assets**, all authored in this repository:
 
-- **Name**: "ChromaFlask" — run a trademark search (USPTO TESS, EUIPO, and the
+- **Name**: "Prism Potions" — run a trademark search (USPTO TESS, EUIPO, and the
   app stores themselves) before launch and register the mark if the game gains
   traction.
 - **Characters**: the "Chroma Drops" (three droplet mascots) are original
@@ -102,7 +102,7 @@ ChromaFlask uses **only original assets**, all authored in this repository:
       target age group that includes children, both stores restrict IAP
       prompts, analytics, and ads sharply. Recommended: target 13+ in the
       questionnaire unless you specifically design for kids.
-- [ ] Screenshots/feature graphic: use only our own captures of ChromaFlask.
+- [ ] Screenshots/feature graphic: use only our own captures of Prism Potions.
 
 ## 4. Monetization fairness (policy + player trust)
 

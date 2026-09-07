@@ -6,7 +6,7 @@ web bundle is built once in "native" flavour and copied into `android/` and
 Capacitor plugins that the game loads only when it detects the wrapper.
 
 ```
-capacitor.config.ts        appId com.chromaflask.app, webDir dist, iOS scroll off
+capacitor.config.ts        appId com.prismpotions.app, webDir dist, iOS scroll off
 android/                   Android Studio project (generated, committed)
 ios/                       Xcode project, Swift Package Manager (generated, committed)
 native/capacitor-cloudsave local plugin: Play Games Saved Games / iCloud KV store
@@ -75,11 +75,11 @@ art improves both at once.
    passwords - losing it means losing the ability to update the app unless
    Play App Signing is enrolled (it is, by default, for new apps):
    ```
-   keytool -genkeypair -v -keystore chromaflask-upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
+   keytool -genkeypair -v -keystore prismpotions-upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
    ```
 2. Create `android/keystore.properties` (git-ignored):
    ```
-   storeFile=../chromaflask-upload.jks
+   storeFile=../prismpotions-upload.jks
    storePassword=...
    keyAlias=upload
    keyPassword=...
@@ -112,7 +112,7 @@ Search for the value to find every spot.
 
 | What | Where | Placeholder now |
 | --- | --- | --- |
-| **App id / bundle id** (permanent once published) | `capacitor.config.ts`, `android/app/build.gradle` (`applicationId`, `namespace`), `android/app/src/main/res/values/strings.xml`, `ios/App/App.xcodeproj` (`PRODUCT_BUNDLE_IDENTIFIER`) | `com.chromaflask.app` |
+| **App id / bundle id** (permanent once published) | `capacitor.config.ts`, `android/app/build.gradle` (`applicationId`, `namespace`), `android/app/src/main/res/values/strings.xml`, `ios/App/App.xcodeproj` (`PRODUCT_BUNDLE_IDENTIFIER`) | `com.prismpotions.app` |
 | **AdMob app id, Android** | `android/app/src/main/res/values/strings.xml` → `admob_app_id` | Google sample `ca-app-pub-3940256099942544~3347511713` |
 | **AdMob app id, iOS** | `ios/App/App/Info.plist` → `GADApplicationIdentifier` | Google sample `ca-app-pub-3940256099942544~1458002511` |
 | **AdMob ad unit ids** (rewarded + interstitial, per platform) | `src/services/Ads.ts` → `AD_UNITS` | Google sample units; **test mode turns off by itself** once a real id is pasted |

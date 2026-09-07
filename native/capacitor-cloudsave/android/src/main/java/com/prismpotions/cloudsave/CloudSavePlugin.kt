@@ -1,4 +1,4 @@
-package com.chromaflask.cloudsave
+package com.prismpotions.cloudsave
 
 import android.os.Build
 import com.getcapacitor.JSObject
@@ -32,7 +32,7 @@ class CloudSavePlugin : Plugin() {
 
     companion object {
         private const val SNAPSHOT_NAME = "chromaflask-save"
-        private const val DESCRIPTION = "ChromaFlask progress"
+        private const val DESCRIPTION = "Prism Potions progress"
     }
 
     /** False when the SDK refused to start (e.g. a missing or placeholder APP_ID). */

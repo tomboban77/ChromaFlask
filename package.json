@@ -1,9 +1,9 @@
 {
-  "name": "chromaflask",
+  "name": "prism-potions",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "ChromaFlask - a mobile-first liquid sort puzzle game",
+  "description": "Prism Potions - a mobile-first liquid sort puzzle game",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

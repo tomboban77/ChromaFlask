@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "ChromaFlask",
-  "short_name": "ChromaFlask",
+  "name": "Prism Potions",
+  "short_name": "Prism Potions",
   "description": "A liquid sort puzzle. Pour, sort, solve.",
   "start_url": "./",
   "scope": "./",

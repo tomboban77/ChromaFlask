@@ -8,7 +8,7 @@ Pod::Spec.new do |s|
   s.summary = package['description']
   s.license = package['license']
   s.homepage = 'https://github.com/tomboban77/ChromaFlask'
-  s.author = 'ChromaFlask'
+  s.author = 'Prism Potions'
   s.source = { :git => 'https://github.com/tomboban77/ChromaFlask.git', :tag => s.version.to_s }
   s.source_files = 'ios/Plugin/**/*.{swift,h,m}'
   s.ios.deployment_target = '15.4'

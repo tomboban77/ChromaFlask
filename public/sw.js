@@ -1,5 +1,5 @@
 /**
- * ChromaFlask service worker: makes the installed app (PWA / Android TWA)
+ * Prism Potions service worker: makes the installed app (PWA / Android TWA)
  * work offline and start instantly.
  *
  * Strategy, chosen to self-heal across deploys:

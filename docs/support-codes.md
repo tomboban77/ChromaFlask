@@ -1,6 +1,6 @@
 # Customer support without a backend
 
-ChromaFlask has no server: every save lives in the player's own browser
+Prism Potions has no server: every save lives in the player's own browser
 (localStorage). Support therefore works through **signed one-time codes** the
 player redeems inside the game.
 

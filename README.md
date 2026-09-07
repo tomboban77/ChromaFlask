@@ -1,4 +1,4 @@
-# ChromaFlask
+# Prism Potions
 
 A mobile-first liquid-sort puzzle for the web. PixiJS renders the board, GSAP
 choreographs the pours, and the HUD is plain DOM so text stays crisp and

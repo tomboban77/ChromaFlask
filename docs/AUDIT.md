@@ -1,4 +1,4 @@
-# ChromaFlask — Full Product & Engineering Audit
+# Prism Potions — Full Product & Engineering Audit
 
 _Audited 2026-09-05 against commit `7d2dab3` (main). Scope: game logic, economy,
 UI/UX, security & compliance, performance, reliability, and market fit — read
@@ -283,7 +283,7 @@ Level generation: see L1. Hint and no-win checks from live, solvable positions: 
 
 ## 7. How this compares to the market
 
-| Capability | ChromaFlask | Category leaders (Water Sort Puzzle, Sort Water Color, etc.) |
+| Capability | Prism Potions | Category leaders (Water Sort Puzzle, Sort Water Color, etc.) |
 | --- | --- | --- |
 | Puzzle correctness | Proven solvable, optimal par | Mostly hand/random, "impossible level" complaints common |
 | Level count | 200 (endless is one flag away) | 1,000s + endless |

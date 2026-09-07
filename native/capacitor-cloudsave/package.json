@@ -1,7 +1,7 @@
 {
   "name": "capacitor-cloudsave",
   "version": "0.1.0",
-  "description": "ChromaFlask cloud save: Play Games Saved Games on Android, iCloud key-value store on iOS",
+  "description": "Prism Potions cloud save: Play Games Saved Games on Android, iCloud key-value store on iOS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

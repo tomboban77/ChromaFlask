@@ -1,6 +1,6 @@
 # capacitor-cloudsave
 
-Capacitor plugin that gives ChromaFlask one `CloudSave` API over two platform
+Capacitor plugin that gives Prism Potions one `CloudSave` API over two platform
 stores:
 
 - **Android** - Play Games Services v2 Saved Games (`SnapshotsClient`).

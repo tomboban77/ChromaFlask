@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>ChromaFlask</string>
+	<string>Prism Potions</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -29,7 +29,7 @@
 	<string>ca-app-pub-3940256099942544~1458002511</string>
 	<!-- App Tracking Transparency: shown once, after the UMP consent form. -->
 	<key>NSUserTrackingUsageDescription</key>
-	<string>This lets ChromaFlask show ads that are more relevant to you. Your progress and name never leave your device.</string>
+	<string>This lets Prism Potions show ads that are more relevant to you. Your progress and name never leave your device.</string>
 	<!-- SKAdNetwork: Google's own network id. Add partner ids from
 	     https://developers.google.com/admob/ios/ios14#skadnetwork when mediation is used. -->
 	<key>SKAdNetworkItems</key>

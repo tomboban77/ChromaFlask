@@ -11,8 +11,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * disables the service worker; see vite.config.ts.
  */
 const config: CapacitorConfig = {
-  appId: 'com.chromaflask.app',
-  appName: 'ChromaFlask',
+  appId: 'com.prismpotions.app',
+  appName: 'Prism Potions',
   webDir: 'dist',
   backgroundColor: '#0a0e2a',
   android: {
