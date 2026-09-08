@@ -356,7 +356,7 @@ const table: Record<string, string> = {
   'support.applied.lives': 'Cuori ricaricati!',
   'support.applied.infinite': 'Cuori illimitati per {n} h. Divertiti!',
   'reset.title': 'Azzerare i progressi?',
-  'reset.body': '<p style="text-align:left;margin:0">Cancella livelli, stelle, monete e statistiche su questo dispositivo e riavvia il gioco dal livello 1. Le impostazioni restano. <b>Non si può annullare.</b></p>',
+  'reset.body': 'Questo cancella tutto ciò che hai guadagnato su questo dispositivo: livelli, stelle, monete, potenziamenti, look delle bottiglie, obiettivi e la tua serie giornaliera. Il gioco riparte dal livello 1. Le impostazioni restano.',
   'reset.keep': 'Continua a giocare',
 
   'howto.title': 'Come si gioca',
@@ -406,6 +406,10 @@ const table: Record<string, string> = {
   'board.ofMax': 'di {max} stelle',
   'board.appOnly': 'La classifica è disponibile nelle app Android e iOS.',
   'board.how': 'Sei classificato per le stelle che raccogli. Rigiocare un vecchio livello per una stella mancata conta.',
+
+  'reset.paid': 'Sono incluse le monete e i potenziamenti che hai pagato. Non potranno essere ripristinati.',
+  'reset.cloudSafe': 'Il salvataggio nel cloud non viene cancellato. Alla prossima sincronizzazione ti verrà chiesto quale tenere.',
+  'reset.final': 'Questa azione non può essere annullata.',
 
 };
 export default table;

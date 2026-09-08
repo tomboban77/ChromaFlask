@@ -348,7 +348,7 @@ const table: Record<string, string> = {
   'support.applied.lives': 'ハートが回復しました！',
   'support.applied.infinite': '{n} 時間の無限ハート。お楽しみください！',
   'reset.title': '進行状況をリセットしますか？',
-  'reset.body': '<p style="text-align:left;margin:0">この端末のレベル、星、コイン、統計を消去し、レベル 1 からゲームをやり直します。設定は保持されます。<b>この操作は取り消せません。</b></p>',
+  'reset.body': 'この端末で獲得したものがすべて消えます。レベル、星、コイン、ブースター、ボトルの見た目、実績、デイリー連続記録が対象です。ゲームはレベル1から再開します。設定は保持されます。',
   'reset.keep': 'プレイを続ける',
 
   'howto.title': '遊び方',
@@ -398,6 +398,10 @@ const table: Record<string, string> = {
   'board.ofMax': '/ {max} 個の星',
   'board.appOnly': 'ランキングは Android と iOS のアプリで利用できます。',
   'board.how': '集めた星の数で順位が決まります。取り逃した星を求めて過去のレベルを遊び直すのも加算されます。',
+
+  'reset.paid': '購入したコインやブースターも含まれます。あとから復元することはできません。',
+  'reset.cloudSafe': 'クラウドセーブは消えません。次回の同期でどちらを残すか確認します。',
+  'reset.final': 'この操作は取り消せません。',
 
 };
 export default table;

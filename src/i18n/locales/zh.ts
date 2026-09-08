@@ -348,7 +348,7 @@ const table: Record<string, string> = {
   'support.applied.lives': '爱心已补满！',
   'support.applied.infinite': '{n} 小时无限爱心。玩得开心！',
   'reset.title': '重置进度？',
-  'reset.body': '<p style="text-align:left;margin:0">这将清除本设备上的关卡、星星、金币和统计，并从第 1 关重新开始。你的设置会保留。<b>此操作无法撤销。</b></p>',
+  'reset.body': '这会清除你在此设备上获得的一切：关卡、星星、金币、道具、瓶子外观、成就和每日连续记录。游戏将从第 1 关重新开始。你的设置会保留。',
   'reset.keep': '继续游玩',
 
   'howto.title': '玩法说明',
@@ -398,6 +398,10 @@ const table: Record<string, string> = {
   'board.ofMax': '／共 {max} 颗星',
   'board.appOnly': '排行榜可在 Android 和 iOS 应用中使用。',
   'board.how': '排名依据你收集的星星。重玩旧关卡补齐错过的星星同样计入。',
+
+  'reset.paid': '其中包括你付费购买的金币和道具，之后无法恢复。',
+  'reset.cloudSafe': '你的云存档不会被清除。下次同步时会询问你要保留哪一份。',
+  'reset.final': '此操作无法撤销。',
 
 };
 export default table;

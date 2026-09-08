@@ -417,7 +417,10 @@ export const en = {
   'support.applied.lives': 'Hearts refilled!',
   'support.applied.infinite': 'Unlimited hearts for {n}h. Have fun!',
   'reset.title': 'Reset progress?',
-  'reset.body': '<p style="text-align:left;margin:0">This erases your levels, stars, coins and stats on this device and restarts the game from level 1. Your settings are kept. <b>This cannot be undone.</b></p>',
+  'reset.body': 'This erases everything you have earned on this device: levels, stars, coins, boosters, bottle looks, achievements and your daily streak. The game restarts from level 1. Your settings are kept.',
+  'reset.paid': 'That includes coins and boosters you paid for. They cannot be restored afterwards.',
+  'reset.cloudSafe': 'Your cloud save is not erased. The next sync will ask which copy you want to keep.',
+  'reset.final': 'This cannot be undone.',
   'reset.keep': 'Keep playing',
 
   // how to play

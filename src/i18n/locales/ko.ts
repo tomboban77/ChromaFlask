@@ -348,7 +348,7 @@ const table: Record<string, string> = {
   'support.applied.lives': '하트를 채웠어요!',
   'support.applied.infinite': '{n}시간 동안 무제한 하트. 즐기세요!',
   'reset.title': '진행 상황을 초기화할까요?',
-  'reset.body': '<p style="text-align:left;margin:0">이 기기의 레벨, 별, 코인, 통계를 지우고 레벨 1부터 게임을 다시 시작합니다. 설정은 유지됩니다. <b>이 작업은 되돌릴 수 없어요.</b></p>',
+  'reset.body': '이 기기에서 얻은 모든 것이 지워집니다. 레벨, 별, 코인, 부스터, 병 외형, 업적, 데일리 연속 기록이 포함됩니다. 게임은 레벨 1부터 다시 시작합니다. 설정은 유지됩니다.',
   'reset.keep': '계속 플레이',
 
   'howto.title': '게임 방법',
@@ -398,6 +398,10 @@ const table: Record<string, string> = {
   'board.ofMax': '/ {max}개의 별',
   'board.appOnly': '리더보드는 Android와 iOS 앱에서 이용할 수 있습니다.',
   'board.how': '모은 별로 순위가 정해집니다. 놓친 별을 얻으려고 예전 레벨을 다시 플레이해도 반영됩니다.',
+
+  'reset.paid': '구매한 코인과 부스터도 포함됩니다. 이후에는 복구할 수 없습니다.',
+  'reset.cloudSafe': '클라우드 저장은 지워지지 않습니다. 다음 동기화에서 어느 쪽을 남길지 묻습니다.',
+  'reset.final': '이 작업은 되돌릴 수 없습니다.',
 
 };
 export default table;

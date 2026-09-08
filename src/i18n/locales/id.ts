@@ -348,7 +348,7 @@ const table: Record<string, string> = {
   'support.applied.lives': 'Nyawa terisi penuh!',
   'support.applied.infinite': 'Nyawa tanpa batas selama {n} jam. Selamat bermain!',
   'reset.title': 'Atur ulang progres?',
-  'reset.body': '<p style="text-align:left;margin:0">Ini menghapus level, bintang, koin, dan statistikmu di perangkat ini dan memulai game dari level 1. Pengaturanmu tetap tersimpan. <b>Tidak bisa dibatalkan.</b></p>',
+  'reset.body': 'Ini menghapus semua yang kamu dapatkan di perangkat ini: level, bintang, koin, booster, tampilan botol, pencapaian, dan runtunan harianmu. Permainan dimulai lagi dari level 1. Pengaturanmu tetap.',
   'reset.keep': 'Lanjut bermain',
 
   'howto.title': 'Cara bermain',
@@ -398,6 +398,10 @@ const table: Record<string, string> = {
   'board.ofMax': 'dari {max} bintang',
   'board.appOnly': 'Papan peringkat tersedia di aplikasi Android dan iOS.',
   'board.how': 'Kamu diperingkat dari bintang yang kamu kumpulkan. Mengulang level lama demi bintang yang terlewat juga dihitung.',
+
+  'reset.paid': 'Termasuk koin dan booster yang kamu beli. Semuanya tidak bisa dikembalikan setelahnya.',
+  'reset.cloudSafe': 'Simpanan cloud-mu tidak dihapus. Sinkronisasi berikutnya akan menanyakan mana yang ingin kamu simpan.',
+  'reset.final': 'Ini tidak bisa dibatalkan.',
 
 };
 export default table;

@@ -3284,10 +3284,31 @@ class App {
     else if (this.current === 'game') this.updateHud();
   }
 
+  /**
+   * Reset is the one irreversible thing a player can do to themselves, so the
+   * dialog names what actually goes rather than a vague "progress": boosters,
+   * bottle looks, achievements and the daily streak are all in there too.
+   *
+   * Two conditional lines carry the weight:
+   *  - Anyone who has ever paid is told that bought coins and boosters are
+   *    included and cannot be restored. That is true by design (the granted
+   *    token ledger survives precisely so an old purchase is never re-granted
+   *    as a freebie), and finding it out afterwards means a support email.
+   *  - Anyone signed in to cloud save is told their cloud copy survives, which
+   *    turns a terrifying button into a recoverable one.
+   */
   private confirmResetProgress(): void {
+    const parts = [`<p class="reset__line">${escapeHtml(t('reset.body'))}</p>`];
+    if (this.save.hasEverPurchased) {
+      parts.push(`<p class="reset__line reset__warn">${escapeHtml(t('reset.paid'))}</p>`);
+    }
+    if (this.cloud.state.available && this.cloud.state.account !== null) {
+      parts.push(`<p class="reset__line reset__safe">${escapeHtml(t('reset.cloudSafe'))}</p>`);
+    }
+    parts.push(`<p class="reset__line"><b>${escapeHtml(t('reset.final'))}</b></p>`);
     this.modal.open({
       title: t('reset.title'),
-      bodyHtml: t('reset.body'),
+      bodyHtml: parts.join(''),
       inlineButtons: true,
       buttons: [
         { label: t('reset.keep'), kind: 'primary', onClick: () => this.openSettings() },

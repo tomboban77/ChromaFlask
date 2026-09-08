@@ -356,7 +356,7 @@ const table: Record<string, string> = {
   'support.applied.lives': 'Cœurs rechargés !',
   'support.applied.infinite': 'Cœurs illimités pendant {n} h. Amuse-toi bien !',
   'reset.title': 'Réinitialiser la progression ?',
-  'reset.body': '<p style="text-align:left;margin:0">Cela efface tes niveaux, étoiles, pièces et statistiques sur cet appareil et relance le jeu au niveau 1. Tes réglages sont conservés. <b>Irréversible.</b></p>',
+  'reset.body': 'Cela efface tout ce que tu as gagné sur cet appareil : niveaux, étoiles, pièces, bonus, apparences de flacon, succès et ta série quotidienne. Le jeu repart au niveau 1. Tes réglages sont conservés.',
   'reset.keep': 'Continuer à jouer',
 
   'howto.title': 'Comment jouer',
@@ -406,6 +406,10 @@ const table: Record<string, string> = {
   'board.ofMax': 'sur {max} étoiles',
   'board.appOnly': 'Le classement est disponible dans les apps Android et iOS.',
   'board.how': 'Tu es classé selon les étoiles que tu récoltes. Rejouer un ancien niveau pour une étoile manquée compte aussi.',
+
+  'reset.paid': 'Cela inclut les pièces et les bonus que tu as payés. Ils ne pourront pas être restaurés ensuite.',
+  'reset.cloudSafe': 'Ta sauvegarde cloud n’est pas effacée. La prochaine synchronisation te demandera laquelle garder.',
+  'reset.final': 'Cette action est irréversible.',
 
 };
 export default table;

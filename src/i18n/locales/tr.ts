@@ -348,7 +348,7 @@ const table: Record<string, string> = {
   'support.applied.lives': 'Kalpler dolduruldu!',
   'support.applied.infinite': '{n} saat sınırsız kalp. İyi eğlenceler!',
   'reset.title': 'İlerleme sıfırlansın mı?',
-  'reset.body': '<p style="text-align:left;margin:0">Bu cihazdaki seviyelerini, yıldızlarını, altınlarını ve istatistiklerini siler ve oyunu 1. seviyeden başlatır. Ayarların korunur. <b>Geri alınamaz.</b></p>',
+  'reset.body': 'Bu, bu cihazda kazandığın her şeyi siler: bölümler, yıldızlar, altınlar, güçlendiriciler, şişe görünümleri, başarımlar ve günlük serin. Oyun 1. bölümden yeniden başlar. Ayarların korunur.',
   'reset.keep': 'Oynamaya devam',
 
   'howto.title': 'Nasıl oynanır',
@@ -398,6 +398,10 @@ const table: Record<string, string> = {
   'board.ofMax': '/ {max} yıldız',
   'board.appOnly': 'Sıralama Android ve iOS uygulamalarında.',
   'board.how': 'Topladığın yıldızlara göre sıralanırsın. Kaçırdığın bir yıldız için eski bir bölümü tekrar oynamak da sayılır.',
+
+  'reset.paid': 'Buna satın aldığın altınlar ve güçlendiriciler de dahildir. Sonrasında geri alınamazlar.',
+  'reset.cloudSafe': 'Bulut kaydın silinmez. Bir sonraki eşitlemede hangisini tutmak istediğin sorulur.',
+  'reset.final': 'Bu geri alınamaz.',
 
 };
 export default table;

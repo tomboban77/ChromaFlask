@@ -356,7 +356,7 @@ const table: Record<string, string> = {
   'support.applied.lives': 'Herzen aufgefüllt!',
   'support.applied.infinite': 'Unbegrenzte Herzen für {n} h. Viel Spaß!',
   'reset.title': 'Fortschritt zurücksetzen?',
-  'reset.body': '<p style="text-align:left;margin:0">Das löscht deine Level, Sterne, Münzen und Statistiken auf diesem Gerät und startet das Spiel bei Level 1. Deine Einstellungen bleiben. <b>Das lässt sich nicht rückgängig machen.</b></p>',
+  'reset.body': 'Das löscht alles, was du auf diesem Gerät erspielt hast: Level, Sterne, Münzen, Booster, Flaschen-Looks, Erfolge und deine Tagesserie. Das Spiel startet wieder bei Level 1. Deine Einstellungen bleiben erhalten.',
   'reset.keep': 'Weiterspielen',
 
   'howto.title': 'Spielanleitung',
@@ -406,6 +406,10 @@ const table: Record<string, string> = {
   'board.ofMax': 'von {max} Sternen',
   'board.appOnly': 'Die Bestenliste gibt es in den Android- und iOS-Apps.',
   'board.how': 'Du wirst nach den Sternen bewertet, die du sammelst. Ein altes Level für einen verpassten Stern zu wiederholen zählt auch.',
+
+  'reset.paid': 'Dazu gehören auch Münzen und Booster, für die du bezahlt hast. Sie lassen sich danach nicht wiederherstellen.',
+  'reset.cloudSafe': 'Dein Cloud-Speicherstand wird nicht gelöscht. Bei der nächsten Synchronisierung wirst du gefragt, welchen du behalten willst.',
+  'reset.final': 'Das lässt sich nicht rückgängig machen.',
 
 };
 export default table;

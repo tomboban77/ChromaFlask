@@ -1796,6 +1796,25 @@ body {
   border-width: 3px;
 }
 
+/* Reset progress: left-aligned so a multi-line warning is readable, with the
+   paid-goods line marked as a real warning and the cloud line as reassurance. */
+.reset__line { margin: 0 0 8px; text-align: left; }
+.reset__line:last-child { margin-bottom: 0; }
+.reset__warn {
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(216, 28, 70, 0.18);
+  border: 1.5px solid rgba(255, 93, 125, 0.5);
+  color: #ffd9e1;
+}
+.reset__safe {
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(34, 211, 238, 0.13);
+  border: 1.5px solid rgba(34, 211, 238, 0.38);
+  color: #cdf3fb;
+}
+
 /* ------------------------------------------------------------- leaderboard
    The screen behind the Ranks tab. It is a landing page, not a board: the
    ranking itself is Play Games' or Game Center's own overlay. Three states,

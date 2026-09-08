@@ -356,7 +356,7 @@ const table: Record<string, string> = {
   'support.applied.lives': 'Corações recarregados!',
   'support.applied.infinite': 'Corações ilimitados por {n} h. Divirta-se!',
   'reset.title': 'Redefinir progresso?',
-  'reset.body': '<p style="text-align:left;margin:0">Isso apaga seus níveis, estrelas, moedas e estatísticas neste dispositivo e reinicia o jogo do nível 1. Suas configurações são mantidas. <b>Não é possível desfazer.</b></p>',
+  'reset.body': 'Isso apaga tudo o que você conquistou neste dispositivo: níveis, estrelas, moedas, reforços, visuais de garrafa, conquistas e sua sequência diária. O jogo recomeça no nível 1. Suas configurações são mantidas.',
   'reset.keep': 'Continuar jogando',
 
   'howto.title': 'Como jogar',
@@ -406,6 +406,10 @@ const table: Record<string, string> = {
   'board.ofMax': 'de {max} estrelas',
   'board.appOnly': 'A classificação está disponível nos apps de Android e iOS.',
   'board.how': 'Você é classificado pelas estrelas que junta. Repetir um nível antigo por uma estrela que faltou também conta.',
+
+  'reset.paid': 'Isso inclui moedas e reforços que você pagou. Eles não podem ser restaurados depois.',
+  'reset.cloudSafe': 'Sua cópia na nuvem não é apagada. A próxima sincronização vai perguntar qual você quer manter.',
+  'reset.final': 'Isso não pode ser desfeito.',
 
 };
 export default table;

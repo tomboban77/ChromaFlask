@@ -474,6 +474,28 @@ _Last updated: 2026-09-06_
   until the real id lands the Ranks screen shows its app-only message instead
   of a View button. The tab and the locked-state countdown work regardless.
 
+### Reset progress — honest confirmation (2026-09-07)
+Reset is the only irreversible thing a player can do to themselves, and the old
+dialog undersold it ("levels, stars, coins and stats"). It now names everything
+that actually goes — boosters, bottle looks, achievements and the daily streak
+included — plus two conditional lines that carry the real weight:
+
+- **Anyone who has ever paid** is told that bought coins and boosters are
+  included and cannot be restored. That is true *by design*: `resetProgress()`
+  keeps `grantedPurchaseTokens` precisely so an old consumed purchase is never
+  re-granted as a freebie, which means the boot-time restore will not bring
+  them back either. Finding that out afterwards meant a support email and a
+  plausible refund request.
+- **Anyone signed in to cloud save** is told their cloud copy survives (the
+  reset is never uploaded; the next sync asks which copy to keep), which turns
+  a terrifying button into a recoverable one. Web players get no such line,
+  because for them there is genuinely no safety net.
+
+`reset.body` also dropped its inline-HTML wrapper — the dialog escapes the
+strings now and styles the paragraphs with `.reset__warn` / `.reset__safe`.
+Verified across all four paid × cloud combinations; 3 new strings and one
+rewritten one in all 13 locales.
+
 ---
 
 ## ⚠️ Known issues / follow-ups
