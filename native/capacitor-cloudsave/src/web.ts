@@ -1,7 +1,10 @@
 import { WebPlugin } from '@capacitor/core';
 import type { CloudSavePlugin, CloudSnapshot } from './definitions';
 
-/** Plain web has no platform store; the game shows "Available in the Android and iOS apps". */
+/**
+ * Plain web has no platform account: the game shows "Available in the Android
+ * and iOS apps" for cloud save and hides the leaderboard button entirely.
+ */
 export class CloudSaveWeb extends WebPlugin implements CloudSavePlugin {
   async isAvailable(): Promise<{ available: boolean }> {
     return { available: false };
@@ -20,5 +23,15 @@ export class CloudSaveWeb extends WebPlugin implements CloudSavePlugin {
   }
   async signOut(): Promise<void> {
     /* nothing to sign out of */
+  }
+
+  async isLeaderboardAvailable(): Promise<{ available: boolean }> {
+    return { available: false };
+  }
+  async submitLeaderboardScore(): Promise<void> {
+    /* nowhere to post */
+  }
+  async showLeaderboard(): Promise<{ shown: boolean }> {
+    return { shown: false };
   }
 }

@@ -420,6 +420,60 @@ _Last updated: 2026-09-06_
   existing web players keep their progress and codes. CSS `cf-` prefixes and
   the GitHub repo name also stay.
 
+### Leaderboard — platform ranking by stars (2026-09-07)
+- **Ranked by campaign stars** (0–1500), the number the home card already
+  shows. "Levels cleared" was rejected: everyone who finishes ties at 500 and
+  it rewards rushing past levels rather than playing them well. Replaying an
+  old level for a missed third star climbs the board, which gives the back
+  catalogue a reason to exist.
+- **Unlocks at level 45** (`LEADERBOARD_UNLOCK_LEVEL`, pure
+  `leaderboardUnlocked()`): deep enough that a first score is worth posting,
+  and that the platform sign-in prompt lands on an invested player rather than
+  a curious one. Before that the button does not exist at all.
+- **Driver seam** `src/services/Leaderboard.ts` (None | Simulated `?lb=sim`,
+  `?lb=sim-out` | Native), matching Ads/Payments/CloudSave. Native goes through
+  the **same Capacitor plugin as cloud save**: on Android a leaderboard needs
+  the identical Play Games sign-in, so a second plugin would mean two copies of
+  the auth handling and two consent prompts for one account.
+  `isLeaderboardAvailable()` is deliberately separate from `isAvailable()` —
+  on iOS, Game Center and the iCloud store cloud save uses are unrelated
+  services and either can work while the other does not.
+- **Android**: Play Games leaderboards (`submitScore` +
+  `getLeaderboardIntent`), signing in on demand only for an explicit tap.
+  Posting a score stays silent when signed out, so finishing a level is never
+  interrupted by a sign-in sheet. **iOS**: Game Center via GameKit, with
+  `authenticateHandler` set at launch so its sheet appears once, up front.
+  **Web**: nothing, and the button never appears.
+- **Its own screen behind a Ranks tab**, second in the bottom nav so Home sits
+  dead centre of five (Shop · Ranks · **Home** · Levels · Daily). The tab is
+  always present, even before level 45: a tab that materialises out of nowhere
+  is a tab nobody was waiting for, so the locked state is a real page that says
+  when it opens, shows progress towards it, and explains that stars are what
+  rank you. Three honest states — locked with a countdown, open with a score
+  and a way into the platform board, or open but app-only on the web.
+- The screen is a landing page, not a board: Play Games and Game Center both
+  insist rankings are shown in their own chrome, and their sheets already
+  handle friends, scopes and profiles.
+- Score is posted after every win and on boot, de-duplicated in the service.
+  One-time unlock dialog on the **home** screen (save v16 `leaderboardSeen`),
+  not the win screen — that already carries stars, coins, a chapter ribbon and
+  achievement toasts, and this would be the fifth thing shouting at once. Its
+  primary button lands on the Ranks screen rather than the platform overlay, so
+  the moment also teaches where the tab lives.
+- **No anti-cheat, and none is possible** without a backend: a client can post
+  any total. Acceptable for bragging rights. If it ever matters, the boards are
+  deterministic, so a server could replay-verify a submitted move list
+  (AUDIT.md E5).
+- Verified: nav order with Home centred, locked page and its countdown at
+  levels 1 and 44 (singular/plural), unlock fires exactly once at 45, open
+  state shows the right star total, web build explains it is app-only,
+  signed-out explains itself; Kotlin compiles warning-free; 18 new strings in
+  all 13 locales.
+- **Blocked on the Play Console**: the Android board id in `LEADERBOARD_IDS` is
+  a placeholder, and the service reports itself unavailable while it is — so
+  until the real id lands the Ranks screen shows its app-only message instead
+  of a View button. The tab and the locked-state countdown work regardless.
+
 ---
 
 ## ⚠️ Known issues / follow-ups
@@ -443,7 +497,7 @@ _Last updated: 2026-09-06_
 | Feature | Why deferred | Unblocks when |
 | --- | --- | --- |
 | **Wildcard / rainbow drop** | "Matches any colour" semantics ripple through run-counting, uniformity and state hashing; risks silently breaking par optimality. Needs its own verified pass. | Next mechanic slot |
-| **Leaderboard** | Never a custom server for v1 — use Google Play Games Services / Apple Game Center (free, identity handled, store-compliant). | After native wrap |
+| ~~**Leaderboard**~~ | **Shipped 2026-09-07** — Play Games / Game Center, ranked by campaign stars, unlocked at level 45. See "Shipped & verified" above. | — |
 | **Teams** | Requires a real backend plus UGC obligations (moderation, reporting, blocking) and ongoing costs. Retention feature for a game that already has players. | Traction |
 | **Collection** | Fully feasible client-side, but it's a long-tail retention feature; needs content depth to hang on. | After launch |
 | **Container skins** (mug, teacup…) | Agreed: no theme pivot — potion/alchemy identity stays. Skins return later as unlockables/cosmetics. | With Collection |
@@ -463,7 +517,8 @@ _Last updated: 2026-09-06_
    screenshots. Checklist: [STORE-RELEASE.md](STORE-RELEASE.md).
 3. **Wildcard drop mechanic** — same rigor as the Cauldron (rules, heuristic
    proof, BFS audit).
-4. **Leaderboard** (platform services) → **Collection** → **Teams** (traction-gated).
+4. **Collection** → **Teams** (traction-gated). The leaderboard is built; it
+   only needs its Play Console board created and the id pasted in.
 
 ---
 

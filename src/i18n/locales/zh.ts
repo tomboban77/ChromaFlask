@@ -379,5 +379,25 @@ const table: Record<string, string> = {
   'ads.privacyDesc': '查看或更改个性化广告的授权',
   'ads.privacyBtn': '管理',
 
+  // leaderboard
+  'board.view': '看一看',
+  'board.unlockTitle': '排行榜已解锁！',
+  'board.unlockBody': '你已到达第 {n} 关，星星开始计入排名。每颗星星都会让你与全球玩家一较高下，重玩旧关卡补齐错过的星星同样能提升名次。',
+  'board.signedOut': '登录你的游戏账号以查看排行榜',
+  'board.unavailable': '排行榜暂时无法使用',
+
+  'nav.board': '排名',
+  'board.title': '排行榜',
+  'board.open': '查看排行榜',
+  'board.lockedTitle': '第 {n} 关解锁',
+  'board.lockedProgress': '第 {level} / {target} 关',
+  'board.lockedRemaining.one': '还差 {n} 关',
+  'board.lockedRemaining.other': '还差 {n} 关',
+  'board.keepPlaying': '继续游戏',
+  'board.unlockedTitle': '你已上榜',
+  'board.ofMax': '／共 {max} 颗星',
+  'board.appOnly': '排行榜可在 Android 和 iOS 应用中使用。',
+  'board.how': '排名依据你收集的星星。重玩旧关卡补齐错过的星星同样计入。',
+
 };
 export default table;

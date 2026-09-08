@@ -1,5 +1,6 @@
 import Foundation
 import Capacitor
+import GameKit
 import UIKit
 
 /// Cloud save over the iCloud key-value store.
@@ -25,6 +26,9 @@ public class CloudSavePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "load", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "store", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "signOut", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "isLeaderboardAvailable", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "submitLeaderboardScore", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "showLeaderboard", returnType: CAPPluginReturnPromise),
     ]
 
     private let store = NSUbiquitousKeyValueStore.default
@@ -37,6 +41,17 @@ public class CloudSavePlugin: CAPPlugin, CAPBridgedPlugin {
     override public func load() {
         // Pull any change another device pushed while we were not running.
         store.synchronize()
+        // Game Center authenticates on its own terms. Setting the handler at
+        // launch means its sheet (if one is needed at all) appears once, up
+        // front, rather than interrupting a level later. A refusal is fine:
+        // the leaderboard button then reports "not signed in" and nothing
+        // else about the game changes.
+        GKLocalPlayer.local.authenticateHandler = { [weak self] viewController, _ in
+            guard let viewController else { return }
+            DispatchQueue.main.async {
+                self?.bridge?.viewController?.present(viewController, animated: true)
+            }
+        }
     }
 
     private var iCloudSignedIn: Bool {
@@ -102,5 +117,78 @@ public class CloudSavePlugin: CAPPlugin, CAPBridgedPlugin {
         } else {
             call.reject("iCloud key-value store refused the write")
         }
+    }
+
+    // ------------------------------------------------------------ leaderboard
+    /// Deliberately NOT `isAvailable`, which answers for iCloud: Game Center is
+    /// a separate service and one can work while the other does not. Every
+    /// supported iOS version has Game Center, so this is a flat yes; whether
+    /// the player is signed in is answered per call below.
+    @objc func isLeaderboardAvailable(_ call: CAPPluginCall) {
+        call.resolve(["available": true])
+    }
+
+    /// Silent by design: a score is posted right after a win, and a sign-in
+    /// sheet at that moment would read as a nag. Signed out resolves having
+    /// done nothing; the next win retries.
+    @objc func submitLeaderboardScore(_ call: CAPPluginCall) {
+        guard let identifier = call.getString("leaderboardId") else {
+            call.reject("leaderboardId is required")
+            return
+        }
+        guard let score = call.getInt("score") else {
+            call.reject("score is required")
+            return
+        }
+        guard GKLocalPlayer.local.isAuthenticated else {
+            call.resolve()
+            return
+        }
+        GKLeaderboard.submitScore(
+            score,
+            context: 0,
+            player: GKLocalPlayer.local,
+            leaderboardIDs: [identifier]
+        ) { error in
+            if let error {
+                CAPLog.print("[CloudSave] leaderboard submit failed: \(error.localizedDescription)")
+            }
+            call.resolve()
+        }
+    }
+
+    /// Opens Game Center's own board UI. `shown: false` means the player is not
+    /// signed in - not an error; the game says so and moves on. We do not
+    /// re-present the sign-in sheet here, since `authenticateHandler` already
+    /// offered it at launch and a second prompt would only repeat a refusal.
+    @objc func showLeaderboard(_ call: CAPPluginCall) {
+        guard let identifier = call.getString("leaderboardId") else {
+            call.reject("leaderboardId is required")
+            return
+        }
+        guard GKLocalPlayer.local.isAuthenticated else {
+            call.resolve(["shown": false])
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let host = self.bridge?.viewController else {
+                call.resolve(["shown": false])
+                return
+            }
+            let controller = GKGameCenterViewController(
+                leaderboardID: identifier,
+                playerScope: .global,
+                timeScope: .allTime
+            )
+            controller.gameCenterDelegate = self
+            host.present(controller, animated: true)
+            call.resolve(["shown": true])
+        }
+    }
+}
+
+extension CloudSavePlugin: GKGameCenterControllerDelegate {
+    public func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
+        gameCenterViewController.dismiss(animated: true)
     }
 }

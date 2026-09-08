@@ -406,5 +406,27 @@ const table: Record<string, string> = {
   'ads.privacyDesc': 'Просмотреть или изменить согласие на персонализированную рекламу',
   'ads.privacyBtn': 'Настроить',
 
+  // leaderboard
+  'board.view': 'Посмотреть',
+  'board.unlockTitle': 'Таблица лидеров открыта!',
+  'board.unlockBody': 'Вы дошли до уровня {n}, и теперь ваши звёзды идут в зачёт. Каждая звезда поднимает вас в рейтинге среди игроков со всего мира, а переигровка старого уровня ради пропущенной звезды тоже добавляет позиции.',
+  'board.signedOut': 'Войдите в игровой аккаунт, чтобы увидеть таблицу лидеров',
+  'board.unavailable': 'Таблица лидеров сейчас недоступна',
+
+  'nav.board': 'Рейтинг',
+  'board.title': 'Таблица лидеров',
+  'board.open': 'Открыть таблицу',
+  'board.lockedTitle': 'Откроется на уровне {n}',
+  'board.lockedProgress': 'Уровень {level} из {target}',
+  'board.lockedRemaining.one': 'Остался {n} уровень',
+  'board.lockedRemaining.other': 'Осталось {n} уровней',
+  'board.keepPlaying': 'Играть дальше',
+  'board.unlockedTitle': 'Вы в таблице лидеров',
+  'board.ofMax': 'из {max} звёзд',
+  'board.appOnly': 'Таблица лидеров доступна в приложениях для Android и iOS.',
+  'board.how': 'Вы ранжируетесь по собранным звёздам. Переигровка старого уровня ради пропущенной звезды тоже засчитывается.',
+  'board.lockedRemaining.few': 'Осталось {n} уровня',
+  'board.lockedRemaining.many': 'Осталось {n} уровней',
+
 };
 export default table;

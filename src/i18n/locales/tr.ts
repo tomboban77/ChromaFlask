@@ -379,5 +379,25 @@ const table: Record<string, string> = {
   'ads.privacyDesc': 'Kişiselleştirilmiş reklam iznini görüntüle veya değiştir',
   'ads.privacyBtn': 'Yönet',
 
+  // leaderboard
+  'board.view': 'Göz at',
+  'board.unlockTitle': 'Sıralama açıldı!',
+  'board.unlockBody': '{n}. seviyeye ulaştın, artık yıldızların sayılıyor. Kazandığın her yıldız seni dünyadaki oyuncularla sıralar; kaçırdığın bir yıldız için eski bir bölümü tekrar oynamak da seni yukarı taşır.',
+  'board.signedOut': 'Sıralamayı görmek için oyun hesabına giriş yap',
+  'board.unavailable': 'Sıralama şu anda kullanılamıyor',
+
+  'nav.board': 'Sıralama',
+  'board.title': 'Sıralama',
+  'board.open': 'Sıralamayı gör',
+  'board.lockedTitle': '{n}. seviyede açılır',
+  'board.lockedProgress': 'Seviye {level} / {target}',
+  'board.lockedRemaining.one': '{n} seviye kaldı',
+  'board.lockedRemaining.other': '{n} seviye kaldı',
+  'board.keepPlaying': 'Oynamaya devam et',
+  'board.unlockedTitle': 'Sıralamadasın',
+  'board.ofMax': '/ {max} yıldız',
+  'board.appOnly': 'Sıralama Android ve iOS uygulamalarında.',
+  'board.how': 'Topladığın yıldızlara göre sıralanırsın. Kaçırdığın bir yıldız için eski bir bölümü tekrar oynamak da sayılır.',
+
 };
 export default table;

@@ -379,5 +379,25 @@ const table: Record<string, string> = {
   'ads.privacyDesc': 'Lihat atau ubah persetujuan iklan yang dipersonalisasi',
   'ads.privacyBtn': 'Kelola',
 
+  // leaderboard
+  'board.view': 'Lihat dulu',
+  'board.unlockTitle': 'Papan peringkat terbuka!',
+  'board.unlockBody': 'Kamu sudah mencapai level {n}, jadi bintangmu kini dihitung. Setiap bintang menempatkanmu di antara pemain dari seluruh dunia - dan mengulang level lama demi bintang yang terlewat juga menaikkan peringkatmu.',
+  'board.signedOut': 'Masuk ke akun gamemu untuk melihat papan peringkat',
+  'board.unavailable': 'Papan peringkat tidak tersedia saat ini',
+
+  'nav.board': 'Peringkat',
+  'board.title': 'Papan peringkat',
+  'board.open': 'Lihat papan peringkat',
+  'board.lockedTitle': 'Terbuka di level {n}',
+  'board.lockedProgress': 'Level {level} dari {target}',
+  'board.lockedRemaining.one': 'Kurang {n} level',
+  'board.lockedRemaining.other': 'Kurang {n} level',
+  'board.keepPlaying': 'Lanjut bermain',
+  'board.unlockedTitle': 'Kamu ada di papan peringkat',
+  'board.ofMax': 'dari {max} bintang',
+  'board.appOnly': 'Papan peringkat tersedia di aplikasi Android dan iOS.',
+  'board.how': 'Kamu diperingkat dari bintang yang kamu kumpulkan. Mengulang level lama demi bintang yang terlewat juga dihitung.',
+
 };
 export default table;

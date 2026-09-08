@@ -132,7 +132,8 @@ Search for the value to find every spot.
 | **AdMob app id, Android** | `android/app/src/main/res/values/strings.xml` → `admob_app_id` | **done** 2026-09-07 (`…~7723851386`) |
 | **AdMob app id, iOS** | `ios/App/App/Info.plist` → `GADApplicationIdentifier` | **done** 2026-09-07 (`…~7545204631`) |
 | **AdMob ad unit ids** (rewarded + interstitial, per platform) | `src/services/Ads.ts` → `AD_UNITS` | **done** 2026-09-07; test mode now only in dev builds (emulators are test devices anyway) |
-| **Play Games project id** (cloud save) | `strings.xml` → `game_services_project_id` | `000000000000` - cloud save reports "unavailable" while wrong |
+| **Play Games project id** (cloud save + leaderboard) | `strings.xml` → `game_services_project_id` | `000000000000` - cloud save reports "unavailable" while wrong |
+| **Leaderboard board ids** | `src/services/Leaderboard.ts` → `LEADERBOARD_IDS` | Android is a placeholder (create the board in Play Console → Play Games Services → Leaderboards, ranked by **campaign stars**, higher is better; the id looks like `CgkI…`). iOS is already final (`prismpotions.stars`) but the board must be created in App Store Connect → Game Center with that exact id, format **Integer**, sort **High to Low**. While Android's is a placeholder the Ranks screen shows its app-only message and offers no View button; the tab itself is always present. |
 | **iCloud key-value entitlement** | Xcode → Signing & Capabilities → + iCloud → Key-value storage | not added (needs a signing team) |
 | **In-app products** | Play Console and App Store Connect, consumable, ids from `IAP_CATALOG` | not created |
 | **Signing** | Play upload key + Play App Signing; Apple team + provisioning | none |

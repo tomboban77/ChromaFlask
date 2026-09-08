@@ -1,10 +1,12 @@
 package com.prismpotions.cloudsave
 
 import android.os.Build
+import androidx.activity.result.ActivityResult
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
+import com.getcapacitor.annotation.ActivityCallback
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
@@ -117,14 +119,19 @@ class CloudSavePlugin : Plugin() {
                 try {
                     val bytes = snapshot.snapshotContents.readFully()
                     snapshots().discardAndClose(snapshot)
-                    if (bytes == null || bytes.isEmpty()) {
+                    if (bytes.isEmpty()) {
                         call.resolve(emptyEnvelope())
                         return@addOnSuccessListener
                     }
                     val env = JSONObject(String(bytes, Charsets.UTF_8))
+                    // `optString(name, null)` is a Java-nullability trap in
+                    // Kotlin (it types the default as Nothing?); the contract
+                    // is `data: string | null`, so branch on it explicitly.
+                    val stored: Any =
+                        if (env.isNull("data")) JSONObject.NULL else env.optString("data")
                     call.resolve(
                         JSObject()
-                            .put("data", env.optString("data", null))
+                            .put("data", stored)
                             .put("updatedAt", env.optLong("updatedAt", 0L))
                             .put("device", env.optString("device", "Android")),
                     )
@@ -167,4 +174,73 @@ class CloudSavePlugin : Plugin() {
 
     private fun emptyEnvelope(): JSObject =
         JSObject().put("data", JSONObject.NULL).put("updatedAt", 0L).put("device", "Android")
+
+    // ---------------------------------------------------------- leaderboard
+    /**
+     * Play Games leaderboards, on the same sign-in as saved games above - one
+     * account, one consent prompt. The game ranks by campaign stars; the board
+     * id comes from JS (src/services/Leaderboard.ts) so every store id lives
+     * in one place.
+     */
+    @PluginMethod
+    fun isLeaderboardAvailable(call: PluginCall) {
+        val status = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context)
+        call.resolve(JSObject().put("available", sdkReady && status == ConnectionResult.SUCCESS))
+    }
+
+    /**
+     * Silent by design: a score is posted after a win, and a sign-in sheet
+     * thrown at a player who just finished a level would read as a nag. When
+     * signed out this resolves having done nothing; the next win retries.
+     */
+    @PluginMethod
+    fun submitLeaderboardScore(call: PluginCall) {
+        val id = call.getString("leaderboardId") ?: run { call.reject("leaderboardId is required"); return }
+        val score = call.getInt("score") ?: run { call.reject("score is required"); return }
+        if (!sdkReady) { call.resolve(); return }
+        PlayGames.getGamesSignInClient(activity).isAuthenticated
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful && task.result.isAuthenticated) {
+                    PlayGames.getLeaderboardsClient(activity).submitScore(id, score.toLong())
+                }
+                call.resolve()
+            }
+    }
+
+    /**
+     * Opens Play Games' own board UI. Unlike posting, this is a deliberate tap,
+     * so signing in here is expected rather than intrusive: if the player is
+     * signed out we ask once, and a refusal resolves `shown: false` (not an
+     * error - the game just says "not signed in" and moves on).
+     */
+    @PluginMethod
+    fun showLeaderboard(call: PluginCall) {
+        val id = call.getString("leaderboardId") ?: run { call.reject("leaderboardId is required"); return }
+        if (!sdkReady) { call.resolve(notShown()); return }
+        val signInClient = PlayGames.getGamesSignInClient(activity)
+        signInClient.isAuthenticated.addOnCompleteListener { task ->
+            if (task.isSuccessful && task.result.isAuthenticated) {
+                openLeaderboard(call, id)
+            } else {
+                signInClient.signIn().addOnCompleteListener { retry ->
+                    if (retry.isSuccessful && retry.result.isAuthenticated) openLeaderboard(call, id)
+                    else call.resolve(notShown())
+                }
+            }
+        }
+    }
+
+    private fun openLeaderboard(call: PluginCall, id: String) {
+        PlayGames.getLeaderboardsClient(activity).getLeaderboardIntent(id)
+            .addOnSuccessListener { intent -> startActivityForResult(call, intent, "leaderboardClosed") }
+            .addOnFailureListener { err -> call.reject("leaderboard intent failed: ${err.message}") }
+    }
+
+    /** The player closed the board. Anything they did there is Google's business. */
+    @ActivityCallback
+    private fun leaderboardClosed(call: PluginCall?, result: ActivityResult) {
+        call?.resolve(JSObject().put("shown", true))
+    }
+
+    private fun notShown(): JSObject = JSObject().put("shown", false)
 }

@@ -387,5 +387,25 @@ const table: Record<string, string> = {
   'ads.privacyDesc': 'Reveja ou altere seu consentimento para anúncios personalizados',
   'ads.privacyBtn': 'Gerenciar',
 
+  // leaderboard
+  'board.view': 'Dar uma olhada',
+  'board.unlockTitle': 'Classificação desbloqueada!',
+  'board.unlockBody': 'Você chegou ao nível {n}, então suas estrelas agora contam. Cada estrela conquistada te classifica entre jogadores do mundo todo - e repetir um nível antigo por uma estrela que faltou também te faz subir.',
+  'board.signedOut': 'Entre na sua conta de jogos para ver a classificação',
+  'board.unavailable': 'A classificação não está disponível no momento',
+
+  'nav.board': 'Ranking',
+  'board.title': 'Classificação',
+  'board.open': 'Ver classificação',
+  'board.lockedTitle': 'Abre no nível {n}',
+  'board.lockedProgress': 'Nível {level} de {target}',
+  'board.lockedRemaining.one': 'Falta {n} nível',
+  'board.lockedRemaining.other': 'Faltam {n} níveis',
+  'board.keepPlaying': 'Continuar jogando',
+  'board.unlockedTitle': 'Você está na classificação',
+  'board.ofMax': 'de {max} estrelas',
+  'board.appOnly': 'A classificação está disponível nos apps de Android e iOS.',
+  'board.how': 'Você é classificado pelas estrelas que junta. Repetir um nível antigo por uma estrela que faltou também conta.',
+
 };
 export default table;

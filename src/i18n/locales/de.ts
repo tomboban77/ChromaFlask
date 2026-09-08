@@ -387,5 +387,25 @@ const table: Record<string, string> = {
   'ads.privacyDesc': 'Einwilligung zu personalisierter Werbung ansehen oder ändern',
   'ads.privacyBtn': 'Verwalten',
 
+  // leaderboard
+  'board.view': 'Ansehen',
+  'board.unlockTitle': 'Bestenliste freigeschaltet!',
+  'board.unlockBody': 'Du hast Level {n} erreicht, also zählen deine Sterne jetzt. Jeder Stern platziert dich gegen Spieler weltweit - und ein altes Level für einen verpassten Stern zu wiederholen bringt dich ebenfalls nach oben.',
+  'board.signedOut': 'Melde dich bei deinem Spielekonto an, um die Bestenliste zu sehen',
+  'board.unavailable': 'Die Bestenliste ist gerade nicht verfügbar',
+
+  'nav.board': 'Rang',
+  'board.title': 'Bestenliste',
+  'board.open': 'Bestenliste ansehen',
+  'board.lockedTitle': 'Öffnet auf Level {n}',
+  'board.lockedProgress': 'Level {level} von {target}',
+  'board.lockedRemaining.one': 'Noch {n} Level',
+  'board.lockedRemaining.other': 'Noch {n} Level',
+  'board.keepPlaying': 'Weiterspielen',
+  'board.unlockedTitle': 'Du bist in der Bestenliste',
+  'board.ofMax': 'von {max} Sternen',
+  'board.appOnly': 'Die Bestenliste gibt es in den Android- und iOS-Apps.',
+  'board.how': 'Du wirst nach den Sternen bewertet, die du sammelst. Ein altes Level für einen verpassten Stern zu wiederholen zählt auch.',
+
 };
 export default table;

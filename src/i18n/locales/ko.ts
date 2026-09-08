@@ -379,5 +379,25 @@ const table: Record<string, string> = {
   'ads.privacyDesc': '맞춤 광고 동의를 확인하거나 변경합니다',
   'ads.privacyBtn': '관리',
 
+  // leaderboard
+  'board.view': '살펴보기',
+  'board.unlockTitle': '리더보드 해금!',
+  'board.unlockBody': '레벨 {n}에 도달해 이제 별이 집계됩니다. 획득한 별로 전 세계 플레이어와 순위를 겨루게 되며, 놓친 별을 얻으려고 예전 레벨을 다시 플레이해도 순위가 올라갑니다.',
+  'board.signedOut': '리더보드를 보려면 게임 계정에 로그인하세요',
+  'board.unavailable': '지금은 리더보드를 사용할 수 없습니다',
+
+  'nav.board': '랭킹',
+  'board.title': '리더보드',
+  'board.open': '리더보드 보기',
+  'board.lockedTitle': '레벨 {n}에서 열림',
+  'board.lockedProgress': '레벨 {level} / {target}',
+  'board.lockedRemaining.one': '{n}레벨 남음',
+  'board.lockedRemaining.other': '{n}레벨 남음',
+  'board.keepPlaying': '계속 플레이',
+  'board.unlockedTitle': '리더보드에 올랐습니다',
+  'board.ofMax': '/ {max}개의 별',
+  'board.appOnly': '리더보드는 Android와 iOS 앱에서 이용할 수 있습니다.',
+  'board.how': '모은 별로 순위가 정해집니다. 놓친 별을 얻으려고 예전 레벨을 다시 플레이해도 반영됩니다.',
+
 };
 export default table;

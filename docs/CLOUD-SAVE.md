@@ -13,6 +13,13 @@ The game reaches both through one Capacitor plugin, `CloudSave`, in
 [`native/capacitor-cloudsave`](../native/capacitor-cloudsave). The web app
 never knows which platform it is on.
 
+> **The plugin also carries the leaderboard** (`isLeaderboardAvailable`,
+> `submitLeaderboardScore`, `showLeaderboard`), despite the package name.
+> On Android a leaderboard needs exactly the same Play Games sign-in as saved
+> games, so a second plugin would mean two copies of the auth handling and two
+> consent prompts for one account. Game side: `src/services/Leaderboard.ts`;
+> behaviour and the level-45 gate are in [STATUS.md](STATUS.md).
+
 > **Wrapper decision.** iOS can only be shipped as a WKWebView wrapper, and
 > Android cloud save needs a native bridge a Trusted Web Activity cannot give.
 > Both stores therefore ship the **same Capacitor wrapper**. The TWA guide

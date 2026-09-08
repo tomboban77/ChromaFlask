@@ -113,6 +113,16 @@
         <path id="cf-house" d="M12 3.2 21 11h-2.6v8.6a1.2 1.2 0 0 1-1.2 1.2h-3.4v-6h-3.6v6H6.8
           a1.2 1.2 0 0 1-1.2-1.2V11H3l9-7.8Z" />
         <path id="cf-grid" d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" />
+        <!-- Trophy for the Ranks tab and the leaderboard medallion. The
+             handles matter: without them the cup reads as a goblet, which is
+             obvious at the 112px badge size. Fills are inherited so the same
+             glyph can be gold on purple in the nav and brown on gold here. -->
+        <g id="cf-trophy">
+          <path d="M7 3h10v5.5q0 4.5-5 4.5t-5-4.5V3Z" />
+          <path d="M7 4.4H5.1a2.7 2.7 0 0 0 2.2 5.2V8.1a1.3 1.3 0 0 1-1-2.3H7Z" />
+          <path d="M17 4.4h1.9a2.7 2.7 0 0 1-2.2 5.2V8.1a1.3 1.3 0 0 0 1-2.3H17Z" />
+          <path d="M11 13h2v3h3v2H8v-2h3v-3Z" />
+        </g>
         <path id="cf-calendar" d="M7 2.5v3M17 2.5v3M4 9h16M6 4.5h12a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2H6
           a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2Zm2 8h3v3H8v-3Z" fill="none" stroke="currentColor"
           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
@@ -255,6 +265,30 @@
         </div>
       </section>
 
+      <!-- ===================================================== LEADERBOARD
+           Always reachable from the nav, even before it unlocks at level 45:
+           a tab that vanishes is a tab nobody discovers, so the locked state
+           is a real page that says when it opens and how ranking works.
+           The board itself is the platform's own overlay (Play Games / Game
+           Center); this screen is the landing page in front of it. -->
+      <section class="screen screen--nav" id="screen-board">
+        <header class="topbar">
+          <div class="chip chip--profile">
+            <span class="chip__avatar" id="board-avatar">🐱</span>
+            <span class="chip__name" id="board-name">Player</span>
+          </div>
+          <div class="topbar__spacer"></div>
+          <div class="chip chip--stat">
+            <span class="chip__icon">★</span>
+            <span id="board-stars">0</span>
+          </div>
+          <button class="iconbtn" id="btn-settings-board" aria-label="Settings" data-i18n-aria="common.settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-gear" /></svg>
+          </button>
+        </header>
+        <div class="board" id="board-body"></div>
+      </section>
+
       <!-- ============================================================ SHOP -->
       <section class="screen" id="screen-shop">
         <header class="topbar">
@@ -376,6 +410,10 @@
         <button class="bottomnav__tab" data-nav="shop" aria-label="Shop" data-i18n-aria="nav.shop">
           <svg viewBox="0 0 24 24"><use href="#cf-bag" /></svg>
           <span data-i18n="nav.shop">Shop</span>
+        </button>
+        <button class="bottomnav__tab" data-nav="board" aria-label="Leaderboard" data-i18n-aria="board.title">
+          <svg viewBox="0 0 24 24"><use href="#cf-trophy" /></svg>
+          <span data-i18n="nav.board">Ranks</span>
         </button>
         <button class="bottomnav__tab bottomnav__tab--active" data-nav="home" aria-label="Home" data-i18n-aria="nav.home">
           <svg viewBox="0 0 24 24"><use href="#cf-house" /></svg>

@@ -37,7 +37,11 @@ export type AnalyticsEvent =
   /** Player asked to watch a rewarded ad; `outcome` is what the SDK reported. */
   | { type: 'ad_rewarded'; placement: string; outcome: string }
   /** Interstitial gate fired on leaving a win screen (skips are not tracked). */
-  | { type: 'ad_interstitial'; level: number; outcome: 'shown' | 'failed' };
+  | { type: 'ad_interstitial'; level: number; outcome: 'shown' | 'failed' }
+  /** The level-45 leaderboard unlock was shown for the first time. */
+  | { type: 'leaderboard_unlocked'; level: number }
+  /** Player opened the platform board; `outcome` is what the platform reported. */
+  | { type: 'leaderboard_open'; outcome: string; stars: number };
 
 export interface AnalyticsDriver {
   track(event: AnalyticsEvent): void;

@@ -379,5 +379,25 @@ const table: Record<string, string> = {
   'ads.privacyDesc': 'パーソナライズ広告への同意を確認・変更します',
   'ads.privacyBtn': '管理',
 
+  // leaderboard
+  'board.view': '見てみる',
+  'board.unlockTitle': 'ランキング解放！',
+  'board.unlockBody': 'レベル{n}に到達したので、あなたの星が集計されるようになりました。獲得した星が世界中のプレイヤーとの順位になります。取り逃した星を求めて過去のレベルを遊び直すのも順位アップにつながります。',
+  'board.signedOut': 'ランキングを見るにはゲームアカウントにサインインしてください',
+  'board.unavailable': 'ランキングは現在利用できません',
+
+  'nav.board': 'ランク',
+  'board.title': 'ランキング',
+  'board.open': 'ランキングを見る',
+  'board.lockedTitle': 'レベル{n}で解放',
+  'board.lockedProgress': 'レベル {level} / {target}',
+  'board.lockedRemaining.one': 'あと{n}レベル',
+  'board.lockedRemaining.other': 'あと{n}レベル',
+  'board.keepPlaying': 'プレイを続ける',
+  'board.unlockedTitle': 'ランキングに参加中',
+  'board.ofMax': '/ {max} 個の星',
+  'board.appOnly': 'ランキングは Android と iOS のアプリで利用できます。',
+  'board.how': '集めた星の数で順位が決まります。取り逃した星を求めて過去のレベルを遊び直すのも加算されます。',
+
 };
 export default table;

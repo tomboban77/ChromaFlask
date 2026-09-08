@@ -387,5 +387,25 @@ const table: Record<string, string> = {
   'ads.privacyDesc': 'Rivedi o modifica il consenso agli annunci personalizzati',
   'ads.privacyBtn': 'Gestisci',
 
+  // leaderboard
+  'board.view': 'Dai un’occhiata',
+  'board.unlockTitle': 'Classifica sbloccata!',
+  'board.unlockBody': 'Hai raggiunto il livello {n}, quindi le tue stelle ora contano. Ogni stella ti mette in classifica con giocatori di tutto il mondo, e rigiocare un vecchio livello per una stella mancata ti fa salire.',
+  'board.signedOut': 'Accedi al tuo account di gioco per vedere la classifica',
+  'board.unavailable': 'La classifica non è disponibile al momento',
+
+  'nav.board': 'Classifica',
+  'board.title': 'Classifica',
+  'board.open': 'Vedi classifica',
+  'board.lockedTitle': 'Si apre al livello {n}',
+  'board.lockedProgress': 'Livello {level} di {target}',
+  'board.lockedRemaining.one': 'Manca {n} livello',
+  'board.lockedRemaining.other': 'Mancano {n} livelli',
+  'board.keepPlaying': 'Continua a giocare',
+  'board.unlockedTitle': 'Sei in classifica',
+  'board.ofMax': 'di {max} stelle',
+  'board.appOnly': 'La classifica è disponibile nelle app Android e iOS.',
+  'board.how': 'Sei classificato per le stelle che raccogli. Rigiocare un vecchio livello per una stella mancata conta.',
+
 };
 export default table;

@@ -388,5 +388,25 @@ const table: Record<string, string> = {
   'ads.privacyDesc': 'वैयक्तिकृत विज्ञापनों के लिए अपनी सहमति देखें या बदलें',
   'ads.privacyBtn': 'प्रबंधित करें',
 
+  // leaderboard
+  'board.view': 'एक नज़र डालें',
+  'board.unlockTitle': 'लीडरबोर्ड खुल गया!',
+  'board.unlockBody': 'आप लेवल {n} तक पहुँच गए हैं, तो अब आपके सितारे गिने जाएँगे। हर सितारा आपको दुनिया भर के खिलाड़ियों के बीच रैंक देता है - और छूटे हुए सितारे के लिए पुराना लेवल दोबारा खेलना भी आपको ऊपर ले जाता है।',
+  'board.signedOut': 'लीडरबोर्ड देखने के लिए अपने गेम खाते में साइन इन करें',
+  'board.unavailable': 'लीडरबोर्ड अभी उपलब्ध नहीं है',
+
+  'nav.board': 'रैंक',
+  'board.title': 'लीडरबोर्ड',
+  'board.open': 'लीडरबोर्ड देखें',
+  'board.lockedTitle': 'लेवल {n} पर खुलता है',
+  'board.lockedProgress': 'लेवल {level} / {target}',
+  'board.lockedRemaining.one': '{n} लेवल बाकी',
+  'board.lockedRemaining.other': '{n} लेवल बाकी',
+  'board.keepPlaying': 'खेलते रहें',
+  'board.unlockedTitle': 'आप बोर्ड पर हैं',
+  'board.ofMax': '{max} सितारों में से',
+  'board.appOnly': 'रैंकिंग Android और iOS ऐप्स में उपलब्ध है।',
+  'board.how': 'आपकी रैंक आपके जमा किए सितारों से तय होती है। छूटे हुए सितारे के लिए पुराना लेवल दोबारा खेलना भी गिना जाता है।',
+
 };
 export default table;

@@ -26,6 +26,9 @@ import {
   IAP_CATALOG, Payments, getProduct, type IapProduct, type PendingPurchase, type ProductId,
 } from '@/services/Payments';
 import { Ads, pickAdsDriver } from '@/services/Ads';
+import {
+  LEADERBOARD_UNLOCK_LEVEL, Leaderboard, leaderboardUnlocked, pickLeaderboardDriver,
+} from '@/services/Leaderboard';
 import { isNativeApp, platform } from '@/services/Platform';
 import {
   applySupportCode, formatSupportId, supportMailto, verifySupportCode,
@@ -47,9 +50,9 @@ import {
 import { Tutorial } from '@/ui/Tutorial';
 import { Confetti } from '@/ui/Confetti';
 
-type ScreenId = 'boot' | 'profile' | 'home' | 'map' | 'shop' | 'game';
+type ScreenId = 'boot' | 'profile' | 'home' | 'map' | 'board' | 'shop' | 'game';
 type WinMode = 'campaign' | 'endless' | 'daily';
-const SCREENS: readonly ScreenId[] = ['boot', 'profile', 'home', 'map', 'shop', 'game'];
+const SCREENS: readonly ScreenId[] = ['boot', 'profile', 'home', 'map', 'board', 'shop', 'game'];
 
 const AVATARS = ['🐱', '🦊', '🐼', '🐸', '🦉', '🐙', '🦄', '🐧'];
 
@@ -138,6 +141,7 @@ class App {
   private readonly auth = new AuthService();
   private readonly payments = new Payments();
   private readonly ads = new Ads(pickAdsDriver());
+  private readonly leaderboard = new Leaderboard(pickLeaderboardDriver());
   private save!: SaveService;
 
   private readonly stage = new GameStage();
@@ -202,6 +206,17 @@ class App {
       this.stage.setPaused(this.current !== 'game' || document.hidden);
     };
     void this.ads.init();
+    // Leaderboard: platform ranking by campaign stars, gated on level 45.
+    // Probed off the boot path, then the current total is posted so a player
+    // who progressed on another device is not stale on the board.
+    void this.leaderboard.init().then(() => {
+      if (!this.leaderboard.available) return;
+      // The screen may already be open and showing the app-only fallback.
+      if (this.current === 'board') this.renderBoardScreen();
+      if (leaderboardUnlocked(this.save.highestUnlocked(LEVEL_COUNT))) {
+        void this.leaderboard.submit(this.save.campaignStars(LEVEL_COUNT));
+      }
+    });
     // iOS has no Vibration API; the Taptic Engine is reached through the native bridge.
     if (platform() === 'ios') void installNativeHaptics();
     // The support ID doubles as the analytics identity, so a support email
@@ -475,7 +490,7 @@ class App {
     }
 
     const nav = $('#bottomnav');
-    nav.hidden = !(id === 'home' || id === 'map');
+    nav.hidden = !(id === 'home' || id === 'map' || id === 'board');
     for (const tab of Array.from(nav.querySelectorAll<HTMLElement>('.bottomnav__tab'))) {
       tab.classList.toggle('bottomnav__tab--active', tab.dataset.nav === id);
     }
@@ -488,7 +503,10 @@ class App {
     this.stage.setPaused(id !== 'game' || document.hidden);
     this.updateTutorialHand();
     this.syncHistoryGuard();
-    if (id === 'home') this.maybeShowLoginReward();
+    if (id === 'home') {
+      this.maybeShowLoginReward();
+      this.maybeShowLeaderboardUnlock();
+    }
   }
 
   // ---------------------------------------------------------- back button
@@ -546,6 +564,7 @@ class App {
         this.closeShop();
         break;
       case 'map':
+      case 'board':
         this.goHome();
         break;
       case 'profile':
@@ -734,6 +753,8 @@ class App {
         } else if (target === 'map') {
           this.renderMap();
           this.show('map');
+        } else if (target === 'board') {
+          this.showBoard();
         } else {
           this.renderHome();
           this.show('home');
@@ -782,6 +803,127 @@ class App {
       : done >= LEVEL_COUNT
         ? this.levelLabel(this.save.nextEndlessId(LEVEL_COUNT))
         : t('level.n', { n: next });
+  }
+
+  // ----------------------------------------------------------- leaderboard
+  private showBoard(): void {
+    this.renderBoardScreen();
+    this.show('board');
+  }
+
+  /**
+   * The leaderboard screen, in one of three honest states: locked with a
+   * countdown, open with a score and a way into the platform's board, or open
+   * but app-only (the web build has no platform account to rank against).
+   * The tab is always there - a nav item that appears from nowhere at level 45
+   * is a nav item nobody was waiting for.
+   */
+  private renderBoardScreen(): void {
+    $('#btn-settings-board').onclick = () => this.openSettings();
+    const profile = this.save.snapshot.profile;
+    $('#board-avatar').textContent = profile?.avatar ?? '🐱';
+    $('#board-name').textContent = profile?.name || t('prof.guest');
+    const stars = this.save.campaignStars(LEVEL_COUNT);
+    $('#board-stars').textContent = formatNumber(stars);
+
+    const level = this.save.highestUnlocked(LEVEL_COUNT);
+    const unlocked = leaderboardUnlocked(level);
+    const body = $('#board-body');
+    body.replaceChildren();
+
+    const badge = el('div', `board__badge${unlocked ? '' : ' board__badge--locked'}`);
+    badge.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-trophy" /></svg>';
+    body.appendChild(badge);
+
+    if (!unlocked) {
+      body.appendChild(el('h2', 'board__head', t('board.lockedTitle', { n: LEADERBOARD_UNLOCK_LEVEL })));
+      const bar = el('div', 'board__bar');
+      const fill = el('i');
+      fill.style.width = `${Math.round((100 * level) / LEADERBOARD_UNLOCK_LEVEL)}%`;
+      bar.appendChild(fill);
+      bar.appendChild(el('span', '', t('board.lockedProgress', { level, target: LEADERBOARD_UNLOCK_LEVEL })));
+      body.appendChild(bar);
+      body.appendChild(el('p', 'board__note', tp('board.lockedRemaining', LEADERBOARD_UNLOCK_LEVEL - level)));
+      const play = el('button', 'btn btn--success btn--wide board__cta', t('board.keepPlaying'));
+      play.addEventListener('click', () => {
+        audio.play('button');
+        haptic(8);
+        this.goHome();
+      });
+      body.appendChild(play);
+    } else {
+      body.appendChild(el('h2', 'board__head', t('board.unlockedTitle')));
+      const score = el('div', 'board__score');
+      score.appendChild(el('b', '', `★ ${formatNumber(stars)}`));
+      score.appendChild(el('small', '', t('board.ofMax', { max: formatNumber(LEVEL_COUNT * 3) })));
+      body.appendChild(score);
+      if (this.leaderboard.available) {
+        const view = el('button', 'btn btn--primary btn--wide board__cta', t('board.open'));
+        view.addEventListener('click', () => {
+          audio.play('button');
+          haptic(8);
+          void this.openLeaderboard();
+        });
+        body.appendChild(view);
+      } else {
+        // Web, or an app build whose board id is still a placeholder.
+        body.appendChild(el('p', 'board__note', t('board.appOnly')));
+      }
+    }
+
+    // How ranking works, in both states: it is the reason to keep replaying.
+    body.appendChild(el('p', 'board__rule', t('board.how')));
+  }
+
+  /**
+   * Hands off to the platform's own board UI. Nothing is rendered by us: Play
+   * Games and Game Center both insist their leaderboards are shown in their
+   * chrome, and their sheets already handle friends, scopes and profiles.
+   */
+  private async openLeaderboard(): Promise<void> {
+    const stars = this.save.campaignStars(LEVEL_COUNT);
+    // Post before opening, so the board the player is about to look at
+    // already includes the run that got them here.
+    await this.leaderboard.submit(stars);
+    const outcome = await this.leaderboard.show();
+    this.analytics.track({ type: 'leaderboard_open', outcome, stars });
+    if (outcome === 'signed-out') this.toast.show(t('board.signedOut'), 'warn', 3600);
+    else if (outcome === 'unavailable') this.toast.show(t('board.unavailable'), 'warn', 3000);
+  }
+
+  /**
+   * One-time "leaderboard unlocked" moment, the same shape as the mechanic
+   * intros. Deliberately on the home screen rather than the win screen: the
+   * win screen already carries stars, coins, a chapter ribbon and achievement
+   * toasts, and this would be the fifth thing shouting at once.
+   */
+  private maybeShowLeaderboardUnlock(): void {
+    if (this.save.snapshot.leaderboardSeen) return;
+    if (!this.leaderboard.available) return;
+    const level = this.save.highestUnlocked(LEVEL_COUNT);
+    if (!leaderboardUnlocked(level)) return;
+    window.setTimeout(() => {
+      if (this.current !== 'home' || this.modal.isOpen) return;
+      if (this.save.snapshot.leaderboardSeen) return;
+      this.save.update((d) => {
+        d.leaderboardSeen = true;
+      });
+      this.analytics.track({ type: 'leaderboard_unlocked', level });
+      audio.play('unlock');
+      haptic([10, 30, 20], 'success');
+      this.confetti.burst(1);
+      this.modal.open({
+        title: t('board.unlockTitle'),
+        bodyHtml: escapeHtml(t('board.unlockBody', { n: LEADERBOARD_UNLOCK_LEVEL })),
+        inlineButtons: true,
+        buttons: [
+          { label: t('common.gotIt'), kind: 'ghost' },
+          // Into the screen, not straight to the platform overlay: this is
+          // also the moment to show the player where the tab lives.
+          { label: t('board.view'), kind: 'primary', onClick: () => this.showBoard() },
+        ],
+      });
+    }, 500);
   }
 
   /** "Level 12" inside the campaign, "Endless #7" beyond it, or the daily. */
@@ -1972,6 +2114,12 @@ class App {
     this.save.recordWinForStreak();
     const streak = this.save.snapshot.stats.streak;
     this.checkAchievements();
+    // Post the new star total. Cheap and idempotent: the service drops a score
+    // it has already sent, and does nothing at all when the board is locked,
+    // unavailable, or the player is signed out of the platform.
+    if (leaderboardUnlocked(this.save.highestUnlocked(LEVEL_COUNT))) {
+      void this.leaderboard.submit(this.save.campaignStars(LEVEL_COUNT));
+    }
 
     this.tutorial.finish();
     audio.duckMusic(2.2);

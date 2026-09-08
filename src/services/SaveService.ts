@@ -106,6 +106,8 @@ export interface SaveData {
   lockSeen: boolean;
   /** Whether the one-way flask has been introduced with a toast. */
   oneWaySeen: boolean;
+  /** Whether the "leaderboard unlocked" moment has been shown (level 45). */
+  leaderboardSeen: boolean;
   /** Ids of achievements already awarded (their coins have been paid). */
   achievements: string[];
   /**
@@ -133,7 +135,7 @@ export interface DailyState {
 const _dailyStateIsStreak: (s: DailyState) => DailyStreak = (s) => s;
 void _dailyStateIsStreak;
 
-export const SAVE_VERSION = 15;
+export const SAVE_VERSION = 16;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -179,6 +181,7 @@ export function defaultSave(startingCoins: number): SaveData {
     daily: { records: {}, streak: 0, lastDay: -1, bestStreak: 0 },
     lockSeen: false,
     oneWaySeen: false,
+    leaderboardSeen: false,
     achievements: [],
     login: { streak: 0, lastDay: -1 },
     skipped: [],
@@ -293,6 +296,9 @@ export class SaveService {
       // v9 saves predate the locked bottle; v11 the one-way flask.
       lockSeen: parsed.lockSeen ?? false,
       oneWaySeen: parsed.oneWaySeen ?? false,
+      // v15 saves predate the leaderboard. A player already past level 45 on
+      // an older save gets the unlock moment once, on their next visit home.
+      leaderboardSeen: parsed.leaderboardSeen ?? false,
       // v10 saves predate achievements and the login reward.
       achievements: Array.isArray(parsed.achievements) ? parsed.achievements : [],
       login: { ...fallback.login, ...(parsed.login ?? {}) },
