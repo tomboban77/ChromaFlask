@@ -408,8 +408,7 @@ _Last updated: 2026-09-06_
   projects from the repo art (`npm run assets:native`, outputs committed).
   Privacy policy filled in (publisher, date) with an AdMob/consent section.
   Android release config: `versionName 1.0.0`, minify + shrinkResources,
-  signing from git-ignored `android/keystore.properties`; `bundleRelease`
-  builds a 24 MB AAB (unsigned until the upload key exists).
+  signing from git-ignored `android/keystore.properties`. **Upload key created 2026-09-07** (`D:/Grow/keys/prismpotions-upload.jks`, alias `upload`, CN=Tom Boban / O=Velvea Studios, valid ~27 years, kept outside the repo and backed up by the publisher); `bundleRelease` produces a **signed** 24 MB AAB, verified with `jarsigner -verify` (the PKIX warning is expected - Android upload certs are self-signed).
 - **Renamed to Prism Potions (2026-09-07).** A Play Store search found an
   existing liquid-sort game "ChromaFlask: Liquid Sort Lab" by another
   developer, so the game, package id (`com.prismpotions.app`), native
@@ -433,7 +432,7 @@ _Last updated: 2026-09-06_
 | Native wrapper: Android emulator verified, rest pending | 2026-09-07, Android Studio 2025.1.3 + `Medium_Phone_API_36.1` emulator: app boots, campaign and daily play, **rewarded test ads play and grant** in both placements (out-of-hint flow and "Watch an ad for a heart" in More Lives; hearts were lowered via chrome://inspect → localStorage since small levels cannot be lost). Not yet exercised: billing sandbox purchases (no Play products), cloud save sign-in (placeholder project id), UMP consent form (non-EEA), interstitials, a physical phone. `ios/` is generated but uncompiled (needs a Mac). See [NATIVE-BUILD.md](NATIVE-BUILD.md) "Before the first device run". |
 | Murky reveal polish (fixed 2026-09-07) | A pour moves the whole matching run, including concealed units under the visible top; two "?" vanished mid-pour and read as a glitch. `BoardView.pour` now reveals the units about to move before the bottle lifts. Completing a bottle still reveals everything (the cork means one colour). |
 | Smoke test flake | `test:e2e` failed once on 2026-09-06 with `window.__cf` undefined right after `start(2)` (post-resume step) and passed on rerun. Timing, not a regression; if it recurs, lengthen the wait after the level-intro. |
-| Store ids: Play Games still a placeholder | AdMob app + unit ids are real as of 2026-09-07 (account `pub-1046627041489564`, apps "Prism Potions" Android/iOS, approval pending until a store listing exists; GDPR consent message **published**, US-state message saved as draft - publishing it is gated on account approval, non-personalised ads serve there meanwhile). Still zeros: the Play Games project id in `strings.xml`. App id `com.prismpotions.app` is final. |
+| Store ids: Play Games still a placeholder | AdMob app + unit ids are real as of 2026-09-07 (account `pub-1046627041489564`, apps "Prism Potions" Android/iOS, account approved 2026-09-07; GDPR and US-state consent messages both **published**; the apps themselves get reviewed once linked to a store listing). Still zeros: the Play Games project id in `strings.xml`. App id `com.prismpotions.app` is final. |
 | Receipt validation | Client-side purchase grants are fine for launch but spoofable; add a server verification endpoint before revenue scales. |
 | Full audit | [AUDIT.md](AUDIT.md) (2026-09-05) — findings by area with a P0/P1/P2 roadmap. P0 and P1 complete (lazy Pixi deferred). P2 in progress: L5 endless mode done; next daily challenge, chapters, achievements. |
 

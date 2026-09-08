@@ -75,11 +75,11 @@ art improves both at once.
    passwords - losing it means losing the ability to update the app unless
    Play App Signing is enrolled (it is, by default, for new apps):
    ```
-   keytool -genkeypair -v -keystore prismpotions-upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
+   keytool -genkeypair -v -keystore D:/Grow/keys/prismpotions-upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
    ```
-2. Create `android/keystore.properties` (git-ignored):
+2. Copy `android/keystore.properties.example` to `android/keystore.properties` (git-ignored) and fill in the password. PKCS12 keystores have no separate key password, so `storePassword` and `keyPassword` are the same value. Paths use forward slashes - a .properties file treats a backslash as an escape:
    ```
-   storeFile=../prismpotions-upload.jks
+   storeFile=D:/Grow/keys/prismpotions-upload.jks
    storePassword=...
    keyAlias=upload
    keyPassword=...
@@ -89,6 +89,22 @@ art improves both at once.
    `cd android && gradlew bundleRelease` (JDK 21). The bundle lands in
    `android/app/build/outputs/bundle/release/app-release.aab`; upload it to
    Play Console → Testing → Internal testing first.
+
+### Upload key fingerprints
+
+Created 2026-09-07, valid to Jan 2054 (Google requires at least Oct 2033).
+Fingerprints are public - they go into Play Games credentials and, for a TWA,
+a world-readable assetlinks.json - so they belong in the repo. The key file and
+its password do not.
+
+    SHA-1:   3D:C0:32:F5:59:93:61:6B:7F:11:71:58:68:0C:0E:7D:74:3E:2C:7E
+    SHA-256: 45:22:8B:34:3C:3B:7B:E2:13:77:21:FE:10:05:38:1B:F3:46:21:B2:CA:45:33:C0:FC:B4:5E:58:4D:71:F6:FD
+
+Play App Signing issues a **second** certificate that Google holds and that
+actually signs what users install. Its SHA-1 appears in Play Console → Test and
+release → Setup → App integrity after the first upload. Anywhere a fingerprint
+is registered (Play Games OAuth clients above all), **both** must be added, or
+sign-in works for you and fails for everyone who installs from Play.
 
 Release builds are minified and resource-shrunk; every plugin ships its own
 consumer ProGuard rules, so nothing extra is needed in `proguard-rules.pro`.

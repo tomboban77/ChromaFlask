@@ -54,16 +54,19 @@ never knows which platform it is on.
   reload → "Cloud save found" dialog → Use cloud save → home with the same
   level, bought skin and coins. Runs on both viewports.
 
-## Native plugin (written, not yet built)
+## Native plugin (Android compiles; iOS unbuilt)
 
 `native/capacitor-cloudsave` is a standard Capacitor plugin: TypeScript
 definitions, Android (Kotlin, Play Games Services v2 `SnapshotsClient`) and
-iOS (Swift, `NSUbiquitousKeyValueStore`). **It was written against the
-documented APIs but has not been compiled or run here** - no Android Studio or
-Xcode on this machine. Expect a short round of compiler fixes when the
-wrapper project is created. The JS contract it must satisfy is in
-`CloudSave.ts` (`CloudSavePlugin` interface) and in the plugin's
-`definitions.ts`.
+iOS (Swift, `NSUbiquitousKeyValueStore`). Installed into the app as the local
+package `capacitor-cloudsave`. The **Kotlin side compiles** as part of the
+Android build (2026-09-07); `PlayGamesSdk.initialize` is wrapped so a missing
+or placeholder `APP_ID` degrades to "cloud save unavailable" instead of
+crashing at start-up. The **Swift side has never been compiled** - that needs
+Xcode on a Mac, so expect a short round of fixes there. Neither side has run
+against a real account yet: the Play Games project id in `strings.xml` is
+still zeros. The JS contract both must satisfy is in `CloudSave.ts`
+(`CloudSavePlugin` interface) and in the plugin's `definitions.ts`.
 
 ### Contract
 
@@ -87,7 +90,9 @@ Any rejection is treated by the game as "not available right now".
    (`APP_ID` in the manifest meta-data).
 2. Under **Credentials**, add an Android OAuth client for the app's package
    name with the **upload key SHA-1 and the Play App Signing SHA-1**. Both,
-   or sign-in fails only in production.
+   or sign-in fails only in production. Upload key SHA-1 (created 2026-09-07):
+   `3D:C0:32:F5:59:93:61:6B:7F:11:71:58:68:0C:0E:7D:74:3E:2C:7E`; the Play-held
+   one appears in Play Console → App integrity after the first upload.
 3. Enable **Saved Games** in the games project configuration (it is off by
    default and cannot be turned on after publishing the games project).
 4. Add testers (Play Games Services → Testers) until the games project is
