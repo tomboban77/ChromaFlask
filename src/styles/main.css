@@ -1487,7 +1487,9 @@ body {
 .stars--arc i { font-size: 44px; }
 /* The middle star is taller and sits higher; the row grows to hold it rather
    than the star climbing into the eyebrow above. */
-.stars--arc i:nth-child(2) { font-size: 60px; margin-bottom: 8px; }
+/* nth-of-TYPE, not nth-child: the absolutely-positioned .win__burst is the
+   row's first child, so nth-child(2) enlarged the LEFT star and broke the arc. */
+.stars--arc i:nth-of-type(2) { font-size: 60px; margin-bottom: 8px; }
 .stars--arc i:not(.on) {
   color: rgba(20, 8, 50, 0.45);
   -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.28);
@@ -1930,7 +1932,11 @@ body {
   position: absolute;
   inset: -3px;
   border-radius: inherit;
-  box-shadow: 0 0 0 10px rgba(160, 255, 120, 0.5);
+  /* Blur, not spread. `0 0 0 10px` is a hard-edged 10px band: it passes as a
+     halo over the home screen's art but reads as a grey-green slab on the flat
+     purple of the win dialog. The blur is rasterized once - only transform and
+     opacity animate, so this still never repaints per frame. */
+  box-shadow: 0 0 18px 2px rgba(160, 255, 120, 0.55);
   pointer-events: none;
   animation: playpulse 2.4s ease-in-out infinite;
 }
