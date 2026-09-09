@@ -107,6 +107,13 @@ Any rejection is treated by the game as "not available right now".
    default and cannot be turned on after publishing the games project).
 4. Add testers (Play Games Services → Testers) until the games project is
    published; unpublished projects only work for listed accounts.
+4b. **Local debug builds:** PGS authorizes by signing certificate, so Android
+   Studio's default debug keystore (a third cert, SHA-1
+   `66:DB:04:9F:6E:65:5D:3A:CB:C0:8A:A4:2B:B5:1D:D8:BF:BA:52:79`) is refused and
+   sign-in silently fails while the Google account chooser still succeeds.
+   `android/app/build.gradle` therefore signs *debug* with the upload key as
+   well. After changing signing config, uninstall the app from the device first
+   or the install fails with INSTALL_FAILED_UPDATE_INCOMPATIBLE.
 5. Wrapper: `com.google.android.gms:play-services-games-v2:20.+` dependency,
    `<meta-data android:name="com.google.android.gms.games.APP_ID"
    android:value="@string/game_services_project_id"/>` in the manifest, and
