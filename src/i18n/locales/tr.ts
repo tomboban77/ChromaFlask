@@ -138,6 +138,9 @@ const table: Record<string, string> = {
   'game.skipTutorial': 'Eğitimi geç',
   'hud.moves.other': '{n} hamle',
   'hud.line': '{moves} · ideal {ideal}',
+  'hud.budget': '{moves} · {n} hakkın var',
+  'hud.budgetLast': '{moves} · son hamle',
+  'hud.budgetEdge': '{moves} · hakkın kalmadı',
 
   'tutorial.1': 'Şişeyi almak için dokun',
   'tutorial.2': 'Şimdi dökmek için diğer şişeye dokun',

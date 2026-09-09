@@ -138,6 +138,9 @@ const table: Record<string, string> = {
   'game.skipTutorial': 'Lewati tutorial',
   'hud.moves.other': '{n} langkah',
   'hud.line': '{moves} · ideal {ideal}',
+  'hud.budget': '{moves} · sisa {n}',
+  'hud.budgetLast': '{moves} · terakhir',
+  'hud.budgetEdge': '{moves} · tanpa sisa',
 
   'tutorial.1': 'Ketuk botol untuk mengangkatnya',
   'tutorial.2': 'Sekarang ketuk botol lain untuk menuang',

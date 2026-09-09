@@ -150,6 +150,9 @@ const table: Record<string, string> = {
   'hud.moves.many': '{n} ходов',
   'hud.moves.other': '{n} хода',
   'hud.line': '{moves} · идеал {ideal}',
+  'hud.budget': '{moves} · запас {n}',
+  'hud.budgetLast': '{moves} · последний',
+  'hud.budgetEdge': '{moves} · без запаса',
 
   'tutorial.1': 'Нажмите на бутылку, чтобы поднять её',
   'tutorial.2': 'Теперь нажмите на другую бутылку, чтобы перелить',

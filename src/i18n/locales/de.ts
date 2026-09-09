@@ -141,6 +141,9 @@ const table: Record<string, string> = {
   'hud.moves.one': '{n} Zug',
   'hud.moves.other': '{n} Züge',
   'hud.line': '{moves} · ideal {ideal}',
+  'hud.budget': '{moves} · {n} übrig',
+  'hud.budgetLast': '{moves} · letzter Zug',
+  'hud.budgetEdge': '{moves} · kein Spielraum',
 
   'tutorial.1': 'Tippe auf die Flasche, um sie zu nehmen',
   'tutorial.2': 'Tippe jetzt auf die andere Flasche, um umzugießen',

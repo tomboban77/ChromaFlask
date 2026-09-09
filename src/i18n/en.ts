@@ -157,6 +157,10 @@ export const en = {
   'hud.moves.one': '{n} move',
   'hud.moves.other': '{n} moves',
   'hud.line': '{moves} · ideal {ideal}',
+  // Live star budget: pours left before the star tier in the pill slips.
+  'hud.budget': '{moves} · {n} to spare',
+  'hud.budgetLast': '{moves} · last one',
+  'hud.budgetEdge': '{moves} · no room left',
 
   // tutorial
   'tutorial.1': 'Tap the bottle to pick it up',

@@ -142,6 +142,9 @@ const table: Record<string, string> = {
   'hud.moves.one': '{n} चाल',
   'hud.moves.other': '{n} चालें',
   'hud.line': '{moves} · आदर्श {ideal}',
+  'hud.budget': '{moves} · {n} बाकी',
+  'hud.budgetLast': '{moves} · आखिरी',
+  'hud.budgetEdge': '{moves} · कोई गुंजाइश नहीं',
 
   'tutorial.1': 'बोतल उठाने के लिए उस पर टैप करें',
   'tutorial.2': 'अब डालने के लिए दूसरी बोतल पर टैप करें',

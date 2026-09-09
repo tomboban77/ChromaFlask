@@ -138,6 +138,9 @@ const table: Record<string, string> = {
   'game.skipTutorial': 'チュートリアルをスキップ',
   'hud.moves.other': '{n} 手',
   'hud.line': '{moves} · 理想 {ideal}',
+  'hud.budget': '{moves} · あと{n}回',
+  'hud.budgetLast': '{moves} · あと1回',
+  'hud.budgetEdge': '{moves} · 余裕なし',
 
   'tutorial.1': 'ボトルをタップして持ち上げよう',
   'tutorial.2': '次にもう一方のボトルをタップして注ごう',

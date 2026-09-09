@@ -157,6 +157,8 @@ class App {
   private attempt = 0;
   private attemptStartedAt = 0;
   private nudged = false;
+  /** Star tier shown in the pill, to detect the moment one slips. */
+  private hudTier: 1 | 2 | 3 = 3;
 
   /** Powerup uses spent this attempt; free allowance comes from the economy. */
   private uses: Record<PowerupId, number> = { undo: 0, hint: 0, bottle: 0 };
@@ -278,6 +280,9 @@ class App {
           d.tutorialDone = true;
         });
         this.updateTutorialHand();
+        // The pill was on the plain "ideal" line while coaching; bring the star
+        // budget in now rather than on the next pour.
+        this.updateHud();
         this.analytics.track({ type: 'tutorial_done' });
       },
       (step) => {
@@ -1538,6 +1543,7 @@ class App {
     this.levelId = id;
     this.attempt += 1;
     this.nudged = false;
+    this.hudTier = 3;
 
     try {
       if (isEndless(id) || isDaily(id)) {
@@ -1829,6 +1835,7 @@ class App {
     this.uses = { undo: 0, hint: 0, bottle: 0 };
     this.extraTubes = 0;
     this.nudged = false;
+    this.hudTier = 3;
     this.attemptStartedAt = Date.now();
     this.board.mount(this.level, this.save.snapshot.settings.colorblind);
     this.updateHud();
@@ -1871,11 +1878,7 @@ class App {
   private updateHud(): void {
     $('#game-coins').textContent = String(this.save.coins);
     $('#game-level-label').textContent = this.levelLabel(this.levelId);
-    const moves = this.board.moveCount;
-    // "Ideal" is the proven minimum pours for this level (par, in golf terms -
-    // but most players do not know the golf term).
-    $('#game-move-label').textContent =
-      t('hud.line', { moves: tp('hud.moves', moves), ideal: this.level?.par ?? '-' });
+    this.updateMoveBudget();
 
     for (const id of ['undo', 'hint', 'bottle'] as PowerupId[]) {
       const stock = this.remainingUses(id) + this.save.inventoryCount(id);
@@ -1896,6 +1899,63 @@ class App {
       if (id === 'bottle') disabled = this.extraTubes >= this.remote.current.economy.maxExtraTubes;
       button.disabled = disabled;
     }
+  }
+
+  /**
+   * The live star budget in the level pill. Thresholds come from
+   * starThresholds(par), the same function the win screen grades with, so the
+   * pill can never promise a star the result then withholds.
+   *
+   * Three pips show the tier the player is *currently* holding and the label
+   * counts down the pours left before it slips. On the bottom tier there is
+   * nothing left to lose, so it falls back to the plain "ideal" line - as it
+   * does inside the level-1 tutorial, which should teach pouring, not
+   * efficiency.
+   */
+  private updateMoveBudget(): void {
+    const moves = this.board.moveCount;
+    const movesText = tp('hud.moves', moves);
+    const par = this.level?.par;
+    const pips = $('#game-star-pips');
+    const label = $('#game-move-label');
+
+    if (par === undefined || this.tutorial.active) {
+      pips.hidden = true;
+      this.hudTier = 3;
+      // "Ideal" is the proven minimum pours for this level (par, in golf terms
+      // - but most players do not know the golf term).
+      label.textContent = t('hud.line', { moves: movesText, ideal: par ?? '-' });
+      return;
+    }
+
+    const th = starThresholds(par);
+    const tier = starsFor(moves, par);
+    const spare = tier === 3 ? th.three - moves : tier === 2 ? th.two - moves : -1;
+
+    pips.hidden = false;
+    const stars = pips.querySelectorAll('i');
+    stars.forEach((s, i) => s.classList.toggle('on', i < tier));
+
+    // `spare` is how many further pours still keep this tier, so 0 means the
+    // next one costs it - not that one is left.
+    label.textContent =
+      spare < 0
+        ? t('hud.line', { moves: movesText, ideal: par })
+        : spare === 0
+          ? t('hud.budgetEdge', { moves: movesText })
+          : spare === 1
+            ? t('hud.budgetLast', { moves: movesText })
+            : t('hud.budget', { moves: movesText, n: spare });
+
+    if (tier < this.hudTier) {
+      // The star just slipped: one short pulse so the loss is felt, not merely
+      // read. Removing the class and reading offsetWidth restarts a running
+      // animation, otherwise two quick losses only play once.
+      pips.classList.remove('levelpill__pips--drop');
+      void pips.offsetWidth;
+      pips.classList.add('levelpill__pips--drop');
+    }
+    this.hudTier = tier;
   }
 
   private remainingUses(id: PowerupId): number {
