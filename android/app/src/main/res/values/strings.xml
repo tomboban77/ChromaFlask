@@ -10,7 +10,6 @@
     <string name="admob_app_id">ca-app-pub-1046627041489564~7723851386</string>
 
     <!-- Play Games Services project id: Play Console -> Play Games Services ->
-         Setup and management -> Configuration. Placeholder until then; cloud
-         save reports itself unavailable while it is wrong. -->
-    <string name="game_services_project_id">000000000000</string>
+         Setup and management -> Configuration. Real as of 2026-09-08. -->
+    <string name="game_services_project_id">373257066882</string>
 </resources>

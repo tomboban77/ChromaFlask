@@ -99,7 +99,10 @@ Any rejection is treated by the game as "not available right now".
    name with the **upload key SHA-1 and the Play App Signing SHA-1**. Both,
    or sign-in fails only in production. Upload key SHA-1 (created 2026-09-07):
    `3D:C0:32:F5:59:93:61:6B:7F:11:71:58:68:0C:0E:7D:74:3E:2C:7E`; the Play-held
-   one appears in Play Console → App integrity after the first upload.
+   one is `DD:80:C9:8B:A0:FB:38:AF:FE:68:A8:19:14:C8:01:29:69:FA:E2:4F` (pre-filled
+   by the Add credential dialog on 2026-09-08 — confirm it against Play Console →
+   Test and release → App integrity). One OAuth client carries one SHA-1, so this
+   is two OAuth clients and two PGS credentials, not one of each.
 3. Enable **Saved Games** in the games project configuration (it is off by
    default and cannot be turned on after publishing the games project).
 4. Add testers (Play Games Services → Testers) until the games project is
