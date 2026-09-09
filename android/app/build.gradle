@@ -41,8 +41,27 @@ android {
                 keyPassword keystoreProps['keyPassword']
             }
         }
+        // Debug builds are signed with the upload key too, not Android
+        // Studio's default debug keystore. Play Games Services authorizes an
+        // app by signing certificate, and only the upload cert and Play's own
+        // app-signing cert are registered as PGS credentials - a debug-keystore
+        // build is a third, unregistered cert, so cloud save and the
+        // leaderboard would fail to sign in on every local run. Falls back to
+        // the default debug keystore when keystore.properties is absent, so a
+        // checkout without the (out-of-git) keystore still builds.
+        debug {
+            if (keystoreProps['storeFile']) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
     }
     buildTypes {
+        debug {
+            if (keystoreProps['storeFile']) signingConfig signingConfigs.debug
+        }
         release {
             // The app is a web view plus thin plugin glue: shrinking removes
             // unused SDK code (Play Billing, Ads, Play Games) and nothing else.
