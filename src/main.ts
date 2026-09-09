@@ -1958,9 +1958,15 @@ class App {
     const par = this.level?.par;
     const pips = $('#game-star-pips');
     const label = $('#game-move-label');
+    const row = $('#hud-budget');
+    const risk = (last: boolean, edge: boolean): void => {
+      row.classList.toggle('hudbudget--last', last);
+      row.classList.toggle('hudbudget--edge', edge);
+    };
 
     if (par === undefined || this.tutorial.active) {
       pips.hidden = true;
+      risk(false, false);
       this.hudTier = 3;
       // "Ideal" is the proven minimum pours for this level (par, in golf terms
       // - but most players do not know the golf term).
@@ -1973,6 +1979,9 @@ class App {
     const spare = tier === 3 ? th.three - moves : tier === 2 ? th.two - moves : -1;
 
     pips.hidden = false;
+    // Colour follows the same thresholds as the wording, so the row warns at a
+    // glance instead of only on a read.
+    risk(spare === 1, spare === 0);
     const stars = pips.querySelectorAll('i');
     stars.forEach((s, i) => s.classList.toggle('on', i < tier));
 
@@ -1991,9 +2000,9 @@ class App {
       // The star just slipped: one short pulse so the loss is felt, not merely
       // read. Removing the class and reading offsetWidth restarts a running
       // animation, otherwise two quick losses only play once.
-      pips.classList.remove('levelpill__pips--drop');
+      pips.classList.remove('hudbudget__pips--drop');
       void pips.offsetWidth;
-      pips.classList.add('levelpill__pips--drop');
+      pips.classList.add('hudbudget__pips--drop');
     }
     this.hudTier = tier;
   }
@@ -2347,18 +2356,26 @@ class App {
     content.appendChild(
       el('div', 'login__lead', streak > 1 ? t('login.dayN', { n: streak }) : t('login.welcome')),
     );
+    // Four across then three, with the seventh doubled up: seven equal columns
+    // left each tile too narrow to read on a phone, and day seven carries an
+    // extra hearts bonus that needs the room.
     const tiles = el('div', 'login__tiles');
     for (let d = 1; d <= LOGIN_CYCLE; d++) {
       const tile = el('div', 'login__tile');
       if (d < day) tile.classList.add('login__tile--done');
       if (d === day) tile.classList.add('login__tile--today');
+      if (d === LOGIN_CYCLE) tile.classList.add('login__tile--grand');
       tile.appendChild(el('small', '', t('login.day', { n: d })));
-      tile.appendChild(el('b', '', `+${formatNumber(LOGIN_REWARDS[d - 1] as number)}`));
+
+      const prize = el('span', 'login__prize');
+      prize.appendChild(el('i', 'login__coin'));
+      prize.appendChild(el('b', '', formatNumber(LOGIN_REWARDS[d - 1] as number)));
       if (d === LOGIN_CYCLE) {
         const heart = el('span', 'login__heart');
-        heart.innerHTML = `<svg viewBox="0 0 24 24"><use href="#cf-heart"/></svg>`;
-        tile.appendChild(heart);
+        heart.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-heart"/></svg>`;
+        prize.appendChild(heart);
       }
+      tile.appendChild(prize);
       tiles.appendChild(tile);
     }
     content.appendChild(tiles);

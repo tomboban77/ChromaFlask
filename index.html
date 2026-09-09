@@ -16,10 +16,9 @@
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <!-- Entry art and logo paint first; home art warms up during the splash. -->
+    <!-- Entry art paints first; home art warms up during the splash. -->
     <link rel="preload" as="image" href="/Entry.webp" fetchpriority="high" media="(min-aspect-ratio: 1/2)" />
     <link rel="preload" as="image" href="/Entry-tall.webp" fetchpriority="high" media="(max-aspect-ratio: 1/2)" />
-    <link rel="preload" as="image" href="/logo.webp" fetchpriority="high" />
     <link rel="preload" as="image" href="/home.webp" fetchpriority="low" media="(max-aspect-ratio: 2/3)" />
     <link rel="preload" as="image" href="/home-wide.webp" fetchpriority="low" media="(min-aspect-ratio: 2/3)" />
     <title>Prism Potions</title>
@@ -143,12 +142,9 @@
            only the live loading bar sits over it. -->
       <section class="screen screen--active" id="screen-boot">
         <h1 class="sr-only">Prism Potions</h1>
-        <!-- The badge art is text-free; the wordmark is real (always correctly
-             spelled, crisp at any size) positioned over its blank banner. -->
-        <div class="splash__logo" aria-hidden="true">
-          <img src="/logo.webp" alt="" width="1170" height="1193" />
-          <span class="splash__logo-text"><b><span>Prism</span></b><b><span>Potions</span></b></span>
-        </div>
+        <!-- Entry.webp is a finished scene and carries the characters itself, so
+             the splash adds only the wordmark, set into the sky above them. -->
+        <div class="splash__wordmark" aria-hidden="true"><b><span>Prism</span></b><b><span>Potions</span></b></div>
         <div class="splash">
           <div class="splash__bar" role="progressbar" aria-label="Loading" data-i18n-aria="splash.loading">
             <i id="boot-bar"></i>
@@ -334,10 +330,6 @@
           <div class="topbar__spacer"></div>
           <div class="levelpill">
             <span id="game-level-label">Level 1</span>
-            <small class="levelpill__budget">
-              <span class="levelpill__pips" id="game-star-pips" aria-hidden="true"><i>&#9733;</i><i>&#9733;</i><i>&#9733;</i></span>
-              <span id="game-move-label">0 moves</span>
-            </small>
           </div>
           <div class="topbar__spacer"></div>
           <button class="iconbtn" id="btn-restart" aria-label="Restart level" data-i18n-aria="game.restartAria">
@@ -350,6 +342,14 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#cf-gear" /></svg>
           </button>
         </header>
+
+        <!-- Star budget: pips for the tier still held, label for the pours left
+             before it slips. Below the header so the pill stays a plain title
+             and the HUD fits one row on a phone. -->
+        <div class="hudbudget" id="hud-budget">
+          <span class="hudbudget__pips" id="game-star-pips" aria-hidden="true"><i>&#9733;</i><i>&#9733;</i><i>&#9733;</i></span>
+          <span id="game-move-label">0 moves</span>
+        </div>
 
         <!-- Pixi canvas mounts here -->
         <div class="board-host" id="board-host"></div>

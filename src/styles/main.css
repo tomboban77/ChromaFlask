@@ -141,12 +141,21 @@ body {
   white-space: nowrap;
 }
 
-/* Text-free badge art with the real wordmark composited over its banner. */
-.splash__logo {
-  position: relative;
-  width: min(78vw, 360px);
+/* Entry.webp is a finished illustration whose three characters sit mid-frame,
+   so stacking a second character badge on top collided with them. The splash
+   now sets the wordmark alone into the clear sky band above the scene. */
+.splash__wordmark {
   margin: calc(7vh + var(--safe-t)) auto 0;
-  filter: drop-shadow(0 12px 26px rgba(30, 8, 70, 0.55));
+  padding: 0 14px;
+  display: flex;
+  justify-content: center;
+  /* Two words need a real space; 0.06em read as a single "PrismPotions". */
+  gap: 0.24em;
+  font-weight: 900;
+  font-size: min(10.5vw, 50px);
+  letter-spacing: 0.005em;
+  line-height: 1;
+  white-space: nowrap;
   animation: logoin 0.7s cubic-bezier(0.2, 1.35, 0.4, 1) both;
 }
 
@@ -155,50 +164,26 @@ body {
   to { opacity: 1; transform: scale(1); }
 }
 
-.splash__logo img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-/* The blank banner in the art runs ~59-74% down the badge; the text sits in it. */
-.splash__logo-text {
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 59.5%;
-  height: 14%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.06em;
-  font-weight: 900;
-  font-size: min(8vw, 37px);
-  letter-spacing: 0.01em;
-  line-height: 1;
-  white-space: nowrap;
-}
-
 /* WebKit can paint `background-clip: text` as a solid rectangle when the same
    element also carries a `filter`, so the shadow sits on the <b> and the
    gradient clip on the inner <span>. */
-.splash__logo-text b span {
+.splash__wordmark b span {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-.splash__logo-text b:first-child {
-  filter: drop-shadow(0 2px 0 #7a3d00) drop-shadow(0 4px 6px rgba(40, 10, 80, 0.6));
+.splash__wordmark b:first-child {
+  filter: drop-shadow(0 2px 0 #7a3d00) drop-shadow(0 5px 10px rgba(18, 4, 46, 0.8));
 }
-.splash__logo-text b:first-child span {
+.splash__wordmark b:first-child span {
   background-image: linear-gradient(180deg, #ffe9a0 15%, #ffb020 80%);
 }
 
-.splash__logo-text b:last-child {
-  filter: drop-shadow(0 2px 0 #123d7a) drop-shadow(0 4px 6px rgba(40, 10, 80, 0.6));
+.splash__wordmark b:last-child {
+  filter: drop-shadow(0 2px 0 #123d7a) drop-shadow(0 5px 10px rgba(18, 4, 46, 0.8));
 }
-.splash__logo-text b:last-child span {
+.splash__wordmark b:last-child span {
   background-image: linear-gradient(180deg, #a8e6ff 15%, #2196e8 80%);
 }
 
@@ -497,7 +482,7 @@ body {
 /* Fixed action sizes, flexible counters: long labels must not push buttons off-screen. */
 .topbar--game {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1.35fr) 44px 44px;
+  grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) 44px 44px;
   gap: 6px;
   padding-left: 8px;
   padding-right: 8px;
@@ -516,12 +501,14 @@ body {
 .topbar--game .chip__icon--lead { flex: 0 0 auto; }
 .topbar--game .chip__plus { width: 18px; height: 18px; font-size: 13px; }
 #game-coins { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
-.topbar--game .levelpill { padding: 4px 8px; min-width: 0; max-width: 100%; }
+.topbar--game .levelpill { padding: 6px 10px; min-width: 0; max-width: 100%; }
 .topbar--game .levelpill > span { font-size: 14px; white-space: normal; overflow-wrap: anywhere; text-align: center; }
-.topbar--game .levelpill__budget { flex-wrap: wrap; justify-content: center; max-width: 100%; }
 #game-move-label { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: center; }
 
-@media (max-width: 399px) {
+/* Only the smallest phones: a long translated level name wrapping inside a
+   74px column costs more height than giving the pill its own row. From 360px
+   up the pill sits beside the actions on one row. */
+@media (max-width: 339px) {
   .topbar--game { grid-template-columns: 44px minmax(0, 1fr) 44px 44px; }
   .topbar--game .levelpill { grid-row: 2; grid-column: 1 / -1; justify-self: center; }
 }
@@ -661,10 +648,10 @@ body {
 
 .levelpill {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
   line-height: 1.15;
-  padding: 5px 16px;
+  padding: 7px 16px;
   border-radius: var(--r-pill);
   background: linear-gradient(180deg, #7443cb, #5527a8);
   border: 2px solid var(--gold);
@@ -680,44 +667,75 @@ body {
   text-shadow: 0 1.5px 0 rgba(50, 15, 110, 0.7);
 }
 
-.levelpill small {
-  color: #cdb4f5;
-  font-size: 10.5px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 /* Live star budget: pips for the tier still held, label for the pours left
-   before it slips. Hidden on the bottom tier and in the tutorial. */
-.levelpill__budget {
+   before it slips. It sits under the header rather than inside the pill so the
+   pill stays a plain title and the HUD holds one row on a phone. */
+.hudbudget {
+  flex: 0 0 auto;
+  /* Every other control here sits on a shaped surface; bare text read as a
+     caption rather than as live state. A capsule gives it the same footing
+     without taking the room a second row would. */
+  align-self: center;
+  max-width: calc(100% - 24px);
   display: flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  gap: 7px;
+  margin: 2px 0 7px;
+  padding: 5px 14px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(180deg, rgba(58, 40, 122, 0.72), rgba(28, 16, 74, 0.75));
+  border: 1.5px solid rgba(160, 200, 255, 0.2);
+  box-shadow: inset 0 -2px 0 rgba(10, 4, 38, 0.5), 0 4px 12px rgba(6, 3, 26, 0.4);
+  color: #efe6ff;
+  font-size: 12.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(6, 3, 26, 0.75);
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  /* A translated budget line runs long; wrap it rather than let #app clip it. */
+  flex-wrap: wrap;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
-.levelpill__pips {
+/* The line only raises its voice when the star is genuinely at risk, so the
+   calm state stays quiet and the warning actually registers. */
+.hudbudget--last {
+  color: #ffe7b4;
+  border-color: rgba(255, 176, 32, 0.5);
+  background: linear-gradient(180deg, rgba(116, 74, 18, 0.7), rgba(58, 32, 8, 0.75));
+}
+
+.hudbudget--edge {
+  color: #ffd3dc;
+  border-color: rgba(245, 54, 92, 0.55);
+  background: linear-gradient(180deg, rgba(118, 24, 48, 0.7), rgba(62, 12, 30, 0.78));
+}
+
+.hudbudget__pips {
   display: inline-flex;
   gap: 1px;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1;
   color: rgba(205, 180, 245, 0.35);
 }
 
-.levelpill__pips[hidden] { display: none; }
+.hudbudget__pips[hidden] { display: none; }
 
-.levelpill__pips i {
+.hudbudget__pips i {
   font-style: normal;
   transition: color 0.18s ease, text-shadow 0.18s ease;
 }
 
-.levelpill__pips i.on {
+.hudbudget__pips i.on {
   color: var(--accent-warm);
   text-shadow: 0 0 6px rgba(255, 176, 32, 0.55);
 }
 
 /* One short shake as a star is lost - the pip has already gone dim by the
    time this plays, so it marks the moment rather than announcing it. */
-.levelpill__pips--drop { animation: pipdrop 0.42s ease-out; }
+.hudbudget__pips--drop { animation: pipdrop 0.42s ease-out; }
 
 @keyframes pipdrop {
   0%   { transform: translateX(0); }
@@ -728,7 +746,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .levelpill__pips--drop { animation: none; }
+  .hudbudget__pips--drop { animation: none; }
 }
 
 /* ----------------------------------------------------------------- map -- */
@@ -1500,32 +1518,68 @@ body {
 /* ---------------------------------------------------- login reward dialog -- */
 .login { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
 .login__lead { font-size: 16px; font-weight: 800; color: var(--gold-hi); }
+/* Four across then three, the seventh spanning the spare column. Seven equal
+   columns put every tile under 40px on a phone, too tight for the label, the
+   coin and day seven's hearts bonus. */
 .login__tiles {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
 }
 .login__tile {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 8px 2px;
-  border-radius: 10px;
-  background: rgba(20, 8, 50, 0.4);
-  border: 1.5px solid transparent;
+  justify-content: center;
+  gap: 3px;
+  min-height: 54px;
+  padding: 7px 4px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(38, 18, 82, 0.85), rgba(20, 8, 50, 0.6));
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 -2px 0 rgba(12, 4, 36, 0.55);
   font-variant-numeric: tabular-nums;
 }
-.login__tile small { font-size: 9.5px; color: #cdb4f5; text-transform: uppercase; letter-spacing: 0.04em; }
-.login__tile b { font-size: 13px; color: var(--gold-hi); }
-.login__tile--done { opacity: 0.55; }
+.login__tile small {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #cdb4f5;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.login__prize { display: inline-flex; align-items: center; gap: 4px; }
+.login__tile b { font-size: 14px; color: var(--gold-hi); }
+
+/* Same gold coin the shop and HUD chips use, at tile scale. */
+.login__coin {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe9a8, #ffb020 55%, #d4820a);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.35);
+}
+
+.login__tile--done { opacity: 0.5; }
 .login__tile--done b::after { content: ' ✓'; color: var(--success); }
+
+/* A ring and a lift rather than a transform: scale() pushed the tile into its
+   neighbours and softened its text. */
 .login__tile--today {
   border-color: var(--gold-hi);
-  background: linear-gradient(180deg, rgba(255, 197, 49, 0.28), rgba(255, 176, 32, 0.12));
-  transform: scale(1.06);
+  background: linear-gradient(180deg, rgba(255, 197, 49, 0.32), rgba(255, 176, 32, 0.14));
+  box-shadow: 0 0 0 2px rgba(255, 197, 49, 0.35), 0 4px 10px rgba(12, 4, 36, 0.5);
 }
-.login__heart svg { width: 14px; height: 14px; fill: var(--danger); }
+.login__tile--today small { color: #fff3d4; }
+
+/* Day seven takes the spare column so its hearts bonus sits on one line. */
+.login__tile--grand {
+  grid-column: span 2;
+  border-color: rgba(255, 197, 49, 0.55);
+  background: linear-gradient(180deg, rgba(122, 61, 200, 0.7), rgba(58, 22, 118, 0.7));
+}
+.login__heart { display: inline-flex; }
+.login__heart svg { width: 15px; height: 15px; fill: var(--danger); }
 .login__hint { font-size: 12px; color: #cdb4f5; }
 
 /* ------------------------------------------------------ daily done dialog -- */

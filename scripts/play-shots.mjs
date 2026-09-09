@@ -19,9 +19,14 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PAD = '#3d1a82'; // --purple-deep in src/styles/main.css
-const STATUS_BAR = 60; // px trimmed off the top at 1080 wide
-const GESTURE_PILL = 52; // px trimmed off the bottom
 const OUT = 'store';
+/**
+ * The system bars render light on this device while the game is dark, so the
+ * bars are found by luminance rather than by a hardcoded height - a fixed trim
+ * leaves a white sliver whenever the bar is a pixel or two taller than
+ * expected. Anything brighter than this counts as system chrome.
+ */
+const CHROME_LUMA = 200;
 
 const name = process.argv[2];
 if (!name) {
@@ -41,6 +46,21 @@ function findAdb() {
   return 'adb'; // hope it is on PATH (Linux/macOS)
 }
 
+/** Rows of system chrome at the top and bottom of a capture. */
+async function findChrome(file, meta) {
+  const { data } = await sharp(file).greyscale().raw().toBuffer({ resolveWithObject: true });
+  const rowLuma = (y) => {
+    let sum = 0;
+    for (let x = 0; x < meta.width; x++) sum += data[y * meta.width + x];
+    return sum / meta.width;
+  };
+  let top = 0;
+  while (top < meta.height && rowLuma(top) > CHROME_LUMA) top++;
+  let bottom = 0;
+  while (bottom < meta.height && rowLuma(meta.height - 1 - bottom) > CHROME_LUMA) bottom++;
+  return { top, bottom };
+}
+
 mkdirSync(OUT, { recursive: true });
 const raw = join(OUT, `shot-${name}.png`);
 const out = join(OUT, `play-${name}.png`);
@@ -52,7 +72,8 @@ const png = execFileSync(findAdb(), ['exec-out', 'screencap', '-p'], {
 writeFileSync(raw, png);
 
 const meta = await sharp(raw).metadata();
-const height = meta.height - STATUS_BAR - GESTURE_PILL;
+const { top, bottom } = await findChrome(raw, meta);
+const height = meta.height - top - bottom;
 const width = Math.round((height * 9) / 16);
 if (width < meta.width) {
   console.error(
@@ -64,7 +85,7 @@ if (width < meta.width) {
 const side = Math.round((width - meta.width) / 2);
 
 await sharp(raw)
-  .extract({ left: 0, top: STATUS_BAR, width: meta.width, height })
+  .extract({ left: 0, top, width: meta.width, height })
   .extend({ left: side, right: width - meta.width - side, background: PAD })
   .png({ compressionLevel: 9 })
   .toFile(out);

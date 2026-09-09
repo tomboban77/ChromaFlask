@@ -10,11 +10,20 @@ Prism Potions uses **only original assets**, all authored in this repository:
 - **Name**: "Prism Potions" — run a trademark search (USPTO TESS, EUIPO, and the
   app stores themselves) before launch and register the mark if the game gains
   traction.
-- **Characters**: the "Chroma Drops" (three droplet mascots) are original
-  vector art defined in `index.html` (`#cf-drop`). They are deliberately *not*
-  cats, wizards, or anything resembling the mascots of existing sort games.
-- **Logo / splash / shop / UI**: all drawn in code (SVG + CSS). No third-party
-  images, fonts beyond system fonts, or sounds are bundled.
+- **Characters / painted backgrounds**: the alchemist cats and cauldron scenes in
+  `art/` (home, Entry splash, logo, plus the 1024x500 store feature graphic cropped
+  from `art/home-wide.png`) are **AI-generated images**, produced for this project
+  and not derived from any existing game's art. They are declared as such in the
+  Play Console **AI asset declaration** (set 2026-09-09: feature graphic and app
+  icon labelled, along with the three home-screen screenshots that show the painted
+  art). Re-declare on any future listing that adds AI assets - the label carries no
+  penalty, so over-declare rather than under-declare.
+- **Icon**: `art/icon.svg` (and `icon-maskable.svg`) is hand-written SVG markup -
+  gradients and paths, no image model - rasterised to PNG by
+  `scripts/make-icons.mjs`. Kept labelled in the console anyway as the safe side of
+  the line.
+- **UI / shop / wordmark**: drawn in code (SVG + CSS). No third-party images, fonts
+  beyond system fonts, or sounds are bundled.
 - **Game mechanics are not copyrightable** — a liquid-sort puzzle is fine to
   make — but *expression* is protected. Never copy another game's art, sounds,
   wording, store screenshots, or trade dress. Reference screenshots are used

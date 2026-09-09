@@ -149,8 +149,15 @@ async function hud(label) {
   }
   const textFits = await page.locator('.levelpill').evaluate((node) => node.scrollWidth <= node.clientWidth + 1);
   assert(textFits, `${label}: level label overflows its pill`);
+  // The star budget sits under the header now; a long translation must wrap
+  // inside the viewport rather than be clipped by #app's hidden overflow.
+  const budget = await rect('.hudbudget');
+  assert(budget.x >= -1 && budget.x + budget.width <= width + 1, `${label}: budget line overflows viewport`);
+  const budgetFits = await page.locator('.hudbudget').evaluate((node) => node.scrollWidth <= node.clientWidth + 1);
+  assert(budgetFits, `${label}: budget line overflows its row`);
+  for (const box of boxes) assert(!intersects(budget, box), `${label}: budget line overlaps the header`);
   const canvas = await rect('#board-host canvas');
-  const hudBottom = Math.max(...boxes.map((b) => b.y + b.height));
+  const hudBottom = Math.max(budget.y + budget.height, ...boxes.map((b) => b.y + b.height));
   const powerbar = await rect('#powerbar');
   assert(canvas.height >= 160 && canvas.width >= 250, `${label}: board lost usable space`);
   assert(canvas.y >= hudBottom - 1 && canvas.y + canvas.height <= powerbar.y + 1, `${label}: board overlaps controls`);
