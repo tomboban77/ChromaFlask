@@ -69,11 +69,30 @@ const AVATAR_ART = [
   `<ellipse cx="50" cy="53" rx="32" ry="38" fill="#29335f"/><ellipse cx="50" cy="59" rx="23" ry="28" fill="#f6f3ff"/><path d="M25 26Q13 13 24 8q17 7 23 18m28 0Q87 13 76 8q-17 7-23 18" fill="#29335f"/><circle cx="39" cy="49" r="4" fill="#26305f"/><circle cx="61" cy="49" r="4" fill="#26305f"/><path d="m43 59 7 5 7-5-7-4Z" fill="#ffb33e"/><path d="M39 71q11 7 22 0" fill="none" stroke="#26305f" stroke-width="3" stroke-linecap="round"/>`,
 ] as const;
 
+/**
+ * Each drawing's own bounding square, measured from its rendered extents. The
+ * paths were laid out freehand inside a 100x100 box but fill only 62-83 units
+ * of it, off-centre by up to 5.5, so one shared viewBox drew them at visibly
+ * different sizes. Framing each by its own bounds makes all eight present the
+ * same footprint. Keep in step with AVATAR_ART above; remeasure with getBBox
+ * if the art changes.
+ */
+const AVATAR_VIEW = [
+  '13.5 14 73 73',
+  '12.25 12 75.5 75.5',
+  '14 15 72 72',
+  '15 16 70 70',
+  '14.5 17 71 71',
+  '16.05 21 68 68',
+  '8.6 3 83 83',
+  '8.5 8 83 83',
+] as const;
+
 /** Render bundled vector avatars identically in every browser and app wrapper. */
 function renderAvatar(node: HTMLElement, avatar = AVATARS[0] as string): void {
   const index = Math.max(0, AVATARS.indexOf(avatar));
   node.dataset.avatar = avatar;
-  node.innerHTML = `<svg class="avatar__art" viewBox="0 0 100 100" aria-hidden="true">${AVATAR_ART[index]}</svg>`;
+  node.innerHTML = `<svg class="avatar__art" viewBox="${AVATAR_VIEW[index]}" aria-hidden="true">${AVATAR_ART[index]}</svg>`;
 }
 
 const powerupLabel = (id: PowerupId): string => t(`powerup.${id}`);

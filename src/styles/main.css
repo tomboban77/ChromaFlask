@@ -290,13 +290,12 @@ body {
 }
 
 .avatar {
-  /* Reset WebKit's native button sizing and font before laying out the grid. */
+  /* Reset WebKit's native button sizing before laying out the grid. */
   appearance: none;
   -webkit-appearance: none;
   min-width: 0;
   width: 100%;
   padding: 0;
-  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   color: var(--ink);
   aspect-ratio: 1;
   border-radius: var(--r-md);
@@ -318,6 +317,8 @@ body {
   box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
 }
 
+/* Each viewBox is the drawing's own bounds, so these percentages are the art's
+   true share of its container. Raise both together to enlarge every avatar. */
 .avatar__art {
   display: block;
   width: 72%;
@@ -329,6 +330,16 @@ body {
 .avatarframe .avatar__art,
 .chip__avatar .avatar__art,
 .profdlg__avatar .avatar__art { width: 82%; height: 82%; }
+
+/* The home frame wraps its art in a span. A centred grid item shrinks to fit,
+   which leaves the art no definite box to take its percentage from, so it
+   falls back to intrinsic size and sits left. Hand the wrapper the frame. */
+.avatarframe > * {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
 
 .field { display: flex; flex-direction: column; gap: 6px; }
 
@@ -478,6 +489,11 @@ body {
 /* Wrapped actions stay at the trailing edge on narrow screens. */
 .topbar > .iconbtn:last-child { margin-left: auto; }
 
+/* Narrow phones: trim the nav bar so its actions stay on one row. */
+@media (max-width: 400px) {
+  .topbar:not(.topbar--game) { gap: 6px; padding-left: 8px; padding-right: 8px; }
+}
+
 /* Fixed action sizes, flexible counters: long labels must not push buttons off-screen. */
 .topbar--game {
   display: grid;
@@ -555,9 +571,12 @@ body {
   color: rgba(160, 90, 0, 0.55);
 }
 
-/* Chips whose icon pokes past the left edge need room outside the pill.
+/* Chips whose icon pokes past the left edge need room outside the pill: the
+   icon clears the border box by exactly (20px pull - 12px padding - 2px
+   border). Anything more and the chip sits further from its neighbour than a
+   plain button does, which breaks the row rhythm.
    A plain class rather than `:has()`, which needs iOS 15.4 / Chrome 105. */
-.chip--lead { margin-left: 12px; }
+.chip--lead { margin-left: 6px; }
 
 /* Sized and shaded to match the lead coin on the neighbouring chip: same
    32px footprint, same overlap past the pill edge, same bevel and shadow. */
@@ -596,6 +615,9 @@ body {
   position: relative;
   width: 46px;
   height: 46px;
+  /* A button carries UA padding (1px 6px). Left in, it squeezes the content
+     box to 30x40 and the square art letterboxes down to the narrow axis. */
+  padding: 0;
   flex: 0 0 auto;
   border-radius: 14px;
   border: 2.5px solid var(--gold-hi);
