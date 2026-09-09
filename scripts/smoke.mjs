@@ -492,8 +492,8 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.fill('#name-input', '');
   await page.click('#btn-start-profile');
   await page.waitForSelector('#screen-home.screen--active', { timeout: 5000 });
-  const editedAvatar = (await page.locator('#home-avatar').textContent())?.trim();
-  const fifthAvatar = (await page.locator('.avatar').nth(4).textContent())?.trim();
+  const editedAvatar = await page.locator('#home-avatar').getAttribute('data-avatar');
+  const fifthAvatar = await page.locator('.avatar').nth(4).getAttribute('data-avatar');
   await page.click('#home-profile');
   await page.waitForSelector('.modal', { timeout: 5000 });
   const nameAfterEdit = (await page.locator('.modal .profdlg__name').textContent())?.trim();
@@ -502,7 +502,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   console.log(`  change look     guest hidden=${guestHidden}, button "${saveLabel}", avatar ${editedAvatar}, name "${nameAfterEdit}"`);
   if (!guestHidden) problems.push(`[${label}] editing a look must hide "Skip, play as guest"`);
   if (saveLabel !== 'Save changes') problems.push(`[${label}] editing a look should offer "Save changes", got "${saveLabel}"`);
-  if (editedAvatar !== fifthAvatar) problems.push(`[${label}] the new avatar should show on home (${editedAvatar} vs ${fifthAvatar})`);
+  if (!fifthAvatar || editedAvatar !== fifthAvatar) problems.push(`[${label}] the new avatar should show on home (${editedAvatar} vs ${fifthAvatar})`);
   if (nameAfterEdit !== 'Tester') problems.push(`[${label}] an emptied name field must keep the old name, got "${nameAfterEdit}"`);
 
   // ---- one-way flask (level 267): the flask is the last tube and never a source
@@ -609,11 +609,11 @@ async function runViewport(browser, label, width, height, isMobile) {
     null, { timeout: 25_000 },
   );
   const restored = await page.evaluate(() => window.__cf.state());
-  const restoredName = (await page.locator('#home-avatar').textContent())?.trim();
+  const restoredAvatar = await page.locator('#home-avatar').getAttribute('data-avatar');
   console.log(`  cloud restore   play "${playBeforeWipe}" -> wiped -> "Level 3" again, skin=${restored.skin}, coins=${restored.coins}`);
   if (restored.skin !== 'frost') problems.push(`[${label}] cloud restore should bring the bought skin back (got ${restored.skin})`);
   if (playBeforeWipe !== 'Level 3') problems.push(`[${label}] expected level 3 to be the next level before the wipe, got "${playBeforeWipe}"`);
-  void restoredName;
+  if (!fifthAvatar || restoredAvatar !== fifthAvatar) problems.push(`[${label}] cloud restore should bring the selected avatar back (${restoredAvatar} vs ${fifthAvatar})`);
   await shot('11-reloaded');
 
   await context.close();

@@ -3,6 +3,8 @@ dist/
 .tmp/
 *.local
 .DS_Store
+# Xcode window and scheme preferences belong to each developer's machine.
+xcuserdata/
 native/capacitor-cloudsave/android/build/
 
 # Release signing: never commit an upload key or its passwords (docs/NATIVE-BUILD.md)

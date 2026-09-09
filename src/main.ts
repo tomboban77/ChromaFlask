@@ -49,12 +49,32 @@ import {
 } from '@/ui/dom';
 import { Tutorial } from '@/ui/Tutorial';
 import { Confetti } from '@/ui/Confetti';
+import { installFormViewport } from '@/ui/formViewport';
+
+installFormViewport();
 
 type ScreenId = 'boot' | 'profile' | 'home' | 'map' | 'board' | 'shop' | 'game';
 type WinMode = 'campaign' | 'endless' | 'daily';
 const SCREENS: readonly ScreenId[] = ['boot', 'profile', 'home', 'map', 'board', 'shop', 'game'];
 
 const AVATARS = ['🐱', '🦊', '🐼', '🐸', '🦉', '🐙', '🦄', '🐧'];
+const AVATAR_ART = [
+  `<path d="M20 37 23 14 40 29A35 35 0 0 1 60 29L77 14l3 23a34 34 0 1 1-60 0Z" fill="#ff789f"/><path d="m25 29 1-9 8 8m41 1-1-9-8 8" fill="#ffc2d3"/><path d="M36 52h1m26 0h1" stroke="#26305f" stroke-width="8" stroke-linecap="round"/><path d="m46 62 4 3 4-3M50 65v4m0 0q-7 7-13 1m13-1q7 7 13 1" fill="none" stroke="#26305f" stroke-width="3" stroke-linecap="round"/>`,
+  `<path d="M18 42 14 12l25 20a36 36 0 0 1 22 0l25-20-4 30a34 34 0 1 1-64 0Z" fill="#ff9838"/><path d="m20 22 15 13-13 8m58-21-15 13 13 8M28 60q22 27 44 0-8 5-22 5t-22-5Z" fill="#fff0dc"/><circle cx="36" cy="51" r="4" fill="#26305f"/><circle cx="64" cy="51" r="4" fill="#26305f"/><path d="m45 62 5 4 5-4" fill="#26305f"/>`,
+  `<circle cx="50" cy="51" r="36" fill="#f6f3ff"/><ellipse cx="34" cy="46" rx="13" ry="16" fill="#30345d" transform="rotate(25 34 46)"/><ellipse cx="66" cy="46" rx="13" ry="16" fill="#30345d" transform="rotate(-25 66 46)"/><circle cx="36" cy="48" r="4" fill="#fff"/><circle cx="64" cy="48" r="4" fill="#fff"/><circle cx="36" cy="49" r="2" fill="#202442"/><circle cx="64" cy="49" r="2" fill="#202442"/><ellipse cx="50" cy="62" rx="6" ry="4" fill="#30345d"/><path d="M42 69q8 7 16 0" fill="none" stroke="#30345d" stroke-width="3" stroke-linecap="round"/>`,
+  `<path d="M19 48q0-27 31-27t31 27v13q0 25-31 25T19 61Z" fill="#43d680"/><circle cx="32" cy="29" r="13" fill="#43d680"/><circle cx="68" cy="29" r="13" fill="#43d680"/><circle cx="32" cy="31" r="7" fill="#fff"/><circle cx="68" cy="31" r="7" fill="#fff"/><circle cx="34" cy="32" r="3" fill="#26305f"/><circle cx="66" cy="32" r="3" fill="#26305f"/><circle cx="38" cy="55" r="2" fill="#248c5b"/><circle cx="62" cy="55" r="2" fill="#248c5b"/><path d="M36 65q14 13 28 0" fill="none" stroke="#26305f" stroke-width="4" stroke-linecap="round"/>`,
+  `<path d="M17 31 34 17l16 13 16-13 17 14-7 42-26 15-26-15Z" fill="#9a7bea"/><circle cx="35" cy="49" r="13" fill="#fff2ca"/><circle cx="65" cy="49" r="13" fill="#fff2ca"/><circle cx="37" cy="50" r="5" fill="#26305f"/><circle cx="63" cy="50" r="5" fill="#26305f"/><path d="m43 63 7 8 7-8-7-4Z" fill="#ffb33e"/><path d="M28 74q22 13 44 0" fill="none" stroke="#7252c3" stroke-width="3"/>`,
+  `<path d="M26 55q-7-30 24-34 31 4 24 34 15 15 2 29-8 8-16-2-10 14-20 0-8 10-16 2-13-14 2-29Z" fill="#b866e9"/><circle cx="38" cy="49" r="6" fill="#fff"/><circle cx="62" cy="49" r="6" fill="#fff"/><circle cx="39" cy="50" r="2.5" fill="#26305f"/><circle cx="61" cy="50" r="2.5" fill="#26305f"/><path d="M40 63q10 9 20 0" fill="none" stroke="#26305f" stroke-width="3.5" stroke-linecap="round"/>`,
+  `<path d="m52 13 8-9 2 17q22 7 20 34-2 31-32 31T18 55q-1-27 20-34Z" fill="#f8f5ff"/><path d="m48 18 6-15 8 18" fill="#ffd94f"/><path d="M27 35Q17 22 27 14q18 6 20 16" fill="#c788f2"/><path d="M38 49h1m23 0h1" stroke="#26305f" stroke-width="7" stroke-linecap="round"/><path d="M42 65q8 7 16 0" fill="none" stroke="#26305f" stroke-width="3" stroke-linecap="round"/><circle cx="69" cy="61" r="5" fill="#ff9ebd" opacity=".65"/>`,
+  `<ellipse cx="50" cy="53" rx="32" ry="38" fill="#29335f"/><ellipse cx="50" cy="59" rx="23" ry="28" fill="#f6f3ff"/><path d="M25 26Q13 13 24 8q17 7 23 18m28 0Q87 13 76 8q-17 7-23 18" fill="#29335f"/><circle cx="39" cy="49" r="4" fill="#26305f"/><circle cx="61" cy="49" r="4" fill="#26305f"/><path d="m43 59 7 5 7-5-7-4Z" fill="#ffb33e"/><path d="M39 71q11 7 22 0" fill="none" stroke="#26305f" stroke-width="3" stroke-linecap="round"/>`,
+] as const;
+
+/** Render bundled vector avatars identically in every browser and app wrapper. */
+function renderAvatar(node: HTMLElement, avatar = AVATARS[0] as string): void {
+  const index = Math.max(0, AVATARS.indexOf(avatar));
+  node.dataset.avatar = avatar;
+  node.innerHTML = `<svg class="avatar__art" viewBox="0 0 100 100" aria-hidden="true">${AVATAR_ART[index]}</svg>`;
+}
 
 const powerupLabel = (id: PowerupId): string => t(`powerup.${id}`);
 /** Catalog titles live in the string table so the shop reads in the player's language. */
@@ -647,7 +667,8 @@ class App {
   private wireProfile(): void {
     const grid = $('#avatar-grid');
     AVATARS.forEach((emoji, i) => {
-      const node = el('button', 'avatar', emoji);
+      const node = el('button', 'avatar');
+      renderAvatar(node, emoji);
       node.setAttribute('role', 'radio');
       node.setAttribute('aria-checked', String(i === 0));
       node.setAttribute('aria-label', t('profile.avatarN', { n: i + 1 }));
@@ -781,7 +802,7 @@ class App {
 
   private renderHome(): void {
     const profile = this.save.snapshot.profile;
-    $('#home-avatar').textContent = profile?.avatar ?? '🐱';
+    renderAvatar($('#home-avatar'), profile?.avatar);
     $('#home-coins').textContent = String(this.save.coins);
     this.renderLivesChip();
 
@@ -826,7 +847,7 @@ class App {
   private renderBoardScreen(): void {
     $('#btn-settings-board').onclick = () => this.openSettings();
     const profile = this.save.snapshot.profile;
-    $('#board-avatar').textContent = profile?.avatar ?? '🐱';
+    renderAvatar($('#board-avatar'), profile?.avatar);
     $('#board-name').textContent = profile?.name || t('prof.guest');
     const stars = this.save.campaignStars(LEVEL_COUNT);
     $('#board-stars').textContent = formatNumber(stars);
@@ -1024,7 +1045,7 @@ class App {
   // ------------------------------------------------------------------ map
   private renderMap(): void {
     const profile = this.save.snapshot.profile;
-    $('#map-avatar').textContent = profile?.avatar ?? '🐱';
+    renderAvatar($('#map-avatar'), profile?.avatar);
     $('#map-name').textContent = profile?.name ?? 'Player';
     $('#map-coins').textContent = String(this.save.coins);
     $('#map-stars').textContent = `${this.save.campaignStars(LEVEL_COUNT)}/${LEVEL_COUNT * 3}`;
@@ -2842,7 +2863,8 @@ class App {
     const content = el('div', 'profdlg');
 
     const head = el('div', 'profdlg__head');
-    const face = el('span', 'profdlg__avatar', s.profile?.avatar ?? '🐱');
+    const face = el('span', 'profdlg__avatar');
+    renderAvatar(face, s.profile?.avatar);
     head.appendChild(face);
     const who = el('div', 'profdlg__who');
     who.appendChild(el('div', 'profdlg__name', s.profile?.name || t('prof.guest')));
@@ -2854,8 +2876,9 @@ class App {
     const edit = el('button', 'btn btn--ghost btn--compact', t('prof.changeLook'));
     edit.addEventListener('click', () => {
       audio.play('button');
-      this.modal.close();
+      // Enter the editor first so closing the dialog keeps its history guard.
       this.editProfile();
+      this.modal.close();
     });
     head.appendChild(edit);
     content.appendChild(head);
@@ -2900,7 +2923,7 @@ class App {
     $<HTMLInputElement>('#analytics-consent').checked = this.save.snapshot.settings.analytics;
     this.chosenAvatar = profile?.avatar ?? this.chosenAvatar;
     for (const child of Array.from($('#avatar-grid').children)) {
-      child.setAttribute('aria-checked', String(child.textContent === this.chosenAvatar));
+      child.setAttribute('aria-checked', String((child as HTMLElement).dataset.avatar === this.chosenAvatar));
     }
     // Editing an existing look: "play as guest" belongs to first run only, and
     // the primary action saves rather than starts.
@@ -2926,7 +2949,9 @@ class App {
     // Identity header - the same card the profile dialog uses, compacted.
     const profile = this.save.snapshot.profile;
     const head = el('div', 'profdlg__head profdlg__head--compact');
-    head.appendChild(el('span', 'profdlg__avatar', profile?.avatar ?? '🐱'));
+    const face = el('span', 'profdlg__avatar');
+    renderAvatar(face, profile?.avatar);
+    head.appendChild(face);
     const who = el('div', 'profdlg__who');
     who.appendChild(el('div', 'profdlg__name', profile?.name || t('prof.guest')));
     who.appendChild(
@@ -2936,8 +2961,8 @@ class App {
     const edit = el('button', 'btn btn--ghost btn--compact', t('prof.changeLook'));
     edit.addEventListener('click', () => {
       audio.play('button');
-      this.modal.close();
       this.editProfile();
+      this.modal.close();
     });
     head.appendChild(edit);
     content.appendChild(head);

@@ -12,6 +12,7 @@
     "assets:native": "node scripts/make-native-assets.mjs",
     "android:open": "cap open android",
     "ios:open": "cap open ios",
+    "ios:sync": "npm run build:native && cap sync ios",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
@@ -19,6 +20,7 @@
     "levels:sweep": "vite build --ssr src/core/sweep.ts --outDir .tmp --logLevel error && node .tmp/sweep.js",
     "test:core": "vite build --ssr src/core/selftest.ts --outDir .tmp --logLevel error && node .tmp/selftest.js",
     "test:e2e": "node scripts/smoke.mjs",
+    "test:layout": "node scripts/test-mobile-layout.mjs",
     "i18n:check": "node scripts/i18n-check.mjs",
     "perf": "node scripts/profile.mjs"
   },

@@ -18,6 +18,44 @@ src/ui/dom.ts              installNativeHaptics() (iOS Taptic Engine)
 
 ## Commands
 
+### Run on the iOS Simulator (Mac)
+
+Install Node.js 24 and Xcode 26 or later, then install an iOS Simulator
+runtime in Xcode → Settings → Components. This project uses Swift Package
+Manager; CocoaPods is not required.
+
+If `xcode-select -p` points to `/Library/Developer/CommandLineTools`, select
+Xcode once from Terminal (macOS asks for your administrator password):
+
+```bash
+sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+```
+
+From the project directory:
+
+```bash
+npm ci              # first checkout only
+npm run ios:sync     # build the game and copy it into the iOS app
+npm run ios:open
+```
+
+In Xcode, wait for package resolution, select the **App** scheme and an
+**iPhone simulator** destination, then press **⌘R**. Simulator builds do not
+need a signing team. After editing web code, run `npm run ios:sync` again
+and press ⌘R in Xcode. A Vite dev server is not needed for this workflow.
+
+Store purchases, iCloud, and Game Center need their own account/capability
+configuration to test fully; see the sections below. Basic gameplay can run
+in the simulator before that setup.
+
+For mobile layout checks, run `npm run build:native && npm run test:layout`.
+The test uses an installed Chrome/Edge, or Playwright Chromium, and verifies
+profile scrolling, simulated keyboard viewports and safe areas, dialog titles,
+game controls, and a pour/Undo interaction. To check WebKit as well, install
+it with `npx playwright-core install webkit`, then run
+`SMOKE_BROWSER=webkit npm run test:layout`. These browser checks supplement
+testing the installed app on a simulator or device.
+
 | Command | What it does |
 | --- | --- |
 | `npm run build:native` | Typecheck + `vite build --mode native` into `dist/` |
@@ -225,9 +263,9 @@ all orientations as the App Store requires.
 - Web side complete and verified by the usual checks.
 - `android/` and `ios/` generated with Capacitor 8.5 and all four plugins
   synced. **Android compiles** (`gradlew assembleDebug`, JDK 21) including the
-  Kotlin cloud save plugin. **iOS is uncompiled** - it needs Xcode on a Mac;
-  expect the usual first-build items (signing team, iCloud entitlement) and
-  possibly small Swift fixes in `native/capacitor-cloudsave/ios/Plugin`.
+  Kotlin cloud save plugin. **iOS simulator Debug build verified** with
+  Xcode 26.3 on macOS 15.6.1, including the Swift cloud save plugin.
+  Physical-device builds still need a signing team and the iCloud entitlement.
 - Nothing has run on a device yet. Expect the first Android Studio / Xcode
   session to surface SDK setup issues (Play Games meta-data, iCloud
   entitlement, signing) rather than game-code issues.
