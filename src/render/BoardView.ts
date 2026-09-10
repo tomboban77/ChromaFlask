@@ -108,6 +108,8 @@ export class BoardView {
 
   private splashAccumulator = 0;
   private pendingIntro = false;
+  /** True while staggered intro tweens are still pending; see settleIntro. */
+  private introRunning = false;
   /** Bumped on teardown so an in-flight pour can detect it is stale and bail. */
   private generation = 0;
   private pouring: number | null = null;
@@ -217,9 +219,14 @@ export class BoardView {
       for (const b of this.bottles) b.alpha = 1;
       return;
     }
+    // Each tween carries the slot it was built with, and the stagger keeps the
+    // last of them pending for most of a second. `settleIntro` drops them if a
+    // relayout lands in that window, so a stale target cannot win.
+    let pending = 0;
     this.bottles.forEach((b, i) => {
       const slot = this.slots[i];
       if (!slot) return;
+      pending++;
       b.y = slot.y - 70;
       b.alpha = 0;
       gsap.to(b, {
@@ -228,9 +235,30 @@ export class BoardView {
         duration: 0.42,
         delay: i * 0.05,
         ease: 'back.out(1.6)',
-        onComplete: () => b.agitate(0.5),
+        onComplete: () => {
+          b.agitate(0.5);
+          if (--pending === 0) this.introRunning = false;
+        },
       });
     });
+    this.introRunning = pending > 0;
+  }
+
+  /**
+   * Ends a staggered intro early. Its tweens hold the slots from the layout
+   * that started them, so once the board has been laid out again every one of
+   * them is aimed at a stale position - the later a bottle's delay, the more
+   * certain it is to overwrite the correction. Dropping them and settling the
+   * board where it now belongs is the only safe resolution.
+   */
+  private settleIntro(): void {
+    this.introRunning = false;
+    for (let i = 0; i < this.bottles.length; i++) {
+      if (this.pouring === i) continue;
+      const b = this.bottles[i] as BottleView;
+      gsap.killTweensOf(b);
+      b.alpha = 1;
+    }
   }
 
   setMotionScale(scale: number): void {
@@ -351,11 +379,19 @@ export class BoardView {
    * A board laid out against stale, taller dimensions draws its bottom row
    * past the canvas, where it is clipped - see the layout regression test.
    */
-  geometry(): { viewW: number; viewH: number; bodyW: number; bottom: number } {
+  geometry(): { viewW: number; viewH: number; bodyW: number; bottom: number; drift: number } {
     const h = bottleHeight(this.bodyW);
     let bottom = 0;
-    for (const slot of this.slots) bottom = Math.max(bottom, slot.y + h);
-    return { viewW: this.viewW, viewH: this.viewH, bodyW: this.bodyW, bottom };
+    let drift = 0;
+    for (let i = 0; i < this.slots.length; i++) {
+      const slot = this.slots[i] as Slot;
+      bottom = Math.max(bottom, slot.y + h);
+      const b = this.bottles[i];
+      // Once motion has settled a bottle sits on its slot; anything else means
+      // a stale tween landed after the layout that should have placed it.
+      if (b && this.pouring !== i) drift = Math.max(drift, Math.abs(b.y - slot.y));
+    }
+    return { viewW: this.viewW, viewH: this.viewH, bodyW: this.bodyW, bottom, drift };
   }
 
   // ---------------------------------------------------------------- layout
@@ -406,6 +442,10 @@ export class BoardView {
     const blockH = rows * h + (rows - 1) * gapY;
     // Centre the block in what remains below the headroom, never above it.
     const startY = headroom + Math.max(gapY, (height - headroom - blockH) / 2);
+
+    // A relayout invalidates any intro still in flight, so end it before the
+    // bottles are placed rather than letting its delayed tweens undo them.
+    if (this.introRunning && !this.pendingIntro) this.settleIntro();
 
     this.slots = [];
     let placed = 0;

@@ -452,6 +452,32 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.click('#btn-back'); // no moves made: straight home, no dialog
   await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
 
+  // ---- board settles on its slots even when a relayout lands mid-intro.
+  // The intro tweens carry the slots they were built with and stagger for most
+  // of a second, so a resize inside that window used to leave the bottom row
+  // parked at a stale position (visibly clipped under the powerbar).
+  const driftSeen = [];
+  for (const delayMs of [0, 120, 320, 520]) {
+    await page.setViewportSize({ width, height });
+    await sleep(200);
+    await page.evaluate(() => window.__cf.start(36));
+    await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
+    await sleep(delayMs);
+    await page.setViewportSize({ width, height: height - 90 });
+    await sleep(2200);
+    driftSeen.push(await page.evaluate(() => Math.round(window.__cf.boardGeometry().drift)));
+  }
+  await page.setViewportSize({ width, height });
+  await sleep(400);
+  const geom = await page.evaluate(() => window.__cf.boardGeometry());
+  console.log(`  board settle    drift after mid-intro resizes: ${driftSeen.join(', ')} px`);
+  if (driftSeen.some((d) => d > 1)) {
+    problems.push(`[${label}] bottles left off their slots after a mid-intro relayout (drift ${driftSeen.join('/')}px)`);
+  }
+  if (geom.bottom > geom.viewH + 0.5) {
+    problems.push(`[${label}] board bottom ${Math.round(geom.bottom)} exceeds canvas ${Math.round(geom.viewH)}`);
+  }
+
   // ---- locked bottle (level 205): tapping the padlocked bottle is refused, others select
   await page.evaluate(() => window.__cf.start(205));
   await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
