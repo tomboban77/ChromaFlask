@@ -495,6 +495,7 @@ class App {
         winCount: this.winCount,
       }),
       lastShare: () => this.lastShareText,
+      boardGeometry: () => this.board.geometry(),
       cloud: () => ({ ...this.cloud.state, driver: this.cloud.driver.id }),
       cloudSignIn: () => this.cloud.signIn(),
       cloudSync: () => this.cloud.sync('manual'),

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Delete your Prism Potions data</title>
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <style>
+      :root {
+        --bg: #0e1440;
+        --ink: #eef2ff;
+        --dim: #a8b2e0;
+        --gold: #ffd23e;
+        --accent: #22d3ee;
+        --card: rgba(29, 36, 92, 0.72);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 32px 20px 64px;
+        background: #070a1f;
+        background-image:
+          radial-gradient(120% 80% at 15% -10%, rgba(80, 60, 200, 0.5), transparent 60%),
+          linear-gradient(180deg, var(--bg) 0%, #070a1f 55%, #04061a 100%);
+        color: var(--ink);
+        font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      main { max-width: 66ch; margin: 0 auto; }
+      h1 { font-size: 30px; margin: 0 0 4px; letter-spacing: -0.01em; }
+      h2 {
+        margin: 32px 0 8px;
+        font-size: 13px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--gold);
+      }
+      p { margin: 0 0 12px; }
+      .meta { color: var(--dim); font-size: 14px; margin-bottom: 24px; }
+      .note {
+        background: var(--card);
+        border: 1.5px solid rgba(140, 160, 255, 0.22);
+        border-radius: 14px;
+        padding: 12px 16px;
+        font-size: 14px;
+        color: var(--dim);
+      }
+      a { color: var(--accent); }
+      strong { color: #fff; }
+      .back { display: inline-block; margin-top: 36px; color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Delete your Prism Potions data</h1>
+      <p class="meta">Prism Potions &middot; Velvea Studios (Tom Boban), Canada &middot;
+        Contact: <a href="mailto:tomboban77@gmail.com">tomboban77@gmail.com</a> &middot;
+        Last updated: 9 September 2026</p>
+
+      <p class="note">Prism Potions has no user accounts and no server of its own. Your
+        progress lives on your device; the only data we hold is anonymous gameplay
+        analytics keyed to a random <strong>Support ID</strong>. Everything below can be
+        erased, and most of it you can erase yourself in seconds.</p>
+
+      <h2>1. Erase your progress on the device</h2>
+      <p>In the game: <strong>Settings &rarr; Reset progress</strong>. This erases levels,
+        stars, coins, boosters, hearts and statistics immediately. Your settings and your
+        Support ID are kept so that support codes keep working - continue to step 2 if you
+        want those gone too.</p>
+
+      <h2>2. Delete the analytics events we hold</h2>
+      <p>Copy your Support ID from <strong>Settings &rarr; Help &amp; support &rarr;
+        Support ID</strong>, then email it to
+        <a href="mailto:tomboban77@gmail.com?subject=Delete%20my%20data">tomboban77@gmail.com</a>
+        with the subject <em>Delete my data</em>. We delete every event recorded under
+        that ID, and confirm by reply. Please allow up to 30 days; in practice it is
+        much faster.</p>
+      <p>These events are gameplay records only - the level number, move count, stars,
+        and which screens were opened. They never contain your name, email address,
+        location, advertising ID or any device identifier. If you would rather stop
+        sending them altogether, switch off <strong>Settings &rarr; Share anonymous
+        usage data</strong>; nothing leaves the device while it is off.</p>
+
+      <h2>3. Delete your cloud save</h2>
+      <p>If you turned on cloud save, a copy of your progress sits in your own Google or
+        Apple account, not on our servers - we cannot read or delete it for you.</p>
+      <p><strong>Stop backing up:</strong> Settings &rarr; Sign out in the game.
+        <strong>Delete the copy:</strong> on Android, open the Google Play Games app
+        &rarr; Settings &rarr; Delete Play Games account data, and choose Prism Potions;
+        on iOS, Settings &rarr; your name &rarr; iCloud &rarr; Manage Account Storage and
+        remove the Prism Potions entry.</p>
+
+      <h2>4. Remove yourself from the leaderboard</h2>
+      <p>Leaderboard scores are held by Google Play Games (Android) or Game Center (iOS),
+        not by us. Delete them from your Play Games profile settings, or in
+        Settings &rarr; Game Center on iOS.</p>
+
+      <h2>What is kept, and for how long</h2>
+      <p><strong>Nothing is kept once you ask.</strong> We hold no account, no profile
+        and no copy of your save. Analytics events are kept until you ask us to delete
+        them, or until you switch analytics off and ask - after that no copy remains with
+        us or with PostHog, our analytics processor.</p>
+      <p>Two things are outside our reach, because they never come to us:
+        advertising data held by <a href="https://policies.google.com/privacy">Google
+        AdMob</a> (limit or reset it in your device's advertising settings, or in
+        Settings &rarr; Ad privacy choices in the game), and purchase records held by
+        Google Play or Apple under their own policies.</p>
+
+      <p><a class="back" href="./privacy.html">Prism Potions Privacy Policy</a></p>
+    </main>
+  </body>
+</html>

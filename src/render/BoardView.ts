@@ -346,6 +346,18 @@ export class BoardView {
     }
   }
 
+  /**
+   * What the board last laid out against, and where its lowest vessel ends.
+   * A board laid out against stale, taller dimensions draws its bottom row
+   * past the canvas, where it is clipped - see the layout regression test.
+   */
+  geometry(): { viewW: number; viewH: number; bodyW: number; bottom: number } {
+    const h = bottleHeight(this.bodyW);
+    let bottom = 0;
+    for (const slot of this.slots) bottom = Math.max(bottom, slot.y + h);
+    return { viewW: this.viewW, viewH: this.viewH, bodyW: this.bodyW, bottom };
+  }
+
   // ---------------------------------------------------------------- layout
   layout(width: number, height: number, animate = true): void {
     this.viewW = width;
