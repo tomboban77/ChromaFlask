@@ -322,7 +322,8 @@ export class NativeBillingDriver implements PaymentDriver {
       for (const p of products) {
         if (isProductId(p.identifier) && p.priceString) out[p.identifier] = p.priceString;
       }
-    } catch {
+    } catch (err) {
+      console.error('[payments] failed to load App Store products', err);
       /* fall back to catalog prices */
     }
     return out;
@@ -345,6 +346,7 @@ export class NativeBillingDriver implements PaymentDriver {
       return { ok: true, productId: id, token };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      console.error(`[payments] purchase failed for ${id}: ${message}`, err);
       return { ok: false, reason: /cancel/i.test(message) ? 'cancelled' : 'failed' };
     }
   }

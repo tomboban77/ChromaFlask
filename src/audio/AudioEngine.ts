@@ -1,7 +1,10 @@
+import { NativeAudio, type PreloadOptions } from '@capacitor-community/native-audio';
+import { platform } from '@/services/Platform';
+
 /**
- * Procedural audio. Every sound is synthesised at runtime from oscillators and
- * filtered noise, so the game ships with no audio assets: nothing to download,
- * nothing to decode, and the whole sound design is a few KB of code.
+ * Android and web synthesise each sound at runtime. iOS plays matching bundled
+ * WAV files through AVAudioPlayer because WKWebView can leave Web Audio in an
+ * interrupted state even after AudioContext.resume() reports success.
  *
  * All public methods are safe to call before the context exists or when audio
  * is unsupported - they simply no-op.
@@ -34,6 +37,13 @@ interface NoiseOptions {
 }
 
 const MUSIC_GAIN = 0.2;
+const NATIVE_MUSIC_ID = 'music';
+const NATIVE_MUSIC_VOLUME = 0.18;
+const NATIVE_SFX_VOLUME = 0.65;
+const NATIVE_SFX: readonly SfxName[] = [
+  'select', 'deselect', 'swap', 'pour', 'land', 'invalid', 'tubeComplete', 'star', 'win',
+  'coin', 'button', 'powerup', 'stuck', 'unlock', 'cork', 'whoosh', 'fanfare',
+];
 
 /**
  * Am - F - C - G as MIDI notes, all voiced around middle C. Inversions keep
@@ -52,6 +62,12 @@ function noteHz(midi: number): number {
 }
 
 export class AudioEngine {
+  private readonly useNativeAudio = platform() === 'ios';
+  private nativeReady: Promise<void> | null = null;
+  private nativeMusicPlaying = false;
+  private nativeMusicPaused = false;
+  private nativeDuckTimer: number | null = null;
+
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private sfxBus: GainNode | null = null;
@@ -64,24 +80,41 @@ export class AudioEngine {
   private musicTimer: number | null = null;
   private nextNoteTime = 0;
   private step = 0;
+  private needsContextRebuild = false;
 
   /**
    * Browsers refuse to start audio outside a user gesture, so the context is
    * created lazily on the first interaction rather than at boot.
    */
   unlock(): void {
+    if (this.useNativeAudio) {
+      void this.ensureNativeAudio();
+      return;
+    }
+    if (this.ctx && (this.needsContextRebuild || String(this.ctx.state) === 'interrupted')) {
+      this.disposeContext();
+    }
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') void this.ctx.resume();
+      this.prime(this.ctx);
+      this.resume();
       return;
     }
     try {
       const Ctor = window.AudioContext ?? (window as unknown as {
         webkitAudioContext?: typeof AudioContext;
       }).webkitAudioContext;
-      if (!Ctor) return;
+      if (!Ctor) {
+        console.warn('[audio] AudioContext is unavailable');
+        return;
+      }
 
       const ctx = new Ctor();
       this.ctx = ctx;
+      console.info(`[audio] context created: state=${ctx.state}, sampleRate=${ctx.sampleRate}`);
+      ctx.addEventListener('statechange', () => {
+        console.info(`[audio] context state=${ctx.state}`);
+        if (String(ctx.state) === 'interrupted') this.needsContextRebuild = true;
+      });
 
       this.master = ctx.createGain();
       this.master.gain.value = 0.9;
@@ -96,12 +129,96 @@ export class AudioEngine {
       this.musicBus.connect(this.master);
 
       this.noiseBuffer = this.buildNoise(ctx);
-      if (ctx.state === 'suspended') void ctx.resume();
+      // Starting a source during the touch itself reliably unlocks WKWebView's
+      // audio output. Calling resume() alone can report success while the
+      // output remains silent on iOS.
+      this.prime(ctx);
+      this.resume();
       if (this.musicEnabled) this.startMusic();
     } catch (err) {
       console.warn('[audio] unavailable', err);
       this.ctx = null;
     }
+  }
+
+  private ensureNativeAudio(): Promise<void> {
+    if (this.nativeReady) return this.nativeReady;
+    this.nativeReady = (async () => {
+      await NativeAudio.configure({ fade: false, focus: true });
+      for (const name of NATIVE_SFX) {
+        // The iOS implementation names this option `channels`; retain the
+        // documented property too so the same payload remains portable.
+        const options = {
+          assetId: `sfx-${name}`,
+          assetPath: `public/audio/native/${name}.wav`,
+          audioChannelNum: 4,
+          channels: 4,
+          volume: NATIVE_SFX_VOLUME,
+          isUrl: false,
+        } as PreloadOptions & { channels: number };
+        await NativeAudio.preload(options);
+      }
+      await NativeAudio.preload({
+        assetId: NATIVE_MUSIC_ID,
+        assetPath: 'public/audio/native/music.wav',
+        audioChannelNum: 1,
+        channels: 1,
+        volume: NATIVE_MUSIC_VOLUME,
+        isUrl: false,
+      } as PreloadOptions & { channels: number });
+      console.info('[audio] native iOS audio ready');
+    })().catch((err: unknown) => {
+      this.nativeReady = null;
+      console.error('[audio] native iOS audio failed', err);
+      throw err;
+    });
+    return this.nativeReady;
+  }
+
+  private async startNativeMusic(): Promise<void> {
+    try {
+      await this.ensureNativeAudio();
+      if (!this.musicEnabled || this.nativeMusicPlaying) return;
+      await NativeAudio.loop({ assetId: NATIVE_MUSIC_ID });
+      this.nativeMusicPlaying = true;
+      this.nativeMusicPaused = false;
+    } catch (err) {
+      console.warn('[audio] native music failed', err);
+    }
+  }
+
+  private async stopNativeMusic(): Promise<void> {
+    if (!this.nativeMusicPlaying) return;
+    try {
+      await NativeAudio.stop({ assetId: NATIVE_MUSIC_ID });
+    } catch (err) {
+      console.warn('[audio] native music stop failed', err);
+    }
+    this.nativeMusicPlaying = false;
+    this.nativeMusicPaused = false;
+  }
+
+  private prime(ctx: AudioContext): void {
+    try {
+      const source = ctx.createBufferSource();
+      source.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      source.connect(ctx.destination);
+      source.start();
+    } catch (err) {
+      console.warn('[audio] unlock pulse failed', err);
+    }
+  }
+
+  private disposeContext(): void {
+    const ctx = this.ctx;
+    this.stopMusic();
+    this.ctx = null;
+    this.master = null;
+    this.sfxBus = null;
+    this.musicBus = null;
+    this.noiseBuffer = null;
+    this.needsContextRebuild = false;
+    if (ctx && ctx.state !== 'closed') void ctx.close().catch(() => undefined);
   }
 
   private buildNoise(ctx: AudioContext): AudioBuffer {
@@ -114,6 +231,7 @@ export class AudioEngine {
 
   setSfxEnabled(on: boolean): void {
     this.sfxEnabled = on;
+    if (this.useNativeAudio) return;
     if (this.sfxBus && this.ctx) {
       this.sfxBus.gain.setTargetAtTime(on ? 1 : 0, this.ctx.currentTime, 0.02);
     }
@@ -121,6 +239,11 @@ export class AudioEngine {
 
   setMusicEnabled(on: boolean): void {
     this.musicEnabled = on;
+    if (this.useNativeAudio) {
+      if (on) void this.startNativeMusic();
+      else void this.stopNativeMusic();
+      return;
+    }
     if (!this.ctx) return;
     if (on) this.startMusic();
     else this.stopMusic();
@@ -128,6 +251,16 @@ export class AudioEngine {
 
   /** Duck music during celebrations so the win stinger cuts through. */
   duckMusic(seconds: number): void {
+    if (this.useNativeAudio) {
+      if (!this.nativeMusicPlaying) return;
+      if (this.nativeDuckTimer !== null) window.clearTimeout(this.nativeDuckTimer);
+      void NativeAudio.setVolume({ assetId: NATIVE_MUSIC_ID, volume: 0.06 });
+      this.nativeDuckTimer = window.setTimeout(() => {
+        this.nativeDuckTimer = null;
+        void NativeAudio.setVolume({ assetId: NATIVE_MUSIC_ID, volume: NATIVE_MUSIC_VOLUME });
+      }, seconds * 1000);
+      return;
+    }
     if (!this.ctx || !this.musicBus || !this.musicRunning) return;
     const now = this.ctx.currentTime;
     const g = this.musicBus.gain;
@@ -137,11 +270,46 @@ export class AudioEngine {
   }
 
   suspend(): void {
-    if (this.ctx && this.ctx.state === 'running') void this.ctx.suspend();
+    if (this.useNativeAudio) {
+      if (this.nativeMusicPlaying && !this.nativeMusicPaused) {
+        this.nativeMusicPaused = true;
+        void NativeAudio.pause({ assetId: NATIVE_MUSIC_ID }).catch((err: unknown) => {
+          console.warn('[audio] native music pause failed', err);
+        });
+      }
+      return;
+    }
+    if (this.ctx && this.ctx.state === 'running') {
+      // WebKit can leave a resumed context running but inaudible. Recreate it
+      // from the next real touch after any native or background interruption.
+      this.needsContextRebuild = true;
+      void this.ctx.suspend();
+    }
   }
 
   resume(): void {
-    if (this.ctx && this.ctx.state === 'suspended') void this.ctx.resume();
+    if (this.useNativeAudio) {
+      if (this.musicEnabled && this.nativeMusicPlaying && this.nativeMusicPaused) {
+        this.nativeMusicPaused = false;
+        void NativeAudio.resume({ assetId: NATIVE_MUSIC_ID }).catch((err: unknown) => {
+          console.warn('[audio] native music resume failed', err);
+        });
+      } else if (this.musicEnabled && !this.nativeMusicPlaying) {
+        void this.startNativeMusic();
+      }
+      return;
+    }
+    const ctx = this.ctx;
+    // WebKit can expose an `interrupted` state after native sheets, Siri,
+    // calls, or an audio-route change. Resume every inactive context from the
+    // next user gesture; `closed` contexts cannot be resumed.
+    if (ctx && ctx.state !== 'running' && ctx.state !== 'closed') {
+      void ctx.resume()
+        .then(() => console.info(`[audio] resume completed: state=${ctx.state}`))
+        .catch((err: unknown) => {
+          console.warn('[audio] resume failed', err);
+        });
+    }
   }
 
   // ------------------------------------------------------------ primitives
@@ -207,6 +375,13 @@ export class AudioEngine {
    * four-unit pour sounds heavier than a one-unit trickle.
    */
   play(name: SfxName, intensity = 0.5): void {
+    if (this.useNativeAudio) {
+      if (!this.sfxEnabled) return;
+      void this.ensureNativeAudio()
+        .then(() => NativeAudio.play({ assetId: `sfx-${name}` }))
+        .catch((err: unknown) => console.warn(`[audio] native SFX failed: ${name}`, err));
+      return;
+    }
     if (!this.ctx) return;
     switch (name) {
       case 'select':

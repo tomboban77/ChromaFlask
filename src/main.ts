@@ -642,7 +642,9 @@ class App {
     // (phone call, Siri, headphones unplugged), and the next tap must revive
     // it. unlock() is idempotent and near-free once the context exists.
     const unlock = () => audio.unlock();
-    window.addEventListener('pointerdown', unlock);
+    // Capture the gesture before Pixi or a button handles it, so the same tap
+    // that requests a sound also unlocks audio on iOS WKWebView.
+    window.addEventListener('pointerdown', unlock, { capture: true });
     window.addEventListener('keydown', unlock);
 
     // iOS WebKit only applies `:active` to touches when a touch listener exists
