@@ -22,6 +22,12 @@
  * the audio/render pause around a full-screen ad); drivers only load and show.
  */
 import { isNativeApp, platform } from './Platform';
+import { registerPlugin } from '@capacitor/core';
+
+const trackingPermission = registerPlugin<{
+  request(): Promise<{ status: 'authorized' | 'denied' | 'restricted' }>;
+  showConsentForm(): Promise<{ canRequestAds: boolean }>;
+}>('TrackingPermission');
 
 export type RewardPlacement = 'lives' | 'undo' | 'hint' | 'bottle';
 export type RewardOutcome = 'rewarded' | 'dismissed' | 'unavailable' | 'failed';
@@ -151,9 +157,8 @@ const loadAdMob = () => import('@capacitor-community/admob');
 type AdMobModule = Awaited<ReturnType<typeof loadAdMob>>;
 
 /**
- * Google AdMob through @capacitor-community/admob. Consent first (UMP shows
- * the GDPR form where the law requires it, then iOS's tracking prompt if the
- * form did not already trigger it), then the SDK, then one ad of each kind is
+ * Google AdMob through @capacitor-community/admob. iOS tracking permission
+ * first, then UMP consent where required, then the SDK. One ad of each kind is
  * kept preloaded so a tap on "watch" is answered in seconds, not after a
  * network round trip.
  */
@@ -171,20 +176,24 @@ export class AdMobDriver implements AdsDriver {
       this.mod = await loadAdMob();
       const { AdMob, AdmobConsentStatus, MaxAdContentRating } = this.mod;
 
+      // Independent of UMP/network availability. The native bridge waits for
+      // an active scene and only resolves once ATT has a determined status.
+      if (platform() === 'ios') await trackingPermission.request();
+
       let consent = await AdMob.requestConsentInfo();
       if (consent.isConsentFormAvailable && consent.status === AdmobConsentStatus.REQUIRED) {
-        consent = await AdMob.showConsentForm();
+        if (platform() === 'ios') {
+          const result = await trackingPermission.showConsentForm();
+          consent = { ...consent, canRequestAds: result.canRequestAds };
+        } else {
+          consent = await AdMob.showConsentForm();
+        }
       }
       // The plugin does not re-export its PrivacyOptionsRequirementStatus
       // enum; its values are the plain strings NOT_REQUIRED | REQUIRED | UNKNOWN.
       this.privacyRequired = String(consent.privacyOptionsRequirementStatus) === 'REQUIRED';
 
-      if (platform() === 'ios') {
-        // If the UMP message carried the IDFA explainer this is already
-        // decided and the call is a no-op; otherwise ask now, before any ad.
-        const { status } = await AdMob.trackingAuthorizationStatus();
-        if (status === 'notDetermined') await AdMob.requestTrackingAuthorization();
-      }
+      if (!consent.canRequestAds) return false;
 
       await AdMob.initialize({
         initializeForTesting: this.testing,
