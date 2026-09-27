@@ -135,6 +135,17 @@ const table: Record<string, string> = {
   'powerup.out': 'Sin {name}: consigue más en la tienda',
   'powerup.nothingToUndo': 'Nada que deshacer',
   'powerup.noHint': 'No hay movimiento ganador desde aquí; prueba a deshacer o reiniciar',
+  'powerup.capped': 'Límite por nivel alcanzado',
+  'missions.title': 'Misiones diarias',
+  'missions.clears': 'Supera {n} niveles',
+  'missions.perfect': 'Consigue 3 estrellas en un nivel',
+  'missions.noUndo': 'Gana un nivel sin deshacer',
+  'missions.noHint': 'Gana un nivel sin pistas',
+  'missions.clock': 'Vence al reloj {n} veces',
+  'missions.pours': 'Haz {n} vertidos',
+  'missions.daily': 'Supera el reto diario',
+  'missions.completeToast': 'Misión completada +{n}',
+  'missions.allToast': '¡Misiones del día completadas! +{n}',
   'game.backAria': 'Volver al inicio',
   'game.restartAria': 'Reiniciar nivel',
   'game.skipTutorial': 'Saltar tutorial',
@@ -209,6 +220,8 @@ const table: Record<string, string> = {
   'win.newStars.other': '{n} estrellas nuevas +{coins}',
   'win.chapterBonus': 'Capítulo completado +{n}',
   'win.dailyBonus': 'Bonus diario +{n}',
+  'win.timeBonus': 'Bonus de rapidez +{n}',
+  'win.streakBonus': 'Bonus de racha +{n}',
   'win.allStars': 'Ya tenías todas las estrellas de este nivel',
   'win.moves': 'Movim.',
   'win.ideal': 'Ideal',
@@ -363,6 +376,12 @@ const table: Record<string, string> = {
   'reset.keep': 'Seguir jugando',
 
   'howto.title': 'Cómo jugar',
+  'howto.more': `<div class="howto">
+    <h3>Límites, reloj y rachas</h3>
+    <p>Cada intento permite como máximo <b>{undo} deshacer</b>, <b>{hint} pistas</b> y <b>{bottle} botellas extra</b>, tengas las que tengas.</p>
+    <p>El <b>reloj</b> muestra una ventana de bonus: supera un nivel por primera vez antes de que se agote y ganas monedas extra. Nunca te hace perder un nivel.</p>
+    <p>Supera niveles nuevos seguidos sin reiniciarlos ni salir y, desde el tercero, cada victoria paga un <b>bonus de racha</b>.</p>
+  </div>`,
   'howto.body': `<div class="howto">
     <h3>Verter</h3>
     <p>Toca una botella para levantar su color superior y luego toca otra botella para verter. El líquido solo se vierte sobre el <b>mismo color</b> o en una <b>botella vacía</b>, y todo el bloque del mismo color se mueve a la vez si hay espacio.</p>

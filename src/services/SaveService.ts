@@ -6,6 +6,7 @@
  */
 
 import { advanceStreak, currentStreak, type DailyStreak } from '@/core/daily';
+import { mergeMissions, type MissionsState } from '@/core/missions';
 import { LIVES_MAX, LIVES_REGEN_MS, type PowerupId } from '@/core/progression';
 import type { Board, Move } from '@/core/types';
 
@@ -54,6 +55,12 @@ export interface LifetimeStats {
   /** Consecutive wins without abandoning or failing a level. */
   streak: number;
   bestStreak: number;
+  /**
+   * Consecutive first clears won without a restart, quit, skip or loss - the
+   * coin-multiplier streak. Stricter than `streak` on purpose: replays and
+   * free restarts keep `streak` alive, which would make the bonus permanent.
+   */
+  cleanStreak: number;
 }
 
 /**
@@ -96,6 +103,14 @@ export interface SaveData {
    * was paid for but interrupted before the grant be restored exactly once.
    */
   grantedPurchaseTokens: string[];
+  /**
+   * Product ids ever granted on this save, for one-time offers (the starter
+   * bundle). Unlike the token ledger this is never trimmed: it is a few short
+   * strings, and forgetting one would re-open a one-per-player offer.
+   */
+  purchasedProducts: string[];
+  /** Today's daily-mission slots; reset whenever the stored day is not today. */
+  missions: MissionsState | null;
   /** The attempt the player was in the middle of, if any. */
   inProgress: InProgressState | null;
   /** Whether endless mode has been introduced with a toast. */
@@ -135,7 +150,8 @@ export interface DailyState {
 const _dailyStateIsStreak: (s: DailyState) => DailyStreak = (s) => s;
 void _dailyStateIsStreak;
 
-export const SAVE_VERSION = 16;
+
+export const SAVE_VERSION = 17;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -170,12 +186,16 @@ export function defaultSave(startingCoins: number): SaveData {
     tutorialDone: false,
     inventory: { undo: 0, hint: 0, bottle: 0 },
     lives: { count: LIVES_MAX, nextRegenAt: 0, infiniteUntil: 0 },
-    stats: { plays: 0, wins: 0, perfects: 0, pours: 0, hintsUsed: 0, streak: 0, bestStreak: 0 },
+    stats: {
+      plays: 0, wins: 0, perfects: 0, pours: 0, hintsUsed: 0, streak: 0, bestStreak: 0, cleanStreak: 0,
+    },
     murkySeen: false,
     cauldronSeen: false,
     supportId: generateSupportId(),
     redeemedCodes: [],
     grantedPurchaseTokens: [],
+    purchasedProducts: [],
+    missions: null,
     inProgress: null,
     endlessSeen: false,
     daily: { records: {}, streak: 0, lastDay: -1, bestStreak: 0 },
@@ -287,6 +307,9 @@ export class SaveService {
       redeemedCodes: parsed.redeemedCodes ?? [],
       // v5 saves predate purchase restore.
       grantedPurchaseTokens: parsed.grantedPurchaseTokens ?? [],
+      // v16 saves predate one-time offers and daily missions.
+      purchasedProducts: parsed.purchasedProducts ?? [],
+      missions: parsed.missions ?? null,
       // v6 saves predate mid-level resume.
       inProgress: parsed.inProgress ?? null,
       // v7 saves predate endless mode.
@@ -483,6 +506,10 @@ export class SaveService {
     merged.grantedPurchaseTokens = Array.from(
       new Set([...local.grantedPurchaseTokens, ...merged.grantedPurchaseTokens]),
     );
+    merged.purchasedProducts = Array.from(
+      new Set([...local.purchasedProducts, ...merged.purchasedProducts]),
+    );
+    merged.missions = mergeMissions(local.missions, merged.missions);
     // A half-played level from another device makes no sense here.
     merged.inProgress = null;
     this.data = merged;
@@ -507,11 +534,17 @@ export class SaveService {
     // Granted tokens survive too: a reset must not turn an old, already
     // consumed purchase into a second free grant on the next restore.
     const keepGranted = this.data.grantedPurchaseTokens;
+    // One-time offers stay closed too: a reset is not a second starter bundle.
+    const keepPurchased = this.data.purchasedProducts;
+    // Nor a second payout of today's missions.
+    const keepMissions = this.data.missions;
     this.data = defaultSave(this.startingCoins);
     this.data.settings = keepSettings;
     this.data.supportId = keepSupportId;
     this.data.redeemedCodes = keepRedeemed;
     this.data.grantedPurchaseTokens = keepGranted;
+    this.data.purchasedProducts = keepPurchased;
+    this.data.missions = keepMissions;
     this.flush();
   }
 
@@ -527,6 +560,18 @@ export class SaveService {
    */
   get hasEverPurchased(): boolean {
     return this.data.grantedPurchaseTokens.length > 0;
+  }
+
+  /** Whether this product was ever granted on this save (one-time offers). */
+  hasPurchasedProduct(id: string): boolean {
+    return this.data.purchasedProducts.includes(id);
+  }
+
+  recordProductPurchase(id: string): void {
+    this.update((d) => {
+      if (!d.purchasedProducts.includes(id)) d.purchasedProducts.push(id);
+    });
+    this.flush();
   }
 
   markPurchaseGranted(token: string): void {
@@ -683,6 +728,31 @@ export class SaveService {
     });
   }
 
+  // -------------------------------------------------------------- missions
+  /** Today's mission slots, resetting whenever the stored day is stale. */
+  missionsState(day: number, slots: number): MissionsState {
+    if (this.data.missions?.day !== day || this.data.missions.progress.length !== slots) {
+      this.update((d) => {
+        d.missions = {
+          day,
+          progress: Array.from({ length: slots }, () => 0),
+          paid: Array.from({ length: slots }, () => false),
+          allPaid: false,
+        };
+      });
+    }
+    return this.data.missions as MissionsState;
+  }
+
+  /** Apply a change to today's missions (progress bumps, payouts). */
+  updateMissions(day: number, slots: number, fn: (s: MissionsState) => void): MissionsState {
+    this.missionsState(day, slots);
+    this.update((d) => {
+      fn(d.missions as MissionsState);
+    });
+    return this.data.missions as MissionsState;
+  }
+
   recordWinForStreak(): void {
     this.update((d) => {
       d.stats.streak += 1;
@@ -693,6 +763,22 @@ export class SaveService {
   breakStreak(): void {
     this.update((d) => {
       d.stats.streak = 0;
+      d.stats.cleanStreak = 0;
+    });
+  }
+
+  /** A first clear won cleanly: the multiplier streak grows. */
+  recordCleanWin(): void {
+    this.update((d) => {
+      d.stats.cleanStreak += 1;
+    });
+  }
+
+  /** A restart, quit or skip: the multiplier streak (only) resets. */
+  breakCleanStreak(): void {
+    if (this.data.stats.cleanStreak === 0) return;
+    this.update((d) => {
+      d.stats.cleanStreak = 0;
     });
   }
 

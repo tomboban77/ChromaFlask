@@ -18,8 +18,10 @@ import {
 import { generateLevel } from './generator';
 import { ENDLESS_START, LEVELS, endlessSpec, getLevelSpec, isEndless } from './levels';
 import {
-  DEFAULT_ECONOMY, LOGIN_CYCLE, LOGIN_REWARDS, coinsFor, loginCycleDay, loginRewardFor, starsFor,
+  DEFAULT_ECONOMY, LOGIN_CYCLE, LOGIN_REWARDS, coinsFor, loginCycleDay, loginRewardFor,
+  rewardScale, starsFor, streakBonusFor, timeBonusSeconds,
 } from './progression';
+import { MISSIONS_PER_DAY, mergeMissions, missionsFor } from './missions';
 import { solvability, solve } from './solver';
 import type { Board, BoardRules, Move } from './types';
 
@@ -114,14 +116,61 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
 // -------------------------------------------------------------- economy
 {
   const e = DEFAULT_ECONOMY;
-  const firstPerfect = e.baseReward + 3 * e.rewardPerStar + e.firstClearBonus;
-  check('coins: first clear pays base + stars + bonus', coinsFor(3, null, e) === firstPerfect);
-  check('coins: first 1-star clear', coinsFor(1, null, e) === e.baseReward + e.rewardPerStar + e.firstClearBonus);
+  // Par 22 is full scale (the standard floor from level 151), so the headline
+  // numbers hold there exactly.
+  const firstPerfect = e.baseReward + e.starCoins[2] + e.firstClearBonus;
+  check('coins: full-scale first clear pays base + star tier + bonus', coinsFor(3, null, 22, e) === firstPerfect);
+  check('coins: full-scale first 1-star clear', coinsFor(1, null, 22, e) === e.baseReward + e.starCoins[0] + e.firstClearBonus);
+  // The star gaps exist to reward skill: a perfect must pay well over a sloppy clear.
+  check('coins: star tiers have real gaps', e.starCoins[0] < e.starCoins[1] && e.starCoins[1] < e.starCoins[2]);
+  // Difficulty scaling: an opener pays pocket change, the cap is the cap.
+  check('coins: reward scale floors at 0.3', rewardScale(2) === 0.3);
+  check('coins: reward scale caps at 1', rewardScale(27) === 1);
+  check('coins: an opener pays well under half of full scale', coinsFor(3, null, 2, e) * 2 < firstPerfect);
+  check('coins: scaling is monotonic in par', coinsFor(3, null, 7, e) < coinsFor(3, null, 17, e)
+    && coinsFor(3, null, 17, e) <= coinsFor(3, null, 22, e));
+  check('coins: past the cap nothing changes', coinsFor(3, null, 27, e) === coinsFor(3, null, 22, e));
   // The replay farm: repeating a level must never pay for stars already owned.
-  check('coins: replay at same stars pays nothing', coinsFor(3, 3, e) === 0);
-  check('coins: replay at fewer stars pays nothing', coinsFor(1, 3, e) === 0);
-  check('coins: replay improving 1 -> 3 pays two stars', coinsFor(3, 1, e) === 2 * e.rewardPerStar);
-  check('coins: replay improving 2 -> 3 pays one star', coinsFor(3, 2, e) === e.rewardPerStar);
+  check('coins: replay at same stars pays nothing', coinsFor(3, 3, 22, e) === 0);
+  check('coins: replay at fewer stars pays nothing', coinsFor(1, 3, 2, e) === 0);
+  check('coins: replay improving 1 -> 3 pays the difference', coinsFor(3, 1, 22, e) === e.starCoins[2] - e.starCoins[0]);
+  check('coins: replay improving 2 -> 3 pays the difference', coinsFor(3, 2, 22, e) === e.starCoins[2] - e.starCoins[1]);
+  check('coins: scaled replay improvement stays small on an opener',
+    coinsFor(3, 1, 2, e) < e.starCoins[2] - e.starCoins[0]);
+  // The time bonus scales with par and can always be beaten by a human pace.
+  check('time bonus: window grows with par', timeBonusSeconds(20) > timeBonusSeconds(4));
+  check('time bonus: level 1 window is generous', timeBonusSeconds(2) >= 30);
+
+  // Streak bonus: pays only from the threshold, never turns 0 into coins.
+  check('streak: below threshold pays nothing', streakBonusFor(100, e.streakAfter - 1, e) === 0);
+  check('streak: at threshold pays the multiplier', streakBonusFor(100, e.streakAfter, e) === 50);
+  check('streak: a zero reward stays zero', streakBonusFor(0, 99, e) === 0);
+
+  // Missions: deterministic per day, distinct kinds, every def from the pool.
+  const dayA = missionsFor(20_355);
+  const dayB = missionsFor(20_355);
+  const dayC = missionsFor(20_356);
+  check('missions: three per day', dayA.length === MISSIONS_PER_DAY);
+  check('missions: deterministic per day',
+    JSON.stringify(dayA) === JSON.stringify(dayB));
+  check('missions: kinds are distinct', new Set(dayA.map((m) => m.kind)).size === dayA.length);
+  check('missions: days rotate', Array.from({ length: 14 }, (_, i) =>
+    JSON.stringify(missionsFor(20_355 + i))).some((s) => s !== JSON.stringify(dayC)));
+  check('missions: sane defs', dayA.every((m) => m.target >= 1 && m.coins > 0));
+
+  // Cloud-restore merge: a restore must never re-open a paid mission.
+  const paidHere = { day: 9, progress: [3, 0, 1], paid: [true, false, true], allPaid: false };
+  const paidThere = { day: 9, progress: [1, 2, 0], paid: [false, true, false], allPaid: false };
+  const merged = mergeMissions(paidHere, paidThere);
+  check('missions merge: same day unions payouts',
+    JSON.stringify(merged?.paid) === JSON.stringify([true, true, true]));
+  check('missions merge: same day keeps max progress',
+    JSON.stringify(merged?.progress) === JSON.stringify([3, 2, 1]));
+  check('missions merge: later day wins',
+    mergeMissions(paidHere, { ...paidThere, day: 10 })?.day === 10
+    && mergeMissions({ ...paidHere, day: 10 }, paidThere)?.day === 10);
+  check('missions merge: null side yields the other',
+    mergeMissions(null, paidThere) === paidThere && mergeMissions(paidHere, null) === paidHere);
 
   check('stars: par is 3 stars', starsFor(10, 10) === 3);
   check('stars: within tolerance is 3 stars', starsFor(12, 10) === 3);
@@ -137,12 +186,12 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
   check('achievements: ids unique', new Set(ACHIEVEMENTS.map((a) => a.id)).size === ACHIEVEMENTS.length);
   const fresh = {
     wins: 0, perfects: 0, pours: 0, bestWinStreak: 0, bestDailyStreak: 0, campaignCleared: 0,
-    campaignStars: 0, chaptersDone: 0, endlessCleared: 0, campaignSize: 500,
+    campaignStars: 0, chaptersDone: 0, endlessCleared: 0, campaignSize: 300,
   };
   check('achievements: fresh player has none', unlockedAchievements(fresh).length === 0);
   const maxed = {
-    wins: 9999, perfects: 999, pours: 99999, bestWinStreak: 99, bestDailyStreak: 99, campaignCleared: 500,
-    campaignStars: 1500, chaptersDone: 25, endlessCleared: 99, campaignSize: 500,
+    wins: 9999, perfects: 999, pours: 99999, bestWinStreak: 99, bestDailyStreak: 99, campaignCleared: 300,
+    campaignStars: 900, chaptersDone: 15, endlessCleared: 99, campaignSize: 300,
   };
   check('achievements: maxed player has all', unlockedAchievements(maxed).length === ACHIEVEMENTS.length);
   check('achievements: first win earns exactly First Pour',

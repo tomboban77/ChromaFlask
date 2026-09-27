@@ -670,18 +670,27 @@ body {
 /* Live star budget: pips for the tier still held, label for the pours left
    before it slips. It sits under the header rather than inside the pill so the
    pill stays a plain title and the HUD holds one row on a phone. */
-.hudbudget {
+/* The row under the header: the star budget capsule and the time-bonus chip,
+   centred together so they read as one instrument cluster. */
+.hudrow {
   flex: 0 0 auto;
+  align-self: center;
+  max-width: calc(100% - 24px);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  margin: 2px 0 7px;
+}
+
+.hudbudget {
   /* Every other control here sits on a shaped surface; bare text read as a
      caption rather than as live state. A capsule gives it the same footing
      without taking the room a second row would. */
-  align-self: center;
-  max-width: calc(100% - 24px);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  margin: 2px 0 7px;
   padding: 5px 14px;
   border-radius: var(--r-pill);
   background: linear-gradient(180deg, rgba(58, 40, 122, 0.72), rgba(28, 16, 74, 0.75));
@@ -747,6 +756,101 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .hudbudget__pips--drop { animation: none; }
+}
+
+/* Time-bonus chip: its own capsule so the clock never reads as part of the
+   move count. While the window is open the ring drains gold and the +coins
+   tag says exactly what beating it is worth; afterwards the whole chip dims
+   into a plain elapsed-time clock - reward framing, never fail framing. */
+.hudtimer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 6px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(180deg, rgba(58, 40, 122, 0.72), rgba(28, 16, 74, 0.75));
+  border: 1.5px solid rgba(160, 200, 255, 0.2);
+  box-shadow: inset 0 -2px 0 rgba(10, 4, 38, 0.5), 0 4px 12px rgba(6, 3, 26, 0.4);
+  color: rgba(205, 190, 245, 0.75);
+  font-size: 12.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(6, 3, 26, 0.75);
+  transition: color 0.35s ease, border-color 0.35s ease;
+}
+
+.hudtimer[hidden] { display: none; }
+
+.hudtimer--live {
+  color: #ffe7b4;
+  border-color: rgba(255, 176, 32, 0.45);
+}
+
+.hudtimer__ring {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+  /* The drain starts at 12 o'clock, like every timer people already know. */
+  transform: rotate(-90deg);
+}
+
+.hudtimer__track {
+  fill: none;
+  stroke: rgba(205, 180, 245, 0.22);
+  stroke-width: 4.5;
+}
+
+.hudtimer__fill {
+  fill: none;
+  stroke: var(--accent-warm);
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  /* 2 * PI * r=15.5; the offset is set per tick from the remaining fraction,
+     and the transition smooths the 500ms ticks into a continuous drain. */
+  stroke-dasharray: 97.4;
+  /* The offset is stepped once a second from script, deliberately with no
+     transition and no filter: a tweened dashoffset animates continuously for
+     the whole level, which costs a repaint every frame - measurable jank on
+     machines that fall back to software rendering. At this size a step is
+     ~1.6px of arc, indistinguishable from a tween. */
+  transition: opacity 0.35s ease;
+}
+
+.hudtimer:not(.hudtimer--live) .hudtimer__fill { opacity: 0; }
+
+.hudtimer__bonus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1.5px 8px 1.5px 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: rgba(255, 176, 32, 0.16);
+  border: 1px solid rgba(255, 176, 32, 0.35);
+  color: #ffd77a;
+}
+
+.hudtimer__bonus[hidden] { display: none; }
+
+.hudtimer__bonus::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #ffe9a8, #ffc531 55%, #c98a12);
+  box-shadow: 0 0 4px rgba(255, 197, 49, 0.6);
+}
+
+/* The last stretch of the window: one gentle heartbeat per second, enough to
+   invite a finish without turning the chip into an alarm. */
+.hudtimer--low { animation: timerbeat 1s ease-in-out infinite; }
+
+@keyframes timerbeat {
+  50% { transform: scale(1.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hudtimer--low { animation: none; }
 }
 
 /* ----------------------------------------------------------------- map -- */
@@ -1913,7 +2017,14 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  /* Bottom-anchored by the first card's auto top margin, not by
+     justify-content: flex-end - that overflows *upward*, and on a short
+     phone the cards would sit over the top bar and swallow its taps. An auto
+     margin collapses to zero instead, so tall content starts under the bar
+     and scrolls. */
+  justify-content: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   gap: 12px;
   padding: 0 22px calc(98px + var(--safe-b));
   /* Bottom scrim anchors the play button against the artwork; it starts low
@@ -1936,6 +2047,66 @@ body {
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.75), var(--shadow-md);
   color: var(--brown);
 }
+
+.home > :first-child { margin-top: auto; }
+
+/* Daily missions: same ivory card as the campaign, quieter rows. */
+.missions { gap: 7px; }
+
+/* Short phones (iPhone SE class): tighter rows keep both cards on screen
+   without scrolling in the common case. */
+@media (max-height: 700px) {
+  .missions { gap: 4px; padding-top: 8px; padding-bottom: 8px; }
+  .mission { padding: 4px 10px; font-size: 12px; }
+}
+
+.missions[hidden] { display: none; }
+
+.missions__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 4px;
+  font-weight: 900;
+  font-size: 14.5px;
+}
+
+.missions__count {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--brown);
+  opacity: 0.75;
+}
+
+.mission {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  background: rgba(120, 82, 30, 0.08);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mission--done {
+  opacity: 0.62;
+}
+
+.mission--done .mission__name { text-decoration: line-through; }
+
+.mission__name { min-width: 0; }
+
+.mission__meta {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  color: #8a6210;
+}
+
+.mission__meta--done { color: #2e9c57; }
 
 .homecard__row {
   display: flex;

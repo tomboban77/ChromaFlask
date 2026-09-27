@@ -133,6 +133,17 @@ const table: Record<string, string> = {
   'powerup.out': '{name} habis; ambil lagi di toko',
   'powerup.nothingToUndo': 'Tidak ada yang bisa diurungkan',
   'powerup.noHint': 'Tidak ada langkah menang dari sini; coba urungkan atau mulai ulang',
+  'powerup.capped': 'Batas per level tercapai',
+  'missions.title': 'Misi harian',
+  'missions.clears': 'Selesaikan {n} level',
+  'missions.perfect': 'Raih 3 bintang di satu level',
+  'missions.noUndo': 'Menang tanpa urungkan',
+  'missions.noHint': 'Menang tanpa petunjuk',
+  'missions.clock': 'Kalahkan waktu {n} kali',
+  'missions.pours': 'Tuang {n} kali',
+  'missions.daily': 'Selesaikan tantangan harian',
+  'missions.completeToast': 'Misi selesai +{n}',
+  'missions.allToast': 'Semua misi selesai! +{n}',
   'game.backAria': 'Kembali ke beranda',
   'game.restartAria': 'Mulai ulang level',
   'game.skipTutorial': 'Lewati tutorial',
@@ -202,6 +213,8 @@ const table: Record<string, string> = {
   'win.newStars.other': '{n} bintang baru +{coins}',
   'win.chapterBonus': 'Bab selesai +{n}',
   'win.dailyBonus': 'Bonus harian +{n}',
+  'win.timeBonus': 'Bonus kecepatan +{n}',
+  'win.streakBonus': 'Bonus beruntun +{n}',
   'win.allStars': 'Semua bintang level ini sudah kamu miliki',
   'win.moves': 'Langkah',
   'win.ideal': 'Ideal',
@@ -355,6 +368,12 @@ const table: Record<string, string> = {
   'reset.keep': 'Lanjut bermain',
 
   'howto.title': 'Cara bermain',
+  'howto.more': `<div class="howto">
+    <h3>Batas, jam, dan beruntun</h3>
+    <p>Setiap percobaan paling banyak <b>{undo} urungkan</b>, <b>{hint} petunjuk</b>, dan <b>{bottle} botol tambahan</b>, berapa pun yang kamu punya.</p>
+    <p><b>Jam</b> menunjukkan jendela bonus: selesaikan level untuk pertama kali sebelum habis untuk koin tambahan. Jam tidak pernah membuatmu gagal.</p>
+    <p>Selesaikan level baru berturut-turut tanpa mengulang atau keluar, dan mulai yang ketiga setiap kemenangan membayar <b>bonus beruntun</b>.</p>
+  </div>`,
   'howto.body': `<div class="howto">
     <h3>Menuang</h3>
     <p>Ketuk botol untuk mengangkat warna teratasnya, lalu ketuk botol lain untuk menuang. Cairan hanya bisa dituang ke <b>warna yang sama</b> atau ke <b>botol kosong</b>, dan seluruh blok yang cocok pindah sekaligus jika ada ruang.</p>

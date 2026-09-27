@@ -133,6 +133,17 @@ const table: Record<string, string> = {
   'powerup.out': '{name} がなくなりました - ショップで補充',
   'powerup.nothingToUndo': '取り消すものがありません',
   'powerup.noHint': 'ここから勝てる手はありません - アンドゥかリスタートを',
+  'powerup.capped': 'このレベルでの上限に達しました',
+  'missions.title': '毎日のミッション',
+  'missions.clears': 'レベルを{n}回クリア',
+  'missions.perfect': 'レベルで星3を獲得',
+  'missions.noUndo': 'アンドゥなしでクリア',
+  'missions.noHint': 'ヒントなしでクリア',
+  'missions.clock': '時計に{n}回勝つ',
+  'missions.pours': '{n}回注ぐ',
+  'missions.daily': 'デイリーチャレンジをクリア',
+  'missions.completeToast': 'ミッション達成 +{n}',
+  'missions.allToast': '全ミッション達成！ +{n}',
   'game.backAria': 'ホームへ戻る',
   'game.restartAria': 'レベルをやり直す',
   'game.skipTutorial': 'チュートリアルをスキップ',
@@ -202,6 +213,8 @@ const table: Record<string, string> = {
   'win.newStars.other': '新しい星 {n} つ +{coins}',
   'win.chapterBonus': 'チャプター完了 +{n}',
   'win.dailyBonus': 'デイリーボーナス +{n}',
+  'win.timeBonus': 'タイムボーナス +{n}',
+  'win.streakBonus': '連勝ボーナス +{n}',
   'win.allStars': 'このレベルの星はすべて獲得済み',
   'win.moves': '手数',
   'win.ideal': '理想',
@@ -355,6 +368,12 @@ const table: Record<string, string> = {
   'reset.keep': 'プレイを続ける',
 
   'howto.title': '遊び方',
+  'howto.more': `<div class="howto">
+    <h3>上限・時計・連勝</h3>
+    <p>1回の挑戦で使えるのは、持っている数に関係なく <b>アンドゥ{undo}回</b>、<b>ヒント{hint}回</b>、<b>追加ボトル{bottle}本</b> までです。</p>
+    <p><b>時計</b>はボーナス時間を表示します。時間内に初めてクリアするとコインが追加されます。時間切れで失敗になることはありません。</p>
+    <p>リスタートや途中退出なしで新しいレベルを連続クリアすると、3回目から毎回<b>連勝ボーナス</b>がもらえます。</p>
+  </div>`,
   'howto.body': `<div class="howto">
     <h3>注ぐ</h3>
     <p>ボトルをタップして一番上の色を持ち上げ、別のボトルをタップして注ぎます。液体は<b>同じ色</b>の上か<b>空のボトル</b>にだけ注げ、スペースがあれば同じ色のブロック全体が一度に移動します。</p>

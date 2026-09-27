@@ -2,7 +2,7 @@ import { DAILY_BASE, dailySpec, isDaily } from './daily';
 import type { LevelSpec } from './types';
 
 /**
- * The 500-level campaign.
+ * The 300-level campaign.
  *
  * Difficulty comes from three dials, moved on a sawtooth rather than a line so
  * the ramp has rhythm instead of a grind:
@@ -11,15 +11,17 @@ import type { LevelSpec } from './types';
  *  - empty tubes:  working space; 3 = breather, 2 = standard, 1 = squeeze
  *  - minPar:       the generator rejects boards whose optimal line is shorter,
  *                  so late levels are *provably* deep, not just "probably"
- *  - murky:        from level 36, colours below each tube's mouth start hidden
+ *  - murky:        from level 25, colours below each tube's mouth start hidden
  *
- * Levels 1-200 are the original ramp. Levels 201-500 continue in five tiers
- * of sixty. Because the campaign is precomputed offline, the par floor can
- * climb through the whole distribution of deals (eight-colour boards reach
- * an ideal of 27 by the last tier, squeezes 19, cauldrons 18, breathers 17),
- * a second squeeze joins each block of ten from the third tier, and murk
- * rises to three levels in four. New mechanics are meant to land in these
- * tiers as well (see docs/AUDIT.md L4).
+ * Levels 1-200 ramp from the tutorial to the full eight-colour game (the
+ * curve here is deliberately steep after the opening: seven colours by 20,
+ * eight by 35). Levels 201-300 are the endgame, five tiers of twenty - the
+ * same five tiers that once stretched over 300 levels, compressed so the
+ * campaign ends at its peak instead of coasting. Because the campaign is
+ * precomputed offline, the par floor can climb through the whole distribution
+ * of deals (eight-colour boards reach an ideal of 27 by the last tier,
+ * squeezes 19, cauldrons 18, breathers 17), a second squeeze joins each block
+ * of ten from the third tier, and murk rises to three levels in four.
  *
  * Every spec is deterministic (id seeds the generator) and machine-verified by
  * `npm run test:core`: solvable, meets minPar, conserves units, and generates
@@ -64,23 +66,24 @@ const OPENING: readonly LevelSpec[] = [
 ] as const;
 
 /**
- * Late-campaign tier, 0 for levels 1-200, then 1-5 for each sixty levels
+ * Late-campaign tier, 0 for levels 1-200, then 1-5 for each twenty levels
  * from 201. Each tier nudges the par floors up within proven caps.
  */
 function tierFor(id: number): number {
-  return id <= 200 ? 0 : Math.floor((id - 201) / 60) + 1;
+  return id <= 200 ? 0 : Math.floor((id - 201) / 20) + 1;
 }
 
-/** Campaign curve for levels 11-500. */
+/** Campaign curve for levels 11-300. */
 function specFor(id: number): LevelSpec {
   // Base colour band. The palette holds 8 colours; past that point the heat
   // comes from minPar, squeezes, the cauldron and the murky mechanic instead.
-  const colors = id <= 30 ? 6 : id <= 55 ? 7 : 8;
+  const colors = id <= 19 ? 6 : id <= 34 ? 7 : 8;
   const tier = tierFor(id);
 
   // Cauldron every 10 levels from 22: it replaces one empty tube with a
-  // vessel that takes anything but must end empty. Introduced well clear of
-  // the murky mechanic's debut (36) so players meet one new idea at a time.
+  // vessel that takes anything but must end empty. Introduced a few levels
+  // clear of the murky mechanic's debut (26) so players meet one new idea at
+  // a time.
   // Capped at 6 colours: the cauldron's any-colour branching makes bigger
   // exact solves take seconds on-device, and one empty tube plus a
   // must-empty cauldron carries plenty of heat on its own. The floor stays at
@@ -97,12 +100,12 @@ function specFor(id: number): LevelSpec {
   // Par floor. Raw eight-colour deals have an ideal of 23-28 (median 25), so
   // a floor below that rejects nothing and the curve goes flat; this one
   // climbs through the whole distribution instead:
-  //   56-100: 17, 18, 19   101-150: 20, 21   151-200: 22   tiers: 23 .. 27.
+  //   35-100: 17, 18, 19   101-150: 20, 21   151-200: 22   tiers: 23 .. 27.
   // The precompute pays for the rejected deals offline; players never wait.
   let minPar: number;
   if (colors === 6) minPar = 13 + Math.min(2, Math.floor((id % 30) / 12));
   else if (colors === 7) minPar = 15 + Math.min(2, Math.floor((id % 30) / 12));
-  else if (id <= 100) minPar = 17 + Math.floor((id - 56) / 15);
+  else if (id <= 100) minPar = 17 + Math.min(2, Math.floor((id - 35) / 22));
   else if (id <= 150) minPar = 20 + Math.floor((id - 101) / 25);
   else if (id <= 200) minPar = 22;
   else minPar = Math.min(27, 22 + tier);
@@ -151,7 +154,7 @@ function specFor(id: number): LevelSpec {
   // From the third late tier a second squeeze joins each block of ten.
   if (id % 10 === 8 || (tier >= 3 && id % 10 === 6)) {
     empties = 1;
-    const squeezed = id <= 30 ? 5 : 6;
+    const squeezed = id <= 20 ? 5 : 6;
     // 11 (five colours), then 14 -> 15 across the ramp, then 16 .. 19.
     minPar = squeezed === 5 ? 11 : id <= 100 ? 14 : id <= 200 ? 15 : Math.min(19, 15 + tier);
     return { id, colors: squeezed, empties, minPar, name: nameFor(id), murky: isMurky(id) };
@@ -160,16 +163,16 @@ function specFor(id: number): LevelSpec {
   return { id, colors, empties, minPar, name: nameFor(id), murky: isMurky(id) };
 }
 
-/** Murky cadence: introduced at 36, common by 70, dominant past 120, three in four from level 321. */
+/** Murky cadence: introduced at 25, common by 60, dominant past 120, three in four from level 241. */
 function isMurky(id: number): boolean {
-  if (id < 36) return false;
-  if (id <= 70) return id % 5 === 1;
+  if (id < 25) return false;
+  if (id <= 60) return id % 5 === 1;
   if (id <= 120) return id % 3 === 0;
   if (tierFor(id) >= 3) return id % 4 !== 1;
   return id % 3 !== 1;
 }
 
-export const LEVEL_COUNT = 500;
+export const LEVEL_COUNT = 300;
 
 export const LEVELS: readonly LevelSpec[] = [
   ...OPENING,
@@ -179,7 +182,7 @@ export const LEVELS: readonly LevelSpec[] = [
 ];
 
 // ------------------------------------------------------------------ endless
-/** Endless levels are numbered straight on from the campaign: 201, 202, ... */
+/** Endless levels are numbered straight on from the campaign: 301, 302, ... */
 export const ENDLESS_START = LEVEL_COUNT + 1;
 
 export function isEndless(id: number): boolean {

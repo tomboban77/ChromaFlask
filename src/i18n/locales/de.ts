@@ -135,6 +135,17 @@ const table: Record<string, string> = {
   'powerup.out': 'Keine {name} mehr – hol dir mehr im Shop',
   'powerup.nothingToUndo': 'Nichts rückgängig zu machen',
   'powerup.noHint': 'Von hier gibt es keinen Gewinnzug – versuch Zurück oder Neustart',
+  'powerup.capped': 'Limit für dieses Level erreicht',
+  'missions.title': 'Tägliche Missionen',
+  'missions.clears': 'Schaffe {n} Level',
+  'missions.perfect': 'Hole 3 Sterne in einem Level',
+  'missions.noUndo': 'Gewinne ein Level ohne Zurück',
+  'missions.noHint': 'Gewinne ein Level ohne Hinweise',
+  'missions.clock': 'Schlage die Uhr {n}-mal',
+  'missions.pours': 'Gieße {n}-mal um',
+  'missions.daily': 'Schaffe die Tages-Challenge',
+  'missions.completeToast': 'Mission erfüllt +{n}',
+  'missions.allToast': 'Alle Missionen geschafft! +{n}',
   'game.backAria': 'Zurück zum Start',
   'game.restartAria': 'Level neu starten',
   'game.skipTutorial': 'Tutorial überspringen',
@@ -209,6 +220,8 @@ const table: Record<string, string> = {
   'win.newStars.other': '{n} neue Sterne +{coins}',
   'win.chapterBonus': 'Kapitel abgeschlossen +{n}',
   'win.dailyBonus': 'Tagesbonus +{n}',
+  'win.timeBonus': 'Zeitbonus +{n}',
+  'win.streakBonus': 'Serienbonus +{n}',
   'win.allStars': 'Alle Sterne dieses Levels hattest du schon',
   'win.moves': 'Züge',
   'win.ideal': 'Ideal',
@@ -363,6 +376,12 @@ const table: Record<string, string> = {
   'reset.keep': 'Weiterspielen',
 
   'howto.title': 'Spielanleitung',
+  'howto.more': `<div class="howto">
+    <h3>Limits, Uhr und Serien</h3>
+    <p>Jeder Versuch erlaubt höchstens <b>{undo}-mal Zurück</b>, <b>{hint} Hinweise</b> und <b>{bottle} Extraflaschen</b>, egal wie viele du besitzt.</p>
+    <p>Die <b>Uhr</b> zeigt ein Bonusfenster: Schaffst du ein Level zum ersten Mal, bevor es abläuft, gibt es Extramünzen. Sie lässt dich nie ein Level verlieren.</p>
+    <p>Schaffe neue Level hintereinander, ohne neu zu starten oder sie zu verlassen – ab dem dritten zahlt jeder Sieg einen <b>Serienbonus</b>.</p>
+  </div>`,
   'howto.body': `<div class="howto">
     <h3>Umgießen</h3>
     <p>Tippe auf eine Flasche, um ihre oberste Farbe anzuheben, dann auf eine andere Flasche, um umzugießen. Flüssigkeit passt nur auf die <b>gleiche Farbe</b> oder in eine <b>leere Flasche</b>, und der ganze passende Block wandert auf einmal, wenn Platz ist.</p>

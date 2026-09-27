@@ -133,6 +133,17 @@ const table: Record<string, string> = {
   'powerup.out': '{name} kalmadı; mağazadan al',
   'powerup.nothingToUndo': 'Geri alınacak bir şey yok',
   'powerup.noHint': 'Buradan kazandıran hamle yok; geri al veya yeniden başla',
+  'powerup.capped': 'Bu bölüm için sınıra ulaşıldı',
+  'missions.title': 'Günlük görevler',
+  'missions.clears': '{n} bölüm geç',
+  'missions.perfect': 'Bir bölümde 3 yıldız al',
+  'missions.noUndo': 'Geri almadan bir bölüm kazan',
+  'missions.noHint': 'İpucu olmadan bir bölüm kazan',
+  'missions.clock': 'Saati {n} kez yen',
+  'missions.pours': '{n} kez dök',
+  'missions.daily': 'Günlük meydan okumayı tamamla',
+  'missions.completeToast': 'Görev tamamlandı +{n}',
+  'missions.allToast': 'Tüm görevler tamam! +{n}',
   'game.backAria': 'Ana sayfaya dön',
   'game.restartAria': 'Seviyeyi yeniden başlat',
   'game.skipTutorial': 'Eğitimi geç',
@@ -202,6 +213,8 @@ const table: Record<string, string> = {
   'win.newStars.other': '{n} yeni yıldız +{coins}',
   'win.chapterBonus': 'Bölüm tamamlandı +{n}',
   'win.dailyBonus': 'Günlük bonus +{n}',
+  'win.timeBonus': 'Hız bonusu +{n}',
+  'win.streakBonus': 'Seri bonusu +{n}',
   'win.allStars': 'Bu seviyenin tüm yıldızları zaten sende',
   'win.moves': 'Hamle',
   'win.ideal': 'İdeal',
@@ -355,6 +368,12 @@ const table: Record<string, string> = {
   'reset.keep': 'Oynamaya devam',
 
   'howto.title': 'Nasıl oynanır',
+  'howto.more': `<div class="howto">
+    <h3>Sınırlar, saat ve seriler</h3>
+    <p>Her denemede, sahip olduğun miktardan bağımsız olarak en fazla <b>{undo} geri alma</b>, <b>{hint} ipucu</b> ve <b>{bottle} ekstra şişe</b> kullanılabilir.</p>
+    <p><b>Saat</b> bir bonus süresi gösterir: bir bölümü süre bitmeden ilk kez geçersen ekstra altın kazanırsın. Seni asla bölümden düşürmez.</p>
+    <p>Yeni bölümleri yeniden başlatmadan veya çıkmadan art arda geç; üçüncüden itibaren her galibiyet <b>seri bonusu</b> öder.</p>
+  </div>`,
   'howto.body': `<div class="howto">
     <h3>Dökme</h3>
     <p>Bir şişeye dokunarak üstteki rengini kaldır, sonra dökmek için başka bir şişeye dokun. Sıvı yalnızca <b>aynı renge</b> veya <b>boş bir şişeye</b> dökülür ve yer varsa eşleşen bloğun tamamı bir kerede gider.</p>

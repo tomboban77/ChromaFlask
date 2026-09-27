@@ -135,6 +135,17 @@ const table: Record<string, string> = {
   'powerup.out': 'Sem {name}: pegue mais na loja',
   'powerup.nothingToUndo': 'Nada para desfazer',
   'powerup.noHint': 'Não há jogada vencedora daqui; tente desfazer ou reiniciar',
+  'powerup.capped': 'Limite por nível atingido',
+  'missions.title': 'Missões diárias',
+  'missions.clears': 'Vença {n} níveis',
+  'missions.perfect': 'Ganhe 3 estrelas em um nível',
+  'missions.noUndo': 'Vença um nível sem desfazer',
+  'missions.noHint': 'Vença um nível sem dicas',
+  'missions.clock': 'Vença o relógio {n} vezes',
+  'missions.pours': 'Faça {n} despejos',
+  'missions.daily': 'Conclua o desafio diário',
+  'missions.completeToast': 'Missão concluída +{n}',
+  'missions.allToast': 'Todas as missões concluídas! +{n}',
   'game.backAria': 'Voltar ao início',
   'game.restartAria': 'Reiniciar nível',
   'game.skipTutorial': 'Pular tutorial',
@@ -209,6 +220,8 @@ const table: Record<string, string> = {
   'win.newStars.other': '{n} estrelas novas +{coins}',
   'win.chapterBonus': 'Capítulo concluído +{n}',
   'win.dailyBonus': 'Bônus diário +{n}',
+  'win.timeBonus': 'Bônus de rapidez +{n}',
+  'win.streakBonus': 'Bônus de sequência +{n}',
   'win.allStars': 'Você já tinha todas as estrelas deste nível',
   'win.moves': 'Movim.',
   'win.ideal': 'Ideal',
@@ -363,6 +376,12 @@ const table: Record<string, string> = {
   'reset.keep': 'Continuar jogando',
 
   'howto.title': 'Como jogar',
+  'howto.more': `<div class="howto">
+    <h3>Limites, relógio e sequências</h3>
+    <p>Cada tentativa permite no máximo <b>{undo} desfazer</b>, <b>{hint} dicas</b> e <b>{bottle} garrafas extras</b>, não importa quantas você tenha.</p>
+    <p>O <b>relógio</b> mostra uma janela de bônus: vença um nível pela primeira vez antes que ela acabe e ganhe moedas extras. Ele nunca faz você perder um nível.</p>
+    <p>Vença níveis novos em sequência sem reiniciar nem sair e, a partir do terceiro, cada vitória paga um <b>bônus de sequência</b>.</p>
+  </div>`,
   'howto.body': `<div class="howto">
     <h3>Despejar</h3>
     <p>Toque em uma garrafa para levantar a cor de cima e depois toque em outra garrafa para despejar. O líquido só cai sobre a <b>mesma cor</b> ou em uma <b>garrafa vazia</b>, e todo o bloco da mesma cor se move de uma vez se houver espaço.</p>

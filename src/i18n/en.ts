@@ -151,6 +151,18 @@ export const en = {
   'powerup.out': 'Out of {name} - grab more in the shop',
   'powerup.nothingToUndo': 'Nothing to undo',
   'powerup.noHint': 'No winning move from here - try undo or restart',
+  'powerup.capped': 'Level limit reached for this one',
+
+  'missions.title': 'Daily missions',
+  'missions.clears': 'Clear {n} levels',
+  'missions.perfect': 'Earn 3 stars on a level',
+  'missions.noUndo': 'Win a level without undo',
+  'missions.noHint': 'Win a level without hints',
+  'missions.clock': 'Beat the clock {n} times',
+  'missions.pours': 'Make {n} pours',
+  'missions.daily': 'Clear the daily challenge',
+  'missions.completeToast': 'Mission complete +{n}',
+  'missions.allToast': 'All missions done! +{n}',
   'game.backAria': 'Back to home',
   'game.restartAria': 'Restart level',
   'game.skipTutorial': 'Skip tutorial',
@@ -264,6 +276,8 @@ export const en = {
   'win.newStars.other': '{n} new stars +{coins}',
   'win.chapterBonus': 'Chapter complete +{n}',
   'win.dailyBonus': 'Daily bonus +{n}',
+  'win.timeBonus': 'Beat the clock +{n}',
+  'win.streakBonus': 'Streak bonus +{n}',
   'win.allStars': 'All stars already earned on this level',
   'win.moves': 'Moves',
   'win.ideal': 'Ideal',
@@ -429,6 +443,12 @@ export const en = {
 
   // how to play
   'howto.title': 'How to play',
+  'howto.more': `<div class="howto">
+    <h3>Limits, clock and streaks</h3>
+    <p>Each attempt allows at most <b>{undo} undos</b>, <b>{hint} hints</b> and <b>{bottle} extra bottles</b>, however many you own.</p>
+    <p>The <b>clock</b> shows a bonus window: clear a level for the first time before it runs out for bonus coins. It never fails a level.</p>
+    <p>Clear new levels in a row without restarting or leaving them and, from the third, every win pays a <b>streak bonus</b>.</p>
+  </div>`,
   'howto.body': `<div class="howto">
     <h3>Pouring</h3>
     <p>Tap a bottle to lift its top colour, then tap another bottle to pour. Liquid only pours onto the <b>same colour</b> or into an <b>empty bottle</b>, and the whole matching block moves at once if there is room.</p>

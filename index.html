@@ -221,13 +221,23 @@
           <div class="homecard">
             <div class="homecard__row">
               <span class="homecard__chapter" id="home-chapter">Chapter 1 · First Pour</span>
-              <span class="homecard__stars" id="home-stars">★ 0 / 1,500</span>
+              <span class="homecard__stars" id="home-stars">★ 0 / 900</span>
             </div>
-            <div class="homecard__bar" id="home-bar" role="progressbar" aria-valuemin="0" aria-valuemax="500" aria-valuenow="0">
+            <div class="homecard__bar" id="home-bar" role="progressbar" aria-valuemin="0" aria-valuemax="300" aria-valuenow="0">
               <i id="home-bar-fill"></i>
-              <span id="home-levels">0 / 500</span>
+              <span id="home-levels">0 / 300</span>
             </div>
             <button class="btn btn--success btn--play" id="btn-play">Level 1</button>
+          </div>
+
+          <!-- Daily missions: three rotating tasks a day, deterministic like
+               the daily challenge. Rows are rendered in renderMissions(). -->
+          <div class="homecard missions" id="home-missions" hidden>
+            <div class="missions__head">
+              <span data-i18n="missions.title">Daily missions</span>
+              <span class="missions__count" id="missions-count">0/3</span>
+            </div>
+            <div id="missions-list"></div>
           </div>
 
         </div>
@@ -346,9 +356,23 @@
         <!-- Star budget: pips for the tier still held, label for the pours left
              before it slips. Below the header so the pill stays a plain title
              and the HUD fits one row on a phone. -->
-        <div class="hudbudget" id="hud-budget">
-          <span class="hudbudget__pips" id="game-star-pips" aria-hidden="true"><i>&#9733;</i><i>&#9733;</i><i>&#9733;</i></span>
-          <span id="game-move-label">0 moves</span>
+        <div class="hudrow">
+          <div class="hudbudget" id="hud-budget">
+            <span class="hudbudget__pips" id="game-star-pips" aria-hidden="true"><i>&#9733;</i><i>&#9733;</i><i>&#9733;</i></span>
+            <span id="game-move-label">0 moves</span>
+          </div>
+          <!-- Time-bonus chip: a golden ring drains through the bonus window
+               (beat it on a first clear for the +coins tag it shows); once the
+               window closes it dims into a plain elapsed-time clock. Purely a
+               reward - no level can be failed on time. -->
+          <div class="hudtimer" id="game-clock" hidden>
+            <svg class="hudtimer__ring" viewBox="0 0 36 36" aria-hidden="true">
+              <circle class="hudtimer__track" cx="18" cy="18" r="15.5" />
+              <circle class="hudtimer__fill" id="game-clock-ring" cx="18" cy="18" r="15.5" />
+            </svg>
+            <span class="hudtimer__time" id="game-clock-time">0:00</span>
+            <span class="hudtimer__bonus" id="game-clock-bonus">+25</span>
+          </div>
         </div>
 
         <!-- Pixi canvas mounts here -->

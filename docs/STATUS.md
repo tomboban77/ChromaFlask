@@ -18,8 +18,8 @@ _Last updated: 2026-09-06_
   player gets the identical board), every level machine-proven solvable before
   it is accepted, with its winning line attached (powers hints + tutorial).
 - **Precomputed campaign** (`src/core/campaign.json`, built by
-  `npm run levels:build`) — all 500 boards and winning lines computed once at
-  build time (132 KB, ~28 KB gzipped), so "Next level" costs zero solver work
+  `npm run levels:build`) — all 300 boards and winning lines computed once at
+  build time (80 KB), so "Next level" costs zero solver work
   on-device (the worst seeds took 1.3 s on a desktop and several seconds on a
   phone). With no time budget the exact solve runs to completion: **every
   stored par is proven optimal** (one par tightened vs. the runtime
@@ -32,22 +32,20 @@ _Last updated: 2026-09-06_
   discarded if the board moved on; a dead worker degrades to synchronous
   search. No-win coverage extended from 8 to 10 tubes.
 
-### 500-level campaign (`src/core/levels.ts`)
-- Hand-tuned opening (1–10), then a measured sawtooth curve: colour bands
-  6 → 7 → 8, par floors 13 → 21, **breather** every 10th level (extra tube),
-  **squeeze** every 10th (one empty tube).
+### 300-level campaign (`src/core/levels.ts`)
+- Hand-tuned opening (1–10), then a measured sawtooth curve steepened after
+  tester feedback (2026-09-26): colour bands 6 → 7 (from 20) → 8 (from 35),
+  murk from 25, par floors 13 → 22, **breather** every 10th level (extra
+  tube), **squeeze** every 10th (one empty tube).
 - The par floor climbs through the whole distribution of deals instead of
-  sitting under it: full eight-colour boards 17 → 19 (56–100), 20 → 21
-  (101–150), 22 (151–200), then 23 → 27 across five tiers of sixty
-  (201–500); squeezes 14 → 19, cauldrons 15 → 18, breathers 13 → 17. From the
+  sitting under it: full eight-colour boards 17 → 19 (35–100), 20 → 21
+  (101–150), 22 (151–200), then 23 → 27 across five tiers of twenty
+  (201–300, the former five tiers of sixty compressed so the campaign ends at
+  its peak); squeezes 14 → 19, cauldrons 15 → 18, breathers 13 → 17. From the
   third tier a second squeeze joins each block of ten and murk rises to three
-  levels in four. Measured on the precomputed file: the full-board ideal
-  rises monotonically 17 → 21 → 24.5 → 24.9 → 25.5 → 25.9 → 26.4 → 27.4 across
-  the blocks from 11–30 to 441–500; the all-levels block average goes 11.5 →
-  24.4 and is diluted by squeezes (~17–19) and cauldrons (~18–19), which sit
-  lower by design as the rhythm beats. All 500 pars proven optimal offline; the
-  precompute pays for the rejected deals, players never wait. These tiers are
-  also where the next mechanics land (AUDIT.md L4).
+  levels in four. All 300 pars proven optimal offline; the precompute pays
+  for the rejected deals, players never wait. These tiers are also where the
+  next mechanics land (AUDIT.md L4).
 - Verified end-to-end by `npm run test:core` (~3,700 checks): solvable, par =
   solution length, minPar met, unit conservation, byte-identical determinism,
   generation speed (worst ≈ 1 s desktop for one deep cauldron seed; typical
@@ -61,7 +59,7 @@ _Last updated: 2026-09-06_
   par floor rising one step every 20 levels up to each shape's campaign cap,
   and murk alternating. Deterministic per id, so resume and analytics work
   unchanged.
-- Entered from the level-500 win screen ("Start endless mode"), the home Play
+- Entered from the level-300 win screen ("Start endless mode"), the home Play
   button once the campaign is done ("Endless #n"), or a gold ∞ node at the
   foot of the map. HUD and win screen say "Endless #n"; profile shows
   "Endless cleared". Campaign counters (stars, cleared, progress bar) count
@@ -116,7 +114,7 @@ _Last updated: 2026-09-06_
   rules (extra admissible heuristic bound, position-sensitive hashing, pruning
   proven safe by the BFS optimality audit). Never "locks in"; hint/undo/stuck
   flows all understand it.
-- **Murky potions** (from level 36, ramping to dominant past 120) — colours
+- **Murky potions** (from level 26, ramping to dominant past 120) — colours
   below each tube's mouth start concealed ("?" murk) and reveal permanently as
   they surface. Purely visual; solver and par untouched.
 - **The Locked Bottle** (levels 205, 215, … 495, and one shape in six in
@@ -157,7 +155,7 @@ _Last updated: 2026-09-06_
   `preventScroll`. The map then positions the player's current chapter header
   at the top of the list using the map's own scroller (not scrollIntoView,
   which drags every scrollable ancestor).
-- **Level map** — 500 nodes in **25 named chapters of 20**
+- **Level map** — 300 nodes in **15 named chapters of 20**
   (`src/core/chapters.ts`: an alchemist's journey from "First Pour" to "The
   Grand Elixir"), each with a header in the chapter's accent colour showing
   stars earned of 60 and a progress bar; locked chapters dim, finished ones
@@ -230,7 +228,8 @@ _Last updated: 2026-09-06_
   found" → Use cloud save → same level, skin and coins back.
 - **Bottle looks** (`SKINS` in `render/theme.ts`, shop section "Bottle
   looks") — six glass skins as a long-term coin sink: Classic (free), Frosted
-  300, Rose quartz 400, Amber 500, Emerald 600, Obsidian 800. A skin tints
+  500, Rose quartz 800, Amber 1200, Emerald 1800, Obsidian 3000 (repriced
+  2026-09-26 to absorb the campaign coin surplus). A skin tints
   the rim, body, collar, cavity and cork of *plain* bottles only; the cauldron
   and one-way flask keep their own colours so they stay recognisable. Tap a
   card to buy (once) and equip; owned cards re-equip free. A mounted board
@@ -247,9 +246,16 @@ _Last updated: 2026-09-06_
   clear later retires the skip. Without enough coins the shop opens and
   nothing is charged. Save v14 (`skipped`). Smoke test covers cost, heart,
   landing level and the map marker after reload.
-- **Economy tuning** — 200 starting coins; a 3-star first clear pays 95
-  (50 + 15/star). Hint ×3 = 200, Bottle ×3 = 320, Undo ×3 = 80, hearts 500.
-  All in `DEFAULT_ECONOMY`, meant to be retuned live via RemoteConfig.
+- **Economy tuning** — 200 starting coins; a first clear pays 60/80/120 for
+  1/2/3 stars at full difficulty (50 base + starCoins [10, 30, 70] — real gaps
+  so efficiency is what the economy rewards, retuned 2026-09-26), and every
+  payout is scaled by the level's par (`rewardScale`: par/22, floor 0.3, cap
+  1.0) so a 20-second opener pays ~45 and the full amounts arrive from level
+  ~151 — early chapters no longer flood the wallet. A first clear that beats
+  the level's clock (20 + 6·par seconds) pays +25, scaled the same way. Per-level powerup caps: undo 5,
+  hint 3, bottle 2 (free + bought combined). Hint ×3 = 200, Bottle ×3 = 320,
+  Undo ×3 = 80, hearts 500. All in `DEFAULT_ECONOMY`, meant to be retuned
+  live via RemoteConfig.
 - **Shop** — 2 real-money bundles + 3 coin packs (via the Payments driver) and
   a coins section (heart refill, powerup 3-packs). "Popular"/"Best value"
   badges only — no fabricated discount claims (store policy).
@@ -421,8 +427,8 @@ _Last updated: 2026-09-06_
   the GitHub repo name also stay.
 
 ### Leaderboard — platform ranking by stars (2026-09-07)
-- **Ranked by campaign stars** (0–1500), the number the home card already
-  shows. "Levels cleared" was rejected: everyone who finishes ties at 500 and
+- **Ranked by campaign stars** (0–900), the number the home card already
+  shows. "Levels cleared" was rejected: everyone who finishes ties at 300 and
   it rewards rushing past levels rather than playing them well. Replaying an
   old level for a missed third star climbs the board, which gives the back
   catalogue a reason to exist.

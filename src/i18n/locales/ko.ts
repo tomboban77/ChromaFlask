@@ -133,6 +133,17 @@ const table: Record<string, string> = {
   'powerup.out': '{name}이(가) 없어요 - 상점에서 더 받으세요',
   'powerup.nothingToUndo': '되돌릴 것이 없어요',
   'powerup.noHint': '여기서는 이길 수 있는 수가 없어요 - 되돌리기나 다시 시작을 해보세요',
+  'powerup.capped': '이 레벨의 사용 한도에 도달했어요',
+  'missions.title': '일일 미션',
+  'missions.clears': '레벨 {n}개 클리어',
+  'missions.perfect': '한 레벨에서 별 3개 획득',
+  'missions.noUndo': '되돌리기 없이 클리어',
+  'missions.noHint': '힌트 없이 클리어',
+  'missions.clock': '시계를 {n}번 이기기',
+  'missions.pours': '{n}번 붓기',
+  'missions.daily': '일일 챌린지 클리어',
+  'missions.completeToast': '미션 완료 +{n}',
+  'missions.allToast': '모든 미션 완료! +{n}',
   'game.backAria': '홈으로',
   'game.restartAria': '레벨 다시 시작',
   'game.skipTutorial': '튜토리얼 건너뛰기',
@@ -202,6 +213,8 @@ const table: Record<string, string> = {
   'win.newStars.other': '새 별 {n}개 +{coins}',
   'win.chapterBonus': '챕터 완료 +{n}',
   'win.dailyBonus': '일일 보너스 +{n}',
+  'win.timeBonus': '시간 보너스 +{n}',
+  'win.streakBonus': '연승 보너스 +{n}',
   'win.allStars': '이 레벨의 별은 이미 모두 얻었어요',
   'win.moves': '수',
   'win.ideal': '이상',
@@ -355,6 +368,12 @@ const table: Record<string, string> = {
   'reset.keep': '계속 플레이',
 
   'howto.title': '게임 방법',
+  'howto.more': `<div class="howto">
+    <h3>한도, 시계, 연승</h3>
+    <p>한 번의 도전에서는 보유량과 상관없이 <b>되돌리기 {undo}번</b>, <b>힌트 {hint}번</b>, <b>추가 병 {bottle}개</b>까지만 쓸 수 있어요.</p>
+    <p><b>시계</b>는 보너스 시간을 보여줘요. 시간이 끝나기 전에 레벨을 처음 클리어하면 코인을 더 받아요. 시간 때문에 실패하지는 않아요.</p>
+    <p>다시 시작하거나 나가지 않고 새 레벨을 연속으로 클리어하면, 세 번째부터 매번 <b>연승 보너스</b>를 받아요.</p>
+  </div>`,
   'howto.body': `<div class="howto">
     <h3>붓기</h3>
     <p>병을 탭해서 맨 위 색을 들어 올린 뒤, 다른 병을 탭해서 부으세요. 액체는 <b>같은 색</b> 위나 <b>빈 병</b>에만 부을 수 있고, 공간이 있으면 같은 색 블록 전체가 한 번에 이동해요.</p>

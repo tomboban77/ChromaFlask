@@ -135,6 +135,17 @@ const table: Record<string, string> = {
   'powerup.out': '{name} finiti: prendine altri nel negozio',
   'powerup.nothingToUndo': 'Niente da annullare',
   'powerup.noHint': 'Nessuna mossa vincente da qui: prova ad annullare o ricominciare',
+  'powerup.capped': 'Limite del livello raggiunto',
+  'missions.title': 'Missioni del giorno',
+  'missions.clears': 'Supera {n} livelli',
+  'missions.perfect': 'Ottieni 3 stelle in un livello',
+  'missions.noUndo': 'Vinci un livello senza annullare',
+  'missions.noHint': 'Vinci un livello senza indizi',
+  'missions.clock': 'Batti il tempo {n} volte',
+  'missions.pours': 'Fai {n} travasi',
+  'missions.daily': 'Completa la sfida del giorno',
+  'missions.completeToast': 'Missione completata +{n}',
+  'missions.allToast': 'Tutte le missioni completate! +{n}',
   'game.backAria': 'Torna alla home',
   'game.restartAria': 'Ricomincia il livello',
   'game.skipTutorial': 'Salta il tutorial',
@@ -209,6 +220,8 @@ const table: Record<string, string> = {
   'win.newStars.other': '{n} nuove stelle +{coins}',
   'win.chapterBonus': 'Capitolo completato +{n}',
   'win.dailyBonus': 'Bonus del giorno +{n}',
+  'win.timeBonus': 'Bonus velocità +{n}',
+  'win.streakBonus': 'Bonus serie +{n}',
   'win.allStars': 'Avevi già tutte le stelle di questo livello',
   'win.moves': 'Mosse',
   'win.ideal': 'Ideale',
@@ -363,6 +376,12 @@ const table: Record<string, string> = {
   'reset.keep': 'Continua a giocare',
 
   'howto.title': 'Come si gioca',
+  'howto.more': `<div class="howto">
+    <h3>Limiti, orologio e serie</h3>
+    <p>Ogni tentativo consente al massimo <b>{undo} annullamenti</b>, <b>{hint} indizi</b> e <b>{bottle} bottiglie extra</b>, qualunque sia la tua scorta.</p>
+    <p>L'<b>orologio</b> mostra una finestra bonus: supera un livello per la prima volta prima che scada per ottenere monete extra. Non ti fa mai perdere un livello.</p>
+    <p>Supera livelli nuovi di fila senza ricominciare né uscire e, dal terzo, ogni vittoria paga un <b>bonus serie</b>.</p>
+  </div>`,
   'howto.body': `<div class="howto">
     <h3>Versare</h3>
     <p>Tocca una bottiglia per sollevare il colore in cima, poi tocca un'altra bottiglia per versare. Il liquido si versa solo sullo <b>stesso colore</b> o in una <b>bottiglia vuota</b>, e tutto il blocco dello stesso colore si sposta insieme se c'è spazio.</p>

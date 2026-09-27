@@ -8,9 +8,10 @@ import { TUBE_CAPACITY } from '@/core/board';
 import { solverClient } from '@/services/SolverClient';
 import {
   COIN_SHOP, LIVES_MAX, LOGIN_CYCLE, LOGIN_REWARDS, coinsFor, loginCycleDay, loginRewardFor,
-  starThresholds, starsFor,
+  scaledReward, starThresholds, starValue, starsFor, streakBonusFor, timeBonusSeconds,
   type CoinShopItem, type PowerupId,
 } from '@/core/progression';
+import { MISSIONS_ALL_BONUS, missionsFor, type MissionKind } from '@/core/missions';
 import { ACHIEVEMENTS, achievementById, unlockedAchievements } from '@/core/achievements';
 import { CHAPTERS } from '@/core/chapters';
 import type { GeneratedLevel } from '@/core/types';
@@ -238,13 +239,22 @@ class App {
     void this.payments.init().then(() => this.restorePurchases());
     // Ads: consent, SDK and preloading, all off the boot path. A full-screen
     // ad silences the game and stops the render loop underneath it.
+    let clockHeldByAd = false;
     this.ads.onAdStart = () => {
       audio.suspend();
       this.stage.setPaused(true);
+      if (!clockHeldByAd) {
+        clockHeldByAd = true;
+        this.pauseClock();
+      }
     };
     this.ads.onAdEnd = () => {
       audio.resume();
       this.stage.setPaused(this.current !== 'game' || document.hidden);
+      if (clockHeldByAd) {
+        clockHeldByAd = false;
+        this.resumeClock();
+      }
     };
     void this.ads.init();
     // Leaderboard: platform ranking by campaign stars, gated on level 45.
@@ -489,6 +499,7 @@ class App {
         selected: this.board.selectedIndex,
         coins: this.save.coins,
         achievementCoins: this.achievementCoins,
+        missionCoins: this.missionCoins,
         lives: this.save.lives.count,
         par: this.level?.par ?? null,
         modalOpen: this.modal.isOpen,
@@ -651,9 +662,17 @@ class App {
     // somewhere on the page. Without this, no button shows its pressed state.
     document.addEventListener('touchstart', () => {}, { passive: true });
 
+    let clockHeldByHidden = false;
     document.addEventListener('visibilitychange', () => {
       const hidden = document.hidden;
       this.stage.setPaused(hidden || this.current !== 'game');
+      if (hidden && !clockHeldByHidden) {
+        clockHeldByHidden = true;
+        this.pauseClock();
+      } else if (!hidden && clockHeldByHidden) {
+        clockHeldByHidden = false;
+        this.resumeClock();
+      }
       if (hidden) {
         audio.suspend();
         this.save.flush();
@@ -842,9 +861,11 @@ class App {
     $('#home-levels').textContent = t('home.levelsOf', { done, total: LEVEL_COUNT });
     $('#home-bar-fill').style.width = `${(100 * done) / LEVEL_COUNT}%`;
     const bar = $('#home-bar');
+    bar.setAttribute('aria-valuemax', String(LEVEL_COUNT));
     bar.setAttribute('aria-valuenow', String(done));
     bar.setAttribute('aria-label', t('home.progressAria', { done, total: LEVEL_COUNT, stars, max: LEVEL_COUNT * 3 }));
     this.renderDailyButton();
+    this.renderMissions();
     const resume = this.save.inProgress;
     $('#btn-play').textContent = resume
       ? t('home.continue', { label: this.levelLabel(resume.levelId) })
@@ -1050,6 +1071,89 @@ class App {
     }
   }
 
+  // ------------------------------------------------------------- missions
+  /** Coins paid by missions this session; lets the smoke test keep its economy sums exact. */
+  private missionCoins = 0;
+
+  /**
+   * Advance today's missions of `kind`. Slots are matched by kind against
+   * missionsFor(day)'s deterministic order; a completed slot pays instantly
+   * with a toast, the third completion adds the all-done bonus, and paid
+   * slots ignore further progress so nothing can pay twice.
+   */
+  private bumpMission(kind: MissionKind, n = 1): void {
+    if (!this.save.snapshot.profile) return;
+    const day = todayDayNumber();
+    const defs = missionsFor(day);
+    const before = this.save.missionsState(day, defs.length);
+    if (!defs.some((def, i) => def.kind === kind && !before.paid[i])) return;
+
+    const after = this.save.updateMissions(day, defs.length, (s) => {
+      defs.forEach((def, i) => {
+        if (def.kind !== kind || s.paid[i]) return;
+        s.progress[i] = (s.progress[i] ?? 0) + n;
+        if ((s.progress[i] ?? 0) >= def.target) s.paid[i] = true;
+      });
+    });
+
+    const completed = defs.filter((def, i) => def.kind === kind && !before.paid[i] && after.paid[i]);
+    completed.forEach((def, k) => {
+      this.save.addCoins(def.coins);
+      this.missionCoins += def.coins;
+      this.analytics.track({ type: 'mission_complete', id: def.kind, day });
+      // After the win fanfare, not on top of it (achievement toasts start at 900).
+      window.setTimeout(() => {
+        this.toast.show(t('missions.completeToast', { n: def.coins }), 'info', 2400);
+        audio.play('coin');
+      }, 400 + k * 700);
+    });
+
+    if (!after.allPaid && after.paid.every(Boolean)) {
+      this.save.updateMissions(day, defs.length, (s) => {
+        s.allPaid = true;
+      });
+      this.save.addCoins(MISSIONS_ALL_BONUS);
+      this.missionCoins += MISSIONS_ALL_BONUS;
+      this.analytics.track({ type: 'missions_all', day });
+      window.setTimeout(() => {
+        this.toast.show(t('missions.allToast', { n: MISSIONS_ALL_BONUS }), 'info', 2800);
+        audio.play('coin');
+      }, 400 + completed.length * 700);
+    }
+  }
+
+  /** The home card: today's three missions, their progress, and the payouts. */
+  private renderMissions(): void {
+    if (!this.save.snapshot.profile) return;
+    const day = todayDayNumber();
+    const defs = missionsFor(day);
+    const st = this.save.missionsState(day, defs.length);
+    const list = $('#missions-list');
+    list.replaceChildren();
+    let done = 0;
+    defs.forEach((def, i) => {
+      const paid = st.paid[i] === true;
+      if (paid) done += 1;
+      const row = el('div', `mission${paid ? ' mission--done' : ''}`);
+      row.appendChild(
+        el('span', 'mission__name', t(`missions.${def.kind}` as MessageKey, { n: def.target })),
+      );
+      const meta = el('span', 'mission__meta');
+      if (paid) {
+        meta.textContent = '✓';
+        meta.classList.add('mission__meta--done');
+      } else {
+        const progress = Math.min(st.progress[i] ?? 0, def.target);
+        meta.textContent =
+          (def.target > 1 ? `${progress}/${def.target} · ` : '') + `+${def.coins}`;
+      }
+      row.appendChild(meta);
+      list.appendChild(row);
+    });
+    $('#missions-count').textContent = st.allPaid ? `✓ ${done}/${defs.length}` : `${done}/${defs.length}`;
+    $('#home-missions').hidden = false;
+  }
+
   private renderLivesChip(): void {
     const lives = this.save.lives;
     const count = $('#home-lives');
@@ -1245,7 +1349,12 @@ class App {
     iap.replaceChildren();
 
     if (this.payments.available) {
-      for (const product of IAP_CATALOG.filter((p) => p.id.startsWith('cf.bundle'))) {
+      // One-time offers disappear once bought; the starter bundle otherwise
+      // out-values every coin pack forever.
+      const bundles = IAP_CATALOG.filter(
+        (p) => p.id.startsWith('cf.bundle') && !(p.oneTime && this.save.hasPurchasedProduct(p.id)),
+      );
+      for (const product of bundles) {
         iap.appendChild(this.buildBundleCard(product));
       }
       const packs = el('div', 'packs');
@@ -1428,6 +1537,13 @@ class App {
   }
 
   private async purchaseIap(product: IapProduct, button: HTMLButtonElement): Promise<void> {
+    // The card is hidden once a one-time product is owned; this guards the
+    // races (a stale shop screen, a cloud sync landing mid-session).
+    if (product.oneTime && this.save.hasPurchasedProduct(product.id)) {
+      audio.play('invalid');
+      this.renderShop();
+      return;
+    }
     if (this.payments.driverName === 'simulated') {
       const proceed = await this.confirmSimulatedPurchase(product);
       if (!proceed) return;
@@ -1483,6 +1599,10 @@ class App {
     const alreadyGranted = token !== null && this.save.hasGrantedPurchase(token);
     if (!alreadyGranted) {
       this.grantProduct(product);
+      // Recorded even for repeat grants of a one-time product (a second
+      // purchase settled from another device): the money was taken, the goods
+      // are owed - the record just closes the offer from here on.
+      this.save.recordProductPurchase(product.id);
       if (token !== null) this.save.markPurchaseGranted(token);
       else this.save.flush();
     }
@@ -1612,13 +1732,17 @@ class App {
       return;
     }
 
-    const maxExtra = this.remote.current.economy.maxExtraTubes;
+    const maxExtra = this.remote.current.economy.maxUses.bottle;
     const restore = resume && isValidRestore(this.level, resume, maxExtra) ? resume : null;
     if (resume && !restore) this.save.setInProgress(null);
 
     this.attemptStartedAt = Date.now() - (restore?.elapsedMs ?? 0);
     this.uses = restore ? { ...restore.uses } : { undo: 0, hint: 0, bottle: 0 };
     this.extraTubes = restore?.extraTubes ?? 0;
+    // Older saves counted only free uses; the per-level caps count all of
+    // them, so a restored attempt's bottle count is the tubes it added.
+    this.uses.bottle = Math.max(this.uses.bottle, this.extraTubes);
+    this.startClock();
 
     this.applySettings();
     // The equipped look is read from the save at every mount, so a skin bought
@@ -1868,12 +1992,15 @@ class App {
       hidden: this.board.hiddenSnapshot(),
       extraTubes: this.extraTubes,
       uses: { ...this.uses },
-      elapsedMs: Date.now() - this.attemptStartedAt,
+      elapsedMs: this.attemptElapsedMs(),
     });
   }
 
   private restartLevel(): void {
     if (!this.level) return;
+    // Starting over a board already played ends the clean run; replaying one
+    // just won (the win screen's Replay), or an untouched one, does not.
+    if (!this.board.isResolved && this.board.moveCount > 0) this.save.breakCleanStreak();
     this.save.setInProgress(null);
     this.uses = { undo: 0, hint: 0, bottle: 0 };
     this.extraTubes = 0;
@@ -1904,6 +2031,7 @@ class App {
   private onMove(count: number): void {
     haptic(10);
     this.save.bumpStat('pours');
+    this.bumpMission('pours');
     this.tutorial.notify('pour');
     this.updateTutorialHand();
     this.updateHud();
@@ -1937,10 +2065,104 @@ class App {
         badge.classList.add('power__badge--buy');
       }
 
-      let disabled = false;
-      if (id === 'undo') disabled = !this.board.canUndo;
-      if (id === 'bottle') disabled = this.extraTubes >= this.remote.current.economy.maxExtraTubes;
-      button.disabled = disabled;
+      // Per-level caps (free and bought uses combined) grey the button out;
+      // the cap exists so a full wallet cannot flatten the difficulty curve.
+      button.disabled = this.isCapped(id) || (id === 'undo' && !this.board.canUndo);
+    }
+    this.updateClock();
+  }
+
+  // ------------------------------------------------------------------ clock
+  /**
+   * The level clock under the move budget. It counts down the time-bonus
+   * window (beat it on a first clear for bonus coins) and then simply counts
+   * up - a level can never be failed on time. One lazy interval serves the
+   * whole session; ticks outside an active board are no-ops.
+   */
+  private clockTimer = 0;
+  /** Open pause reasons (app hidden, an ad on screen) and when the first began. */
+  private clockPauses = 0;
+  private clockPausedAt = 0;
+
+  private startClock(): void {
+    // One second matches the displayed resolution exactly; ticking faster
+    // only buys extra style recalcs (felt on software-rendered machines).
+    if (!this.clockTimer) {
+      this.clockTimer = window.setInterval(() => this.updateClock(), 1000);
+    }
+    this.updateClock();
+  }
+
+  /**
+   * Time the player cannot play in does not count against the bonus: a phone
+   * call, a backgrounded app, or a rewarded ad they chose to watch. Reasons
+   * nest (a native ad can also hide the web view), so the clock resumes only
+   * when the last one ends, and the paused span is taken off the attempt.
+   */
+  private pauseClock(): void {
+    if (this.clockPauses === 0) this.clockPausedAt = Date.now();
+    this.clockPauses += 1;
+  }
+
+  private resumeClock(): void {
+    if (this.clockPauses === 0) return;
+    this.clockPauses -= 1;
+    if (this.clockPauses === 0) {
+      this.attemptStartedAt += Date.now() - this.clockPausedAt;
+      this.updateClock();
+    }
+  }
+
+  /** Elapsed attempt time, excluding any pause still open. */
+  private attemptElapsedMs(): number {
+    const now = this.clockPauses > 0 ? this.clockPausedAt : Date.now();
+    return now - this.attemptStartedAt;
+  }
+
+  /** Whether winning this attempt can still pay the time bonus (first clears only). */
+  private timeBonusOnOffer(): boolean {
+    return isDaily(this.levelId)
+      ? !this.save.dailyRecord(dayFromDailyId(this.levelId))
+      : !this.save.levelRecord(this.levelId);
+  }
+
+  /** Circumference of the timer chip's ring (2 * PI * r=15.5 in its viewBox). */
+  private static readonly CLOCK_RING = 97.4;
+
+  private updateClock(): void {
+    const chip = $('#game-clock');
+    const par = this.level?.par;
+    if (this.current !== 'game' || par === undefined || this.tutorial.active) {
+      chip.hidden = true;
+      return;
+    }
+    // A won board is final; the clock stops with it.
+    if (this.board.isResolved) return;
+
+    const target = timeBonusSeconds(par);
+    const elapsed = Math.floor(this.attemptElapsedMs() / 1000);
+    const remaining = target - elapsed;
+    // A replay cannot earn the bonus, so it gets the plain clock throughout
+    // rather than a countdown promising coins that will not be paid.
+    const live = remaining >= 0 && this.timeBonusOnOffer();
+
+    // Live: the ring drains through the bonus window with the +coins tag on
+    // show. Expired: the tag and ring go, and the chip dims into a plain
+    // elapsed-time clock - the bonus just quietly stops being on offer.
+    chip.hidden = false;
+    chip.classList.toggle('hudtimer--live', live);
+    chip.classList.toggle('hudtimer--low', live && remaining <= 10);
+    const shown = live ? remaining : elapsed;
+    $('#game-clock-time').textContent =
+      `${Math.floor(shown / 60)}:${String(shown % 60).padStart(2, '0')}`;
+    const bonus = $('#game-clock-bonus');
+    bonus.hidden = !live;
+    // The same scaled amount the win will pay, never the headline figure.
+    if (live) bonus.textContent = `+${scaledReward(this.remote.current.economy.timeBonusCoins, par)}`;
+    const ring = document.querySelector<SVGCircleElement>('#game-clock-ring');
+    if (ring) {
+      const fraction = live ? remaining / target : 0;
+      ring.style.strokeDashoffset = String(App.CLOCK_RING * (1 - fraction));
     }
   }
 
@@ -2010,6 +2232,12 @@ class App {
     this.hudTier = tier;
   }
 
+  /** At this attempt's ceiling for `id` (free and bought uses combined). */
+  private isCapped(id: PowerupId): boolean {
+    const used = id === 'bottle' ? this.extraTubes : this.uses[id];
+    return used >= this.remote.current.economy.maxUses[id];
+  }
+
   private remainingUses(id: PowerupId): number {
     return Math.max(0, this.remote.current.economy.freeUses[id] - this.uses[id]);
   }
@@ -2018,6 +2246,19 @@ class App {
     if (this.board.isBusy) return;
     // A hint already being solved: a second tap must not spend another use.
     if (id === 'hint' && this.hintPending) return;
+
+    // Per-level cap, free and bought uses combined. Checked before any offer
+    // so a capped player is never sold (or shown an ad for) a use they could
+    // not spend. The buttons grey out at the cap; this guards the races.
+    if (this.isCapped(id)) {
+      this.toast.show(t('powerup.capped'), 'info', 2200);
+      // Reached from the No-moves dialog, the tap has already closed it; a
+      // dead board must never be left without a way out.
+      window.setTimeout(() => {
+        if (this.current === 'game' && this.board.isLost && !this.modal.isOpen) this.showStuckDialog();
+      }, 0);
+      return;
+    }
 
     // Spend order: free allowance, then shop-bought stock. Out of both means
     // an offer (rewarded ad where available) or the shop - powerups are never
@@ -2069,7 +2310,9 @@ class App {
       return;
     }
 
-    if (source === 'free') this.uses[id] += 1;
+    // Count every applied use, free or bought: the per-level caps and the
+    // remaining-free-uses maths (spend order is free first) both read this.
+    this.uses[id] += 1;
     this.persistProgress();
     haptic(14);
     this.analytics.track({
@@ -2195,7 +2438,7 @@ class App {
     this.save.setInProgress(null);
 
     const moves = this.board.moveCount;
-    const seconds = Math.round((Date.now() - this.attemptStartedAt) / 1000);
+    const seconds = Math.round(this.attemptElapsedMs() / 1000);
     const stars = starsFor(moves, level.par);
     const eco = this.remote.current.economy;
     const daily = isDaily(this.levelId);
@@ -2208,8 +2451,9 @@ class App {
       ? this.save.recordDailyClear(day, stars, moves)
       : this.save.recordClear(this.levelId, stars, moves);
     const { prevStars, isFirstClear } = cleared;
-    // Replays only pay for newly earned stars - see coinsFor.
-    let reward = coinsFor(stars, prevStars, eco);
+    // Replays only pay for newly earned stars - see coinsFor. Everything is
+    // scaled by the level's difficulty (par), time bonus included.
+    let reward = coinsFor(stars, prevStars, level.par, eco);
     // First clear of a chapter's last level: the chapter is complete.
     const chapterDone =
       !daily && isFirstClear && isChapterEnd(this.levelId) ? chapterFor(this.levelId) : null;
@@ -2217,15 +2461,37 @@ class App {
     // First clear of today's challenge: the daily bonus, and the streak moves.
     const dailyBonus = daily && isFirstClear ? eco.dailyBonus : 0;
     const dailyStreak = daily ? this.save.dailyStreak(todayDayNumber()) : 0;
-    reward += chapterBonus + dailyBonus;
+    // Beat the clock on a first clear: the time bonus. First clears only, or
+    // speed-replaying an early level becomes a coin farm.
+    const beatClock = seconds <= timeBonusSeconds(level.par);
+    const timeBonus =
+      isFirstClear && beatClock ? scaledReward(eco.timeBonusCoins, level.par) : 0;
+    reward += timeBonus;
+    this.save.recordWinForStreak();
+    // The multiplier streak counts fresh clears only (replays neither build
+    // nor pay it) and includes this win, so the bonus lands on the third.
+    if (isFirstClear) this.save.recordCleanWin();
+    const streak = this.save.snapshot.stats.cleanStreak;
+    const streakBonus = isFirstClear ? streakBonusFor(reward, streak, eco) : 0;
+    reward += streakBonus + chapterBonus + dailyBonus;
     this.save.addCoins(reward);
     if (chapterDone) this.analytics.track({ type: 'chapter_complete', chapter: chapterDone.index });
     if (daily && isFirstClear) this.analytics.track({ type: 'daily_complete', streak: dailyStreak });
     this.save.bumpStat('wins');
     if (stars === 3) this.save.bumpStat('perfects');
-    this.save.recordWinForStreak();
-    const streak = this.save.snapshot.stats.streak;
     this.checkAchievements();
+
+    // Daily missions tick off whatever this win satisfied. Only a fresh win
+    // counts - a first clear or a star improvement - or replaying level 1 in
+    // ten seconds would complete "perfect", "no undo" and "no hints" at once.
+    if (isFirstClear || (prevStars !== null && stars > prevStars)) {
+      this.bumpMission('clears');
+      if (stars === 3) this.bumpMission('perfect');
+      if (this.uses.undo === 0) this.bumpMission('noUndo');
+      if (this.uses.hint === 0) this.bumpMission('noHint');
+      if (beatClock) this.bumpMission('clock');
+    }
+    if (daily && isFirstClear) this.bumpMission('daily');
     // Post the new star total. Cheap and idempotent: the service drops a score
     // it has already sent, and does nothing at all when the board is locked,
     // unavailable, or the player is signed out of the platform.
@@ -2246,6 +2512,7 @@ class App {
       par: level.par,
       stars,
       seconds,
+      coins: this.save.coins,
     });
 
     // Finishing the last campaign level is the finale; the door to endless opens.
@@ -2261,6 +2528,7 @@ class App {
       () => this.showWinModal({
         stars, moves, seconds, reward, isLast, prevStars, prevBest, streak,
         par: level.par, eyebrow, chapterDone, chapterBonus, mode, dailyBonus, dailyStreak,
+        timeBonus, streakBonus,
       }),
       620,
     );
@@ -2481,7 +2749,8 @@ class App {
     stars: number; moves: number; seconds: number; reward: number; isLast: boolean;
     prevStars: number | null; prevBest: number | null; streak: number;
     par: number; eyebrow: string; chapterDone: Chapter | null; chapterBonus: number;
-    mode: WinMode; dailyBonus: number; dailyStreak: number;
+    mode: WinMode; dailyBonus: number; dailyStreak: number; timeBonus: number;
+    streakBonus: number;
   }): void {
     const eco = this.remote.current.economy;
     const reduced =
@@ -2534,13 +2803,19 @@ class App {
       card.appendChild(big);
       const parts: string[] = [];
       if (w.prevStars === null) {
-        parts.push(t('win.cleared', { n: eco.baseReward }));
-        parts.push(tp('win.stars', w.stars, { coins: w.stars * eco.rewardPerStar }));
+        // The same scaled maths the reward was paid with, so the breakdown
+        // always sums to the big number above it.
+        parts.push(t('win.cleared', { n: scaledReward(eco.baseReward, w.par) }));
+        parts.push(tp('win.stars', w.stars, { coins: starValue(w.stars, w.par, eco) }));
         if (eco.firstClearBonus > 0) parts.push(t('win.firstClear', { n: eco.firstClearBonus }));
       } else {
         const gained = Math.max(0, w.stars - w.prevStars);
-        parts.push(tp('win.newStars', gained, { coins: w.reward - w.chapterBonus - w.dailyBonus }));
+        parts.push(tp('win.newStars', gained, {
+          coins: w.reward - w.chapterBonus - w.dailyBonus - w.timeBonus - w.streakBonus,
+        }));
       }
+      if (w.timeBonus > 0) parts.push(t('win.timeBonus', { n: w.timeBonus }));
+      if (w.streakBonus > 0) parts.push(t('win.streakBonus', { n: w.streakBonus }));
       if (w.chapterBonus > 0) parts.push(t('win.chapterBonus', { n: w.chapterBonus }));
       if (w.dailyBonus > 0) parts.push(t('win.dailyBonus', { n: w.dailyBonus }));
       card.appendChild(el('div', 'win__breakdown', parts.join(' · ')));
@@ -2732,20 +3007,21 @@ class App {
       bodyHtml: escapeHtml(t('stuck.body')),
       inlineButtons: false,
       buttons: [
-        {
+        // A capped powerup is not a way out, so it is not offered as one.
+        ...(this.isCapped('undo') ? [] : [{
           label: t('stuck.undo'),
-          kind: 'primary',
+          kind: 'primary' as const,
           onClick: () => {
             void this.usePowerup('undo');
           },
-        },
-        {
+        }]),
+        ...(this.isCapped('bottle') ? [] : [{
           label: t('stuck.bottle'),
-          kind: 'ghost',
+          kind: 'ghost' as const,
           onClick: () => {
             void this.usePowerup('bottle');
           },
-        },
+        }]),
         {
           label: this.heartCostLabel(t('stuck.restart')),
           kind: 'ghost',
@@ -2813,6 +3089,7 @@ class App {
     });
     this.save.skipLevel(this.levelId);
     this.save.setInProgress(null);
+    this.save.breakCleanStreak();
     this.toast.show(t('skip.done'));
     void this.startLevel(this.levelId + 1);
   }
@@ -2855,11 +3132,14 @@ class App {
     if (!this.board.isResolved) {
       // The dialog said this attempt's progress would be lost; make it so.
       this.save.setInProgress(null);
+      // Only abandoning a board actually played ends the clean run; backing
+      // out of one untouched is just looking.
+      if (this.board.moveCount > 0) this.save.breakCleanStreak();
       this.analytics.track({
         type: 'level_quit',
         level: this.levelId,
         moves: this.board.moveCount,
-        seconds: Math.round((Date.now() - this.attemptStartedAt) / 1000),
+        seconds: Math.round(this.attemptElapsedMs() / 1000),
       });
     }
     this.goHome();
@@ -3456,7 +3736,9 @@ class App {
     const eco = this.remote.current.economy;
     this.modal.open({
       title: t('howto.title'),
-      bodyHtml: t('howto.body', { undo: eco.freeUses.undo, hint: eco.freeUses.hint }),
+      bodyHtml:
+        t('howto.body', { undo: eco.freeUses.undo, hint: eco.freeUses.hint }) +
+        t('howto.more', { undo: eco.maxUses.undo, hint: eco.maxUses.hint, bottle: eco.maxUses.bottle }),
       buttons: [{ label: t('common.gotIt'), kind: 'primary' }],
     });
   }

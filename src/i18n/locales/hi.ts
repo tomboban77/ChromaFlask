@@ -136,6 +136,17 @@ const table: Record<string, string> = {
   'powerup.out': '{name} खत्म - दुकान से और लें',
   'powerup.nothingToUndo': 'वापस लेने के लिए कुछ नहीं',
   'powerup.noHint': 'यहाँ से जीतने वाली चाल नहीं - अनडू या रीस्टार्ट करें',
+  'powerup.capped': 'इस लेवल की सीमा पूरी हो गई',
+  'missions.title': 'दैनिक मिशन',
+  'missions.clears': '{n} लेवल पार करें',
+  'missions.perfect': 'किसी लेवल पर 3 स्टार पाएँ',
+  'missions.noUndo': 'बिना अनडू के लेवल जीतें',
+  'missions.noHint': 'बिना हिंट के लेवल जीतें',
+  'missions.clock': 'घड़ी को {n} बार हराएँ',
+  'missions.pours': '{n} बार उंडेलें',
+  'missions.daily': 'दैनिक चुनौती पूरी करें',
+  'missions.completeToast': 'मिशन पूरा +{n}',
+  'missions.allToast': 'सारे मिशन पूरे! +{n}',
   'game.backAria': 'होम पर वापस',
   'game.restartAria': 'लेवल फिर से शुरू करें',
   'game.skipTutorial': 'ट्यूटोरियल छोड़ें',
@@ -210,6 +221,8 @@ const table: Record<string, string> = {
   'win.newStars.other': '{n} नए स्टार +{coins}',
   'win.chapterBonus': 'अध्याय पूरा +{n}',
   'win.dailyBonus': 'दैनिक बोनस +{n}',
+  'win.timeBonus': 'तेज़ी का बोनस +{n}',
+  'win.streakBonus': 'सिलसिला बोनस +{n}',
   'win.allStars': 'इस लेवल के सभी स्टार पहले ही मिल चुके हैं',
   'win.moves': 'चालें',
   'win.ideal': 'आदर्श',
@@ -364,6 +377,12 @@ const table: Record<string, string> = {
   'reset.keep': 'खेलते रहें',
 
   'howto.title': 'कैसे खेलें',
+  'howto.more': `<div class="howto">
+    <h3>सीमाएँ, घड़ी और सिलसिला</h3>
+    <p>हर कोशिश में ज़्यादा से ज़्यादा <b>{undo} अनडू</b>, <b>{hint} हिंट</b> और <b>{bottle} अतिरिक्त बोतलें</b> इस्तेमाल हो सकती हैं, चाहे आपके पास कितनी भी हों।</p>
+    <p><b>घड़ी</b> एक बोनस समय दिखाती है: उसके खत्म होने से पहले कोई लेवल पहली बार पार करें और अतिरिक्त सिक्के पाएँ। इससे आप कभी लेवल नहीं हारते।</p>
+    <p>नए लेवल बिना रीस्टार्ट किए या छोड़े लगातार पार करें — तीसरे से हर जीत पर <b>सिलसिला बोनस</b> मिलता है।</p>
+  </div>`,
   'howto.body': `<div class="howto">
     <h3>डालना</h3>
     <p>बोतल का ऊपरी रंग उठाने के लिए उस पर टैप करें, फिर डालने के लिए दूसरी बोतल पर टैप करें। तरल केवल <b>उसी रंग</b> पर या <b>खाली बोतल</b> में डलता है, और जगह होने पर पूरा मेल खाता ब्लॉक एक साथ जाता है।</p>

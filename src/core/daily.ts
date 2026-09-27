@@ -9,7 +9,7 @@
  */
 import type { LevelSpec } from './types';
 
-/** Daily ids start here; campaign ids are 1..500 and endless ids follow on. */
+/** Daily ids start here; campaign ids are 1..300 and endless ids follow on. */
 export const DAILY_BASE = 1_000_000;
 
 export function isDaily(id: number): boolean {

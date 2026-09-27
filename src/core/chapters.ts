@@ -1,8 +1,8 @@
 /**
- * Chapters: the campaign in 25 named blocks of 20 levels.
+ * Chapters: the campaign in 15 named blocks of 20 levels.
  *
  * Purely structural - the level curve does not know about chapters. They give
- * the 500-level map a sense of place (headers, progress, a completion moment
+ * the 300-level map a sense of place (headers, progress, a completion moment
  * with a coin bonus) and the win screen something better to say than a
  * random level name. Pure data, so the core stays engine-free.
  */
@@ -32,20 +32,10 @@ const NAMES: readonly string[] = [
   'Velvet Vault',
   'Stormglass Tower',
   'Gilded Alembic',
-  'Emerald Still',
-  'Moonlit Distillery',
-  'Cinder Kitchen',
-  'Frozen Apothecary',
   'Royal Laboratory',
-  'Blazing Forge',
-  'Silent Archive',
   'Cosmic Observatory',
   'Molten Foundry',
   'Radiant Sanctum',
-  'Ancient Catacombs',
-  'Bubbling Marsh',
-  'Twisted Spire',
-  'Golden Athenaeum',
   'The Grand Elixir',
 ];
 

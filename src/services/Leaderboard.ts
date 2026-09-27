@@ -1,10 +1,10 @@
 /**
  * Global leaderboard behind a swappable driver, like Ads, Payments and
- * CloudSave. Ranked by **campaign stars** (0-1500): the number the home card
+ * CloudSave. Ranked by **campaign stars** (0-900): the number the home card
  * already shows, so a player's board position matches what they see every
  * time they open the game, and replaying an old level for its missing third
  * star climbs the board. "Levels cleared" was rejected: everyone who finishes
- * ties at 500 and it rewards rushing past levels rather than playing well.
+ * ties at 300 and it rewards rushing past levels rather than playing well.
  *
  * Storage and identity are the platform's - no server of ours, per the v1
  * no-backend decision:

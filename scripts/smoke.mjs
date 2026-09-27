@@ -7,7 +7,7 @@
  *
  *   node scripts/smoke.mjs
  */
-import { chromium } from 'playwright-core';
+import { chromium, webkit } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -16,7 +16,7 @@ const PORT = 5199;
 const URL = `http://localhost:${PORT}/`;
 const SHOTS = '.tmp/shots';
 /** Must match LEVEL_COUNT in src/core/levels.ts. */
-const LEVEL_COUNT = 500;
+const LEVEL_COUNT = 300;
 
 const EDGE_PATHS = [
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
@@ -25,8 +25,11 @@ const EDGE_PATHS = [
 // Local Windows machines drive the installed Edge; anywhere else (CI) uses
 // Playwright's own Chromium, installed with `npx playwright-core install chromium`.
 // SMOKE_BROWSER=chromium forces Playwright's Chromium even where Edge exists - the CI path.
-const edge = process.env.SMOKE_BROWSER === 'chromium' ? undefined : EDGE_PATHS.find((p) => existsSync(p));
-console.log(edge ? `browser: Edge (${edge})` : 'browser: Playwright Chromium');
+// SMOKE_BROWSER=webkit runs the whole pass on WebKit, the engine behind
+// Safari and every iOS web view - the closest local stand-in for an iPhone.
+const useWebkit = process.env.SMOKE_BROWSER === 'webkit';
+const edge = process.env.SMOKE_BROWSER ? undefined : EDGE_PATHS.find((p) => existsSync(p));
+console.log(useWebkit ? 'browser: Playwright WebKit' : edge ? `browser: Edge (${edge})` : 'browser: Playwright Chromium');
 
 mkdirSync(SHOTS, { recursive: true });
 
@@ -56,7 +59,9 @@ async function runViewport(browser, label, width, height, isMobile) {
     isMobile,
     hasTouch: isMobile,
     // The daily share falls back to the clipboard where there is no share sheet.
-    permissions: ['clipboard-read', 'clipboard-write'],
+    // WebKit has no grantable clipboard permissions; the share step then
+    // takes its unreadable-clipboard branch, which it already reports.
+    ...(useWebkit ? {} : { permissions: ['clipboard-read', 'clipboard-write'] }),
   });
   const page = await context.newPage();
 
@@ -216,12 +221,18 @@ async function runViewport(browser, label, width, height, isMobile) {
     problems.push(`[${label}] onWin fired ${afterWin.winCount} times, expected exactly 1`);
   }
   // Achievements ("First Pour", "Precise") also pay on this win; count them separately.
-  const expectedGain = 50 + 3 * 15; // baseReward + 3 stars * rewardPerStar (+ firstClearBonus 0)
+  // Level 1 (par 2) sits on the reward-scale floor of 0.3: base 50 -> 15,
+  // 3 stars 70 -> 20, plus the time bonus 25 -> 10 when the run beat the
+  // level's clock (it nearly always does, but a slow machine may not).
+  const expectedGains = [15 + 20, 15 + 20 + 10];
   const achievementGain = afterWin.achievementCoins - initial.achievementCoins;
-  const winGain = afterWin.coins - initial.coins - achievementGain;
-  console.log(`  coins           +${winGain} for the win, +${achievementGain} from achievements`);
-  if (winGain !== expectedGain) {
-    problems.push(`[${label}] coin reward was ${winGain}, expected ${expectedGain}`);
+  // Daily missions rotate by real date, so whichever completed during this win
+  // is counted separately, like achievements.
+  const missionGain = afterWin.missionCoins - initial.missionCoins;
+  const winGain = afterWin.coins - initial.coins - achievementGain - missionGain;
+  console.log(`  coins           +${winGain} for the win, +${achievementGain} from achievements, +${missionGain} from missions`);
+  if (!expectedGains.includes(winGain)) {
+    problems.push(`[${label}] coin reward was ${winGain}, expected one of ${expectedGains.join('/')}`);
   }
   if (achievementGain !== 50) {
     problems.push(`[${label}] first perfect win should unlock First Pour + Precise (+50), got +${achievementGain}`);
@@ -324,13 +335,13 @@ async function runViewport(browser, label, width, height, isMobile) {
   // ---- bottle looks: buying a skin charges once and equips it; the board picks it up
   const skinCards = await page.locator('.skin').count();
   const coinsBeforeSkin = afterPack.coins;
-  await page.locator('.skin').nth(1).click(); // Frosted glass, 300 coins
+  await page.locator('.skin').nth(1).click(); // Frosted glass, 500 coins
   await sleep(400);
   const afterSkin = await page.evaluate(() => window.__cf.state());
   const equippedName = (await page.locator('.skin--equipped .skin__name').textContent())?.trim();
   console.log(`  bottle look     ${skinCards} skins, bought+equipped "${equippedName}" (coins ${coinsBeforeSkin} -> ${afterSkin.coins}), save skin=${afterSkin.skin}`);
   if (skinCards !== 6) problems.push(`[${label}] expected 6 bottle looks in the shop, got ${skinCards}`);
-  if (afterSkin.coins !== coinsBeforeSkin - 300) problems.push(`[${label}] Frosted glass should cost 300 coins (${coinsBeforeSkin} -> ${afterSkin.coins})`);
+  if (afterSkin.coins !== coinsBeforeSkin - 500) problems.push(`[${label}] Frosted glass should cost 500 coins (${coinsBeforeSkin} -> ${afterSkin.coins})`);
   if (afterSkin.skin !== 'frost' || equippedName !== 'Frosted glass') problems.push(`[${label}] buying a skin should equip it (skin=${afterSkin.skin}, card="${equippedName}")`);
   // tapping an owned look again is free and re-equips: back to classic, then frost
   await page.locator('.skin').nth(0).click();
@@ -367,7 +378,9 @@ async function runViewport(browser, label, width, height, isMobile) {
   const replay = await page.evaluate(() => window.__cf.autoplay());
   await page.waitForSelector('.modal', { timeout: 8000 });
   const afterReplay = await page.evaluate(() => window.__cf.state());
-  const replayGain = (afterReplay.coins - beforeReplay.coins) - (afterReplay.achievementCoins - beforeReplay.achievementCoins);
+  const replayGain = (afterReplay.coins - beforeReplay.coins)
+    - (afterReplay.achievementCoins - beforeReplay.achievementCoins)
+    - (afterReplay.missionCoins - beforeReplay.missionCoins);
   console.log(`  replay level 1  ${replay.moves} moves, coins ${beforeReplay.coins} -> ${afterReplay.coins} (win share +${replayGain})`);
   if (replayGain !== 0) {
     problems.push(`[${label}] replaying a 3-star level paid ${replayGain} coins; must be 0`);
@@ -599,7 +612,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   const skippedAfter = await page.locator('.node--skipped').count();
   console.log(`  after reload    name="${savedName}" locked=${unlockedAfter} skipped=${skippedAfter}`);
   if (savedName !== 'Tester') problems.push(`[${label}] profile did not persist (got "${savedName}")`);
-  // Level 1 cleared, level 2 skipped: 3 is open, 4..500 locked.
+  // Level 1 cleared, level 2 skipped: 3 is open, 4..300 locked.
   if (unlockedAfter !== LEVEL_COUNT - 3) {
     problems.push(`[${label}] levels 1-3 should be open after clearing 1 and skipping 2 (locked=${unlockedAfter})`);
   }
@@ -655,7 +668,7 @@ try {
   await waitForServer();
   console.log('dev server up');
 
-  const browser = await chromium.launch({
+  const browser = useWebkit ? await webkit.launch({ headless: true }) : await chromium.launch({
     ...(edge ? { executablePath: edge } : {}),
     headless: true,
     args: [

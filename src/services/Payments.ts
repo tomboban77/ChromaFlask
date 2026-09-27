@@ -50,6 +50,13 @@ export interface IapProduct {
   readonly coins: number;
   readonly powerups?: Readonly<Partial<Record<PowerupId, number>>>;
   readonly infiniteLivesHours?: number;
+  /**
+   * Purchasable once per save. The stores sell these as ordinary consumables,
+   * so the app enforces it: the shop hides an owned one-time product and the
+   * purchase path refuses it. Without this the starter bundle (more goods
+   * than the pouch for less money) would strictly dominate every coin pack.
+   */
+  readonly oneTime?: boolean;
 }
 
 export const IAP_CATALOG: readonly IapProduct[] = [
@@ -61,6 +68,7 @@ export const IAP_CATALOG: readonly IapProduct[] = [
     coins: 1000,
     powerups: { undo: 1, hint: 1, bottle: 1 },
     infiniteLivesHours: 1,
+    oneTime: true,
   },
   {
     id: 'cf.bundle.alchemist',

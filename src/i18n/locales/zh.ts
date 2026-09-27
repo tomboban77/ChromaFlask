@@ -133,6 +133,17 @@ const table: Record<string, string> = {
   'powerup.out': '{name}用完了 - 去商店补充',
   'powerup.nothingToUndo': '没有可撤销的操作',
   'powerup.noHint': '从这里没有制胜之举 - 试试撤销或重新开始',
+  'powerup.capped': '本关使用次数已达上限',
+  'missions.title': '每日任务',
+  'missions.clears': '通关 {n} 个关卡',
+  'missions.perfect': '在一关中获得 3 星',
+  'missions.noUndo': '不用撤销赢一关',
+  'missions.noHint': '不用提示赢一关',
+  'missions.clock': '{n} 次跑赢时钟',
+  'missions.pours': '倒 {n} 次',
+  'missions.daily': '完成每日挑战',
+  'missions.completeToast': '任务完成 +{n}',
+  'missions.allToast': '全部任务完成！ +{n}',
   'game.backAria': '返回主页',
   'game.restartAria': '重新开始关卡',
   'game.skipTutorial': '跳过教程',
@@ -202,6 +213,8 @@ const table: Record<string, string> = {
   'win.newStars.other': '{n} 颗新星 +{coins}',
   'win.chapterBonus': '章节完成 +{n}',
   'win.dailyBonus': '每日奖励 +{n}',
+  'win.timeBonus': '限时奖励 +{n}',
+  'win.streakBonus': '连胜奖励 +{n}',
   'win.allStars': '此关的所有星星都已获得',
   'win.moves': '步数',
   'win.ideal': '理想',
@@ -355,6 +368,12 @@ const table: Record<string, string> = {
   'reset.keep': '继续游玩',
 
   'howto.title': '玩法说明',
+  'howto.more': `<div class="howto">
+    <h3>上限、时钟与连胜</h3>
+    <p>无论你拥有多少，每次尝试最多只能使用 <b>{undo} 次撤销</b>、<b>{hint} 次提示</b>和 <b>{bottle} 个额外瓶子</b>。</p>
+    <p><b>时钟</b>显示奖励时间：在时间结束前首次通关即可获得额外金币。它永远不会让你闯关失败。</p>
+    <p>不重开、不退出地连续通关新关卡，从第三关起每次胜利都会获得<b>连胜奖励</b>。</p>
+  </div>`,
   'howto.body': `<div class="howto">
     <h3>倒液</h3>
     <p>点击一个瓶子拿起它顶部的颜色，再点击另一个瓶子倒入。液体只能倒在<b>相同颜色</b>上或倒入<b>空瓶</b>，若空间足够，整段相同颜色会一次性移动。</p>

@@ -4,7 +4,7 @@ A mobile-first liquid-sort puzzle for the web. PixiJS renders the board, GSAP
 choreographs the pours, and the HUD is plain DOM so text stays crisp and
 accessible.
 
-A 500-level campaign with two signature twists — **the Cauldron** (accepts any
+A 300-level campaign with two signature twists — **the Cauldron** (accepts any
 colour, must be emptied to win) and **murky potions** (colours hidden until
 they surface) — plus hearts, coins, a store-billing shop, tutorial, and a full
 candy-style UI.
@@ -27,10 +27,11 @@ npm run dev        # http://localhost:5173
 | `npm run preview` | Serve the built output |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
-| `npm run levels:build` | Precompute all 500 boards + optimal lines into `src/core/campaign.json` |
+| `npm run levels:build` | Precompute all 300 boards + optimal lines into `src/core/campaign.json` |
 | `npm run levels:sweep` | Deal the next 2 years of dailies + 1000 endless levels; fails on any that cannot be built (~3 min) |
 | `npm run test:core` | Rules/solver/generator suite, incl. proving `campaign.json` (no browser needed) |
 | `npm run test:e2e` | Drives the real game in Edge, plays a level to a win |
+| `SMOKE_BROWSER=webkit npm run test:e2e` | The same full pass on WebKit, the engine behind Safari and every iOS web view (one-time setup: `npx playwright-core install webkit`) |
 
 `dist/` is fully static — any CDN or static host will serve it. Paths are
 relative (`base: './'`), so it also works from a subdirectory.
@@ -43,7 +44,7 @@ src/
     board.ts        pour rules (incl. cauldron BoardRules), win/deadlock, hashing
     solver.ts       A* with admissible heuristics -> optimal move counts
     generator.ts    seeded deal, validated solvable, computes par
-    levels.ts       the 500-level campaign curve (breathers, squeezes, twists)
+    levels.ts       the 300-level campaign curve (breathers, squeezes, twists)
     progression.ts  stars, coin economy, lives constants, coin-shop catalog
   services/    Driver-based seams. Swap a driver, not the call sites.
     SaveService     LocalStorage | in-memory fallback | (later) cloud
