@@ -1085,8 +1085,9 @@ class App {
     if (!this.save.snapshot.profile) return;
     const day = todayDayNumber();
     const defs = missionsFor(day);
-    const before = this.save.missionsState(day, defs.length);
-    if (!defs.some((def, i) => def.kind === kind && !before.paid[i])) return;
+    // SaveService mutates mission state in place; snapshot paid flags before updating.
+    const paidBefore = [...this.save.missionsState(day, defs.length).paid];
+    if (!defs.some((def, i) => def.kind === kind && !paidBefore[i])) return;
 
     const after = this.save.updateMissions(day, defs.length, (s) => {
       defs.forEach((def, i) => {
@@ -1096,7 +1097,7 @@ class App {
       });
     });
 
-    const completed = defs.filter((def, i) => def.kind === kind && !before.paid[i] && after.paid[i]);
+    const completed = defs.filter((def, i) => def.kind === kind && !paidBefore[i] && after.paid[i]);
     completed.forEach((def, k) => {
       this.save.addCoins(def.coins);
       this.missionCoins += def.coins;
