@@ -156,9 +156,9 @@ export class AudioEngine {
           volume: NATIVE_SFX_VOLUME,
           isUrl: false,
         } as PreloadOptions & { channels: number };
-        await NativeAudio.preload(options);
+        await this.preloadNativeAsset(options);
       }
-      await NativeAudio.preload({
+      await this.preloadNativeAsset({
         assetId: NATIVE_MUSIC_ID,
         assetPath: 'public/audio/native/music.wav',
         audioChannelNum: 1,
@@ -173,6 +173,20 @@ export class AudioEngine {
       throw err;
     });
     return this.nativeReady;
+  }
+
+  private async preloadNativeAsset(options: PreloadOptions & { channels: number }): Promise<void> {
+    try {
+      await NativeAudio.preload(options);
+    } catch (err) {
+      const details = err as { message?: string; errorMessage?: string };
+      const message = `${details.message ?? ''} ${details.errorMessage ?? ''}`;
+      // Capacitor may recreate the WebView after a native StoreKit or consent
+      // sheet. The plugin instance survives that reload and retains its audio
+      // assets, so this means the asset is ready for the new JS instance too.
+      if (/already exists/i.test(message)) return;
+      throw err;
+    }
   }
 
   private async startNativeMusic(): Promise<void> {
@@ -289,14 +303,7 @@ export class AudioEngine {
 
   resume(): void {
     if (this.useNativeAudio) {
-      if (this.musicEnabled && this.nativeMusicPlaying && this.nativeMusicPaused) {
-        this.nativeMusicPaused = false;
-        void NativeAudio.resume({ assetId: NATIVE_MUSIC_ID }).catch((err: unknown) => {
-          console.warn('[audio] native music resume failed', err);
-        });
-      } else if (this.musicEnabled && !this.nativeMusicPlaying) {
-        void this.startNativeMusic();
-      }
+      void this.resumeNativeAudio();
       return;
     }
     const ctx = this.ctx;
@@ -309,6 +316,23 @@ export class AudioEngine {
         .catch((err: unknown) => {
           console.warn('[audio] resume failed', err);
         });
+    }
+  }
+
+  private async resumeNativeAudio(): Promise<void> {
+    try {
+      await this.ensureNativeAudio();
+      // Native sheets can take ownership of AVAudioSession. Reapply the
+      // playback category before resuming so sound survives StoreKit sign-in.
+      await NativeAudio.configure({ fade: false, focus: true });
+      if (this.musicEnabled && this.nativeMusicPlaying && this.nativeMusicPaused) {
+        this.nativeMusicPaused = false;
+        await NativeAudio.resume({ assetId: NATIVE_MUSIC_ID });
+      } else if (this.musicEnabled && !this.nativeMusicPlaying) {
+        await this.startNativeMusic();
+      }
+    } catch (err) {
+      console.warn('[audio] native resume failed', err);
     }
   }
 
