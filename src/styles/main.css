@@ -2050,27 +2050,32 @@ body {
 
 .home > :first-child { margin-top: auto; }
 
-/* Daily missions: same ivory card as the campaign, quieter rows. */
-.missions { gap: 7px; }
-
-/* Short phones (iPhone SE class): tighter rows keep both cards on screen
-   without scrolling in the common case. */
-@media (max-height: 700px) {
-  .missions { gap: 4px; padding-top: 8px; padding-bottom: 8px; }
-  .mission { padding: 4px 10px; font-size: 12px; }
-}
-
-.missions[hidden] { display: none; }
-
-.missions__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+/* A compact entry keeps the campaign button and artwork prominent. */
+.missions {
+  flex-direction: row;
+  align-items: center;
   gap: 10px;
-  padding: 0 4px;
-  font-weight: 900;
-  font-size: 14.5px;
+  min-height: 48px;
+  padding: 10px 14px;
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
 }
+.missions[hidden] { display: none; }
+.missions__title { flex: 1; min-width: 0; }
+.missions:active { transform: translateY(1px); }
+.missions:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+.missions-detail { display: grid; gap: 10px; margin: 18px 0; text-align: left; }
+.missions-detail .mission {
+  min-height: 54px;
+  background: linear-gradient(180deg, var(--ivory-0), var(--ivory-1));
+  color: var(--brown);
+}
+.missions-detail__bonus { text-align: center; font-weight: 800; color: var(--gold-hi); }
+.modal-root--sheet { align-items: flex-end; padding-bottom: calc(12px + var(--safe-b)); }
+.modal-root--sheet .modal { width: min(440px, 100%); }
 
 .missions__count {
   font-size: 12.5px;

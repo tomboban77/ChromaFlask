@@ -230,15 +230,12 @@
             <button class="btn btn--success btn--play" id="btn-play">Level 1</button>
           </div>
 
-          <!-- Daily missions: three rotating tasks a day, deterministic like
-               the daily challenge. Rows are rendered in renderMissions(). -->
-          <div class="homecard missions" id="home-missions" hidden>
-            <div class="missions__head">
-              <span data-i18n="missions.title">Daily missions</span>
-              <span class="missions__count" id="missions-count">0/3</span>
-            </div>
-            <div id="missions-list"></div>
-          </div>
+          <button class="homecard missions" id="home-missions" type="button" aria-haspopup="dialog" hidden>
+            <span aria-hidden="true">📜</span>
+            <span class="missions__title" data-i18n="missions.title">Daily missions</span>
+            <span class="missions__count" id="missions-count">0/3</span>
+            <span aria-hidden="true">›</span>
+          </button>
 
         </div>
       </section>

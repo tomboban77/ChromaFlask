@@ -792,6 +792,7 @@ class App {
       haptic(8);
       this.showLivesDialog();
     });
+    $('#home-missions').addEventListener('click', () => this.showMissions());
     $('#btn-play').addEventListener('click', () => {
       audio.play('button');
       haptic(10);
@@ -1123,18 +1124,24 @@ class App {
     }
   }
 
-  /** The home card: today's three missions, their progress, and the payouts. */
+  /** Keep the home entry compact; show the task list only on request. */
   private renderMissions(): void {
+    if (!this.save.snapshot.profile) return;
+    const defs = missionsFor(todayDayNumber());
+    const st = this.save.missionsState(todayDayNumber(), defs.length);
+    const done = st.paid.filter(Boolean).length;
+    $('#missions-count').textContent = st.allPaid ? `✓ ${done}/${defs.length}` : `${done}/${defs.length}`;
+    $('#home-missions').hidden = false;
+  }
+
+  private showMissions(): void {
     if (!this.save.snapshot.profile) return;
     const day = todayDayNumber();
     const defs = missionsFor(day);
     const st = this.save.missionsState(day, defs.length);
-    const list = $('#missions-list');
-    list.replaceChildren();
-    let done = 0;
+    const list = el('div', 'missions-detail');
     defs.forEach((def, i) => {
       const paid = st.paid[i] === true;
-      if (paid) done += 1;
       const row = el('div', `mission${paid ? ' mission--done' : ''}`);
       row.appendChild(
         el('span', 'mission__name', t(`missions.${def.kind}` as MessageKey, { n: def.target })),
@@ -1151,8 +1158,16 @@ class App {
       row.appendChild(meta);
       list.appendChild(row);
     });
-    $('#missions-count').textContent = st.allPaid ? `✓ ${done}/${defs.length}` : `${done}/${defs.length}`;
-    $('#home-missions').hidden = false;
+    list.appendChild(el('div', 'missions-detail__bonus', st.allPaid
+      ? t('missions.allToast', { n: MISSIONS_ALL_BONUS })
+      : `${defs.length}/${defs.length} → +${MISSIONS_ALL_BONUS} ★`));
+    this.modal.open({
+      title: t('missions.title'),
+      content: list,
+      bottomSheet: true,
+      buttons: [{ label: t('common.gotIt'), kind: 'primary' }],
+      onClose: () => this.renderMissions(),
+    });
   }
 
   private renderLivesChip(): void {

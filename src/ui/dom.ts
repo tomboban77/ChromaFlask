@@ -107,6 +107,8 @@ export interface ModalButton {
 
 export interface ModalOptions {
   title: string;
+  /** Anchor the dialog at the bottom of the viewport. */
+  bottomSheet?: boolean;
   /** Trusted markup authored by the app, never player input. */
   bodyHtml?: string;
   content?: HTMLElement;
@@ -195,6 +197,7 @@ export class ModalHost {
     }
 
     this.root.appendChild(modal);
+    this.root.classList.toggle('modal-root--sheet', options.bottomSheet ?? false);
     this.root.classList.add('modal-root--open');
     this.current = modal;
 
@@ -213,6 +216,7 @@ export class ModalHost {
     this.current.remove();
     this.current = null;
     this.root.classList.remove('modal-root--open');
+    this.root.classList.remove('modal-root--sheet');
     const cb = this.onCloseCb;
     this.onCloseCb = null;
     this.lastFocus?.focus?.({ preventScroll: true });
