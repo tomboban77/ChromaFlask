@@ -500,6 +500,7 @@ class App {
         coins: this.save.coins,
         achievementCoins: this.achievementCoins,
         missionCoins: this.missionCoins,
+        missionsPaid: this.save.snapshot.missions?.paid.filter(Boolean).length ?? 0,
         lives: this.save.lives.count,
         par: this.level?.par ?? null,
         modalOpen: this.modal.isOpen,
@@ -1158,9 +1159,12 @@ class App {
       row.appendChild(meta);
       list.appendChild(row);
     });
-    list.appendChild(el('div', 'missions-detail__bonus', st.allPaid
-      ? t('missions.allToast', { n: MISSIONS_ALL_BONUS })
-      : `${defs.length}/${defs.length} → +${MISSIONS_ALL_BONUS} ★`));
+    // The all-done bonus is paid in coins, so it shows the coin icon - a star
+    // here read as "60 stars".
+    const bonus = el('div', 'missions-detail__bonus');
+    if (st.allPaid) bonus.textContent = t('missions.allToast', { n: MISSIONS_ALL_BONUS });
+    else bonus.innerHTML = `${defs.length}/${defs.length} → +${MISSIONS_ALL_BONUS} ${COIN_ICON}`;
+    list.appendChild(bonus);
     this.modal.open({
       title: t('missions.title'),
       content: list,

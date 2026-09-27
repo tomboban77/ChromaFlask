@@ -231,6 +231,12 @@ async function runViewport(browser, label, width, height, isMobile) {
   const missionGain = afterWin.missionCoins - initial.missionCoins;
   const winGain = afterWin.coins - initial.coins - achievementGain - missionGain;
   console.log(`  coins           +${winGain} for the win, +${achievementGain} from achievements, +${missionGain} from missions`);
+  // Regression guard: a mission ticked off must pay its coins. Missions are
+  // dealt by real date, so this checks the invariant rather than an amount.
+  const missionsNewlyPaid = afterWin.missionsPaid - initial.missionsPaid;
+  if (missionsNewlyPaid > 0 && missionGain === 0) {
+    problems.push(`[${label}] ${missionsNewlyPaid} mission(s) completed but paid no coins`);
+  }
   if (!expectedGains.includes(winGain)) {
     problems.push(`[${label}] coin reward was ${winGain}, expected one of ${expectedGains.join('/')}`);
   }
