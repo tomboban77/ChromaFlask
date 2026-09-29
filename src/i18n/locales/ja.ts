@@ -110,6 +110,9 @@ const table: Record<string, string> = {
   'skin.amber': 'アンバーガラス',
   'skin.emerald': 'エメラルドガラス',
   'skin.obsidian': '黒曜石',
+  'skin.sapphire': 'サファイア',
+  'skin.sunset': '夕焼け',
+  'skin.gilded': '金箔',
   'product.cf.bundle.starter': 'スターターバンドル',
   'product.cf.bundle.alchemist': '錬金術師バンドル',
   'product.cf.coins.small': 'コインの小袋',
@@ -123,6 +126,54 @@ const table: Record<string, string> = {
   'item.hint.x3.desc': '勝てる一手を表示',
   'item.bottle.x3.title': 'ボトル ×3',
   'item.bottle.x3.desc': '困ったときの追加スペース',
+  'item.lives.one.title': 'ハート +1',
+  'item.lives.one.desc': '今すぐもう一回挑戦',
+  'item.lives.hour.title': 'ハート無制限 · 1時間',
+  'item.lives.hour.desc': '1時間好きなだけプレイ',
+  'item.bundle.boost.title': 'ブースターセット',
+  'item.bundle.boost.desc': 'アンドゥ3回、ヒント3回、ボトル1本',
+  'item.undo.x10.title': 'アンドゥ ×10',
+  'item.undo.x10.desc': 'やり直しをたっぷり',
+  'item.hint.x10.title': 'ヒント ×10',
+  'item.hint.x10.desc': '難しい盤面を解く勝ち手',
+  'item.bottle.x10.title': 'ボトル ×10',
+  'item.bottle.x10.desc': '窮屈なレベルにゆとりを',
+  'level.weekly': 'ウィークリー {n}/{total}',
+  'daily.freezes': '🧊 ストリークフリーズ：{n}/{max}',
+  'weekly.title': 'ウィークリーイベント',
+  'weekly.lockedShort': '🔒 レベル{n}',
+  'weekly.locked': 'ウィークリーイベントはレベル{n}で解放されます',
+  'weekly.board': 'ボード{n}',
+  'weekly.play': 'プレイ ›',
+  'weekly.prize': '{total}つすべてクリア：+{coins}コイン＆ヒント×{hints}',
+  'weekly.perfectPrize': '★{stars}すべて：さらに+{coins}コイン',
+  'weekly.ends': '新しいボードまで{time}',
+  'weekly.ended': 'その週のイベントは終了しました。新しいボードが待っています',
+  'toast.freezeUsed': '🧊 ストリークフリーズを{used}個使用：🔥{streak}日のストリークは守られました',
+  'toast.chests': '🎁 チャプター宝箱を開けた · +{n}コイン',
+  'chest.silver': '銀の宝箱',
+  'chest.gold': '金の宝箱',
+  'chapter.chestFinish': '🎁 チャプタークリアで+{n}',
+  'chapter.chestNext': '🎁 ★{stars}で{chest}：+{n}',
+  'chapter.chestDone': '🎁 宝箱をすべて開けた',
+  'shop.owned': '所持 {n}/{max}',
+  'shop.freezeFull': 'ストリークフリーズはすでに{max}個持っています',
+  'win.eyebrow.weekly': 'ウィークリーイベント · ボード{n}/{total}',
+  'win.chest': '{chest} +{n}',
+  'win.weeklyPrize': '週間賞品 +{n}＆ヒント×{hints}',
+  'win.weeklyPerfect': 'パーフェクトウィーク +{n}',
+  'win.weeklyProgress': '今週 {n}/{total} ボード',
+  'win.nextBoard': '次のボード',
+  'win.tryAgain': '{stars}に再挑戦',
+  'item.streak.freeze.title': 'ストリークフリーズ',
+  'item.streak.freeze.desc': '1日休んでもデイリーのストリークを守ります',
+  'win.nearMiss.other': '惜しい！{stars}まであと{n}手でした',
+  'howto.extras': `<div class="howto">
+    <h3>宝箱・イベント・フリーズ</h3>
+    <p>各チャプターには3つの<b>宝箱</b>があります。クリアで銅、60個中45個の星で銀、全レベル星3つで金。やり直しもカウントされます。</p>
+    <p>レベル{weekly}からは<b>ウィークリーイベント</b>で毎週月曜に難しいボードが5つ登場。すべてクリアで賞品、全ボード星3つでさらに賞品がもらえます。</p>
+    <p>ショップの<b>ストリークフリーズ</b>は、1日休んでもデイリーチャレンジのストリークを守ります。最大{freezes}個まで持てます。</p>
+  </div>`,
 
   'powerup.undo': 'アンドゥ',
   'powerup.hint': 'ヒント',
@@ -371,7 +422,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>上限・時計・連勝</h3>
     <p>1回の挑戦で使えるのは、持っている数に関係なく <b>アンドゥ{undo}回</b>、<b>ヒント{hint}回</b>、<b>追加ボトル{bottle}本</b> までです。</p>
-    <p><b>時計</b>はボーナス時間を表示します。時間内に初めてクリアするとコインが追加されます。時間切れで失敗になることはありません。</p>
+    <p><b>時計</b>はボーナス時間を表示します。時間内に<b>星3つ</b>で初めてクリアするとコインが追加されます。早くクリアするほどボーナスが大きくなり、時計のコイン表示は時間とともに減っていきます。時間切れで失敗になることはありません。</p>
     <p>リスタートや途中退出なしで新しいレベルを連続クリアすると、3回目から毎回<b>連勝ボーナス</b>がもらえます。</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -383,7 +434,7 @@ const table: Record<string, string> = {
     <h3>ハート</h3>
     <p>ハートを失うのは、レベルが本当に<b>失敗</b>したとき - 手がなくなった、またはゲームがここからクリア不可能と証明したとき - にやり直すか離れる場合だけです。まだ進行中のレベルを離れたりやり直すのは無料です。ハートは 30 分ごとに 1 個回復します。</p>
     <h3>ブースター</h3>
-    <p>各挑戦は<b>無料アンドゥ {undo} 回</b>と<b>無料ヒント {hint} 回</b>で始まります。追加のボトルやヒント、アンドゥはショップで、獲得したコインで購入できます。</p>
+    <p>各挑戦は<b>無料アンドゥ {undo} 回</b>で始まり、レベル 1〜{levels} では<b>無料ヒント {hint} 回</b>も付きます。追加のボトルやヒント、アンドゥはショップで、獲得したコインで購入できます。</p>
     <h3>ひねり</h3>
     <p>金の縁の<b>大釜</b>は上にどんな色でも受け入れますが、クリアには空でなければなりません。<b>濁ったポーション</b>は表面に出るまで色を隠します。<b>ロックされたボトル</b>は、錠の下の点の数だけ他のボトルを封印するまで、注ぐことも取り出すこともできません。ティール色の<b>一方通行フラスコ</b>は注ぎを受け入れますが決して返さず、満タンになるまでレベルはクリアになりません - 色は慎重に選びましょう。</p>
   </div>`,

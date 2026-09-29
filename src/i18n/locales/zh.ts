@@ -110,6 +110,9 @@ const table: Record<string, string> = {
   'skin.amber': '琥珀玻璃',
   'skin.emerald': '翡翠玻璃',
   'skin.obsidian': '黑曜石',
+  'skin.sapphire': '蓝宝石',
+  'skin.sunset': '日落',
+  'skin.gilded': '鎏金',
   'product.cf.bundle.starter': '新手礼包',
   'product.cf.bundle.alchemist': '炼金师礼包',
   'product.cf.coins.small': '一小袋金币',
@@ -123,6 +126,54 @@ const table: Record<string, string> = {
   'item.hint.x3.desc': '揭示一步制胜之举',
   'item.bottle.x3.title': '瓶子 ×3',
   'item.bottle.x3.desc': '需要时的额外空间',
+  'item.lives.one.title': '爱心 +1',
+  'item.lives.one.desc': '立即再试一次',
+  'item.lives.hour.title': '无限爱心 · 1 小时',
+  'item.lives.hour.desc': '一小时内尽情畅玩',
+  'item.bundle.boost.title': '道具礼包',
+  'item.bundle.boost.desc': '3 次撤销、3 次提示和 1 个瓶子',
+  'item.undo.x10.title': '撤销 ×10',
+  'item.undo.x10.desc': '大量的第二次机会',
+  'item.hint.x10.title': '提示 ×10',
+  'item.hint.x10.desc': '为最难的关卡揭示制胜之举',
+  'item.bottle.x10.title': '瓶子 ×10',
+  'item.bottle.x10.desc': '每个紧凑关卡都更宽裕',
+  'level.weekly': '每周 {n}/{total}',
+  'daily.freezes': '🧊 连胜保护：{n}/{max}',
+  'weekly.title': '每周活动',
+  'weekly.lockedShort': '🔒 第 {n} 关',
+  'weekly.locked': '每周活动在第 {n} 关开放',
+  'weekly.board': '谜题 {n}',
+  'weekly.play': '开始 ›',
+  'weekly.prize': '全部 {total} 题通关：+{coins} 金币和提示 ×{hints}',
+  'weekly.perfectPrize': '全部 {stars} ★：再得 +{coins} 金币',
+  'weekly.ends': '{time} 后刷新',
+  'weekly.ended': '那一周的活动已结束——新的谜题在等你',
+  'toast.freezeUsed': '🧊 已使用连胜保护 ×{used}——你的 🔥{streak} 天连胜保住了',
+  'toast.chests': '🎁 已打开章节宝箱 · +{n} 金币',
+  'chest.silver': '银宝箱',
+  'chest.gold': '金宝箱',
+  'chapter.chestFinish': '🎁 完成本章：+{n}',
+  'chapter.chestNext': '🎁 ★{stars} 开启{chest}：+{n}',
+  'chapter.chestDone': '🎁 宝箱已全部打开',
+  'shop.owned': '已有 {n}/{max}',
+  'shop.freezeFull': '你已持有 {max} 个连胜保护',
+  'win.eyebrow.weekly': '每周活动 · 第 {n}/{total} 题',
+  'win.chest': '{chest} +{n}',
+  'win.weeklyPrize': '每周奖励 +{n} 和提示 ×{hints}',
+  'win.weeklyPerfect': '完美一周 +{n}',
+  'win.weeklyProgress': '本周 {n}/{total} 题',
+  'win.nextBoard': '下一题',
+  'win.tryAgain': '再冲{stars}',
+  'item.streak.freeze.title': '连胜保护',
+  'item.streak.freeze.desc': '错过一天时保住你的每日连胜',
+  'win.nearMiss.other': '好可惜！只比{stars}多了 {n} 步',
+  'howto.extras': `<div class="howto">
+    <h3>宝箱、活动和连胜保护</h3>
+    <p>每章有三个<b>宝箱</b>：通关本章得铜箱，60 颗星中拿到 45 颗得银箱，每关都三星得金箱。重玩也算数。</p>
+    <p>从第 {weekly} 关起，<b>每周活动</b>每周一带来五道难题：全部通关有奖励，每道都三星再得一份。</p>
+    <p>商店里的<b>连胜保护</b>能在你错过一天时保住每日挑战的连胜。最多可持有 {freezes} 个。</p>
+  </div>`,
 
   'powerup.undo': '撤销',
   'powerup.hint': '提示',
@@ -371,7 +422,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>上限、时钟与连胜</h3>
     <p>无论你拥有多少，每次尝试最多只能使用 <b>{undo} 次撤销</b>、<b>{hint} 次提示</b>和 <b>{bottle} 个额外瓶子</b>。</p>
-    <p><b>时钟</b>显示奖励时间：在时间结束前首次通关即可获得额外金币。它永远不会让你闯关失败。</p>
+    <p><b>时钟</b>显示奖励时间：在时间结束前以<b>三星</b>首次通关即可获得额外金币。完成得越快，奖励越多——时钟上的金币数会随时间减少。它永远不会让你闯关失败。</p>
     <p>不重开、不退出地连续通关新关卡，从第三关起每次胜利都会获得<b>连胜奖励</b>。</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -383,7 +434,7 @@ const table: Record<string, string> = {
     <h3>爱心</h3>
     <p>只有当关卡真正<b>失败</b> - 无路可走，或游戏已证明从这里无法获胜 - 而你选择重新开始或离开时，才会失去一颗爱心。离开或重开仍有希望的关卡是免费的。爱心每 30 分钟恢复一颗。</p>
     <h3>道具</h3>
-    <p>每次尝试都以 <b>{undo} 次免费撤销</b>和 <b>{hint} 次免费提示</b>开始。额外的瓶子、更多提示或撤销可在商店用你赢得的金币购买。</p>
+    <p>每次尝试都以 <b>{undo} 次免费撤销</b>开始，第 1-{levels} 关还会额外赠送 <b>{hint} 次免费提示</b>。额外的瓶子、更多提示或撤销可在商店用你赢得的金币购买。</p>
     <h3>变化规则</h3>
     <p>金边的<b>大锅</b>顶部接受任何颜色，但获胜时必须为空。<b>浑浊药水</b>在颜色浮到表面前一直隐藏。<b>上锁的瓶子</b>在你封好其锁下圆点所示数量的其他瓶子之前，既不能倒入也不能倒出。青色的<b>单向烧瓶</b>只进不出，且只有它装满时关卡才算获胜 - 请谨慎选择它的颜色。</p>
   </div>`,

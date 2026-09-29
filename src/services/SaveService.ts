@@ -5,7 +5,11 @@
  * writing one new driver - not touching game code.
  */
 
-import { advanceStreak, currentStreak, type DailyStreak } from '@/core/daily';
+import { CHAPTERS, type ChestTier } from '@/core/chapters';
+import {
+  MAX_STREAK_FREEZES, advanceStreak, applyStreakFreezes, currentStreak, dayFromDailyId, isDaily,
+  type DailyStreak,
+} from '@/core/daily';
 import { mergeMissions, type MissionsState } from '@/core/missions';
 import { LIVES_MAX, LIVES_REGEN_MS, type PowerupId } from '@/core/progression';
 import type { Board, Move } from '@/core/types';
@@ -136,6 +140,24 @@ export interface SaveData {
   login: { streak: number; lastDay: number };
   /** Bottle looks: the one in use and the ones bought (classic is implicit). */
   cosmetics: { skin: string; owned: string[] };
+  /**
+   * Chapter chests already paid, keyed by chapter number: the highest tier
+   * opened (1 bronze, 2 silver, 3 gold). Tiers only ever go up.
+   */
+  chests: Record<string, number>;
+  /** This week's event: board records and which prizes have been paid. */
+  weekly: WeeklyState;
+}
+
+/** One week's event progress. A stale week is replaced on first read. */
+export interface WeeklyState {
+  week: number;
+  /** Keyed by 0-based board index. */
+  records: Record<string, LevelRecord>;
+  /** The all-boards-cleared prize. */
+  prizePaid: boolean;
+  /** The every-board-three-starred prize. */
+  perfectPaid: boolean;
 }
 
 /** Mutable save-side shape of the core's read-only DailyStreak, plus history. */
@@ -144,6 +166,8 @@ export interface DailyState {
   streak: number;
   lastDay: number;
   bestStreak: number;
+  /** Streak freezes held (0..MAX_STREAK_FREEZES), spent automatically on missed days. */
+  freezes: number;
 }
 
 // Compile-time guard: the save shape must satisfy the core streak type.
@@ -151,7 +175,7 @@ const _dailyStateIsStreak: (s: DailyState) => DailyStreak = (s) => s;
 void _dailyStateIsStreak;
 
 
-export const SAVE_VERSION = 17;
+export const SAVE_VERSION = 18;
 
 /** Same confusable-free alphabet as support codes (no I, L, O, U). */
 const SUPPORT_ID_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
@@ -198,7 +222,7 @@ export function defaultSave(startingCoins: number): SaveData {
     missions: null,
     inProgress: null,
     endlessSeen: false,
-    daily: { records: {}, streak: 0, lastDay: -1, bestStreak: 0 },
+    daily: { records: {}, streak: 0, lastDay: -1, bestStreak: 0, freezes: 0 },
     lockSeen: false,
     oneWaySeen: false,
     leaderboardSeen: false,
@@ -206,6 +230,68 @@ export function defaultSave(startingCoins: number): SaveData {
     login: { streak: 0, lastDay: -1 },
     skipped: [],
     cosmetics: { skin: 'classic', owned: [] },
+    chests: {},
+    weekly: { week: -1, records: {}, prizePaid: false, perfectPaid: false },
+  };
+}
+
+/** A record map read from untrusted JSON: well-formed entries only. */
+function sanitizeRecords(raw: unknown): Record<string, LevelRecord> {
+  const out: Record<string, LevelRecord> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const r = v as Partial<LevelRecord> | null;
+    if (r && typeof r.stars === 'number' && typeof r.bestMoves === 'number') {
+      out[k] = {
+        stars: r.stars,
+        bestMoves: r.bestMoves,
+        clearedAt: typeof r.clearedAt === 'number' ? r.clearedAt : 0,
+      };
+    }
+  }
+  return out;
+}
+
+/**
+ * Chapter chests for a save. v18+ saves carry them; older ones paid the old
+ * flat chapter bonus on the first clear of each chapter's last level, which
+ * is exactly the bronze chest - so a chapter whose last level is cleared
+ * starts at bronze, and silver and gold are still to come.
+ */
+function migrateChests(
+  parsed: Partial<SaveData>,
+  levels: Record<string, LevelRecord>,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (parsed.chests && typeof parsed.chests === 'object') {
+    for (const [k, v] of Object.entries(parsed.chests)) {
+      if (typeof v === 'number' && v >= 1) out[k] = Math.min(3, Math.floor(v));
+    }
+    return out;
+  }
+  for (const c of CHAPTERS) if (levels[String(c.last)]) out[String(c.index)] = 1;
+  return out;
+}
+
+/** Same week: union of records (best of each) and of paid prizes. Otherwise the later week. */
+function mergeWeekly(a: WeeklyState, b: WeeklyState): WeeklyState {
+  if (a.week !== b.week) return a.week > b.week ? a : b;
+  const records: Record<string, LevelRecord> = { ...a.records };
+  for (const [k, r] of Object.entries(b.records)) {
+    const mine = records[k];
+    records[k] = mine
+      ? {
+        stars: Math.max(mine.stars, r.stars),
+        bestMoves: Math.min(mine.bestMoves, r.bestMoves),
+        clearedAt: Math.max(mine.clearedAt, r.clearedAt),
+      }
+      : r;
+  }
+  return {
+    week: a.week,
+    records,
+    prizePaid: a.prizePaid || b.prizePaid,
+    perfectPaid: a.perfectPaid || b.perfectPaid,
   };
 }
 
@@ -315,7 +401,13 @@ export class SaveService {
       // v7 saves predate endless mode.
       endlessSeen: parsed.endlessSeen ?? false,
       // v8 saves predate the daily challenge.
-      daily: { ...fallback.daily, ...(parsed.daily ?? {}), records: parsed.daily?.records ?? {} },
+      // v17 saves predate streak freezes.
+      daily: {
+        ...fallback.daily,
+        ...(parsed.daily ?? {}),
+        records: parsed.daily?.records ?? {},
+        freezes: Math.max(0, Math.min(MAX_STREAK_FREEZES, Math.floor(Number(parsed.daily?.freezes) || 0))),
+      },
       // v9 saves predate the locked bottle; v11 the one-way flask.
       lockSeen: parsed.lockSeen ?? false,
       oneWaySeen: parsed.oneWaySeen ?? false,
@@ -336,7 +428,131 @@ export class SaveService {
           ? parsed.cosmetics.owned.filter((s): s is string => typeof s === 'string')
           : [],
       },
+      // v17 saves predate chapter chests and the weekly event.
+      chests: migrateChests(parsed, parsed.levels ?? {}),
+      weekly: {
+        week: typeof parsed.weekly?.week === 'number' ? parsed.weekly.week : -1,
+        records: sanitizeRecords(parsed.weekly?.records),
+        prizePaid: parsed.weekly?.prizePaid === true,
+        perfectPaid: parsed.weekly?.perfectPaid === true,
+      },
     };
+  }
+
+  // ---------------------------------------------------------- chapter chests
+  /** The highest chest already paid for chapter `index` (0 = none). */
+  chestTier(index: number): ChestTier {
+    return (this.data.chests[String(index)] ?? 0) as ChestTier;
+  }
+
+  /** Record chests paid up to `tier`; never lowers what is recorded. */
+  setChestTier(index: number, tier: ChestTier): void {
+    if (tier <= this.chestTier(index)) return;
+    this.update((d) => {
+      d.chests[String(index)] = tier;
+    });
+  }
+
+  // ------------------------------------------------------------ weekly event
+  /**
+   * The event state for `week`. A newer week replaces the stored one with a
+   * fresh start; an older week (a board carried over midnight on Sunday, or a
+   * clock set back) never touches the save and reads as closed - no records,
+   * both prizes marked paid - so nothing can be recorded or claimed for it.
+   */
+  weeklyState(week: number): Readonly<WeeklyState> {
+    const stored = this.data.weekly;
+    if (week < stored.week) return { week, records: {}, prizePaid: true, perfectPaid: true };
+    if (week > stored.week) {
+      this.update((d) => {
+        d.weekly = { week, records: {}, prizePaid: false, perfectPaid: false };
+      });
+    }
+    return this.data.weekly;
+  }
+
+  weeklyRecord(week: number, board: number): LevelRecord | undefined {
+    return this.weeklyState(week).records[String(board)];
+  }
+
+  /** Record a board clear; `prevStars` is null on the first clear of that board this week. */
+  recordWeeklyClear(
+    week: number, board: number, stars: number, moves: number,
+  ): { isFirstClear: boolean; prevStars: number | null } {
+    const prev = this.weeklyRecord(week, board);
+    // A past week has nowhere to record to (see weeklyState).
+    if (this.data.weekly.week !== week) return { isFirstClear: false, prevStars: 3 };
+    this.update((d) => {
+      d.weekly.records[String(board)] = {
+        stars: Math.max(stars, prev?.stars ?? 0),
+        bestMoves: prev ? Math.min(prev.bestMoves, moves) : moves,
+        clearedAt: Date.now(),
+      };
+    });
+    return { isFirstClear: !prev, prevStars: prev ? prev.stars : null };
+  }
+
+  /** Mark one of this week's prizes paid; false if it already was (so it never pays twice). */
+  claimWeeklyPrize(week: number, prize: 'prize' | 'perfect'): boolean {
+    const st = this.weeklyState(week);
+    if (st !== this.data.weekly) return false;
+    if (prize === 'prize' ? st.prizePaid : st.perfectPaid) return false;
+    this.update((d) => {
+      if (prize === 'prize') d.weekly.prizePaid = true;
+      else d.weekly.perfectPaid = true;
+    });
+    // Not flushed here: the caller pays the prize and then flushes, so the
+    // flag and its coins always land on disk in the same write.
+    return true;
+  }
+
+  /**
+   * Whether `week` is the week the save is tracking and so can record and
+   * pay. False for a week older than the stored one (a clock set back, a
+   * board carried past Monday, a cloud copy from a later week).
+   */
+  weeklyOpen(week: number): boolean {
+    return this.weeklyState(week) === this.data.weekly;
+  }
+
+  // ---------------------------------------------------------- streak freeze
+  get streakFreezes(): number {
+    return this.data.daily.freezes;
+  }
+
+  /** Add freezes up to the cap; returns how many were actually added. */
+  addStreakFreezes(n: number): number {
+    const added = Math.max(0, Math.min(n, MAX_STREAK_FREEZES - this.data.daily.freezes));
+    if (added > 0) {
+      this.update((d) => {
+        d.daily.freezes += added;
+      });
+    }
+    return added;
+  }
+
+  /**
+   * Spend freezes on days missed since the last daily clear (see
+   * applyStreakFreezes). Returns how many were used: 0 when none were needed
+   * or there were too few to save the streak. Safe to call any time.
+   */
+  settleStreakFreezes(today: number): number {
+    const d0 = this.data.daily;
+    // A daily from inside the gap is still saved in progress: finishing it
+    // may close the gap for free, so no freeze is spent until it is done or
+    // abandoned (the next settle then sees the true gap).
+    const pending = this.data.inProgress?.levelId;
+    if (pending !== undefined && isDaily(pending)) {
+      const pendingDay = dayFromDailyId(pending);
+      if (pendingDay > d0.lastDay && pendingDay < today) return 0;
+    }
+    const { streak, used } = applyStreakFreezes(d0, today, d0.freezes);
+    if (used === 0) return 0;
+    this.update((d) => {
+      d.daily.lastDay = streak.lastDay;
+      d.daily.freezes -= used;
+    });
+    return used;
   }
 
   // ------------------------------------------------------------- cosmetics
@@ -428,7 +644,11 @@ export class SaveService {
         bestMoves: prev ? Math.min(prev.bestMoves, moves) : moves,
         clearedAt: Date.now(),
       };
-      if (isFirstClear) {
+      // Only a day after the streak's last day can extend it. An older day is
+      // possible now that freezes move lastDay forward (a daily left in
+      // progress, finished after a freeze covered a later gap): it records,
+      // but must not restart the streak from 1.
+      if (isFirstClear && day > d.daily.lastDay) {
         const next = advanceStreak(d.daily, day);
         d.daily.streak = next.streak;
         d.daily.lastDay = next.lastDay;
@@ -510,6 +730,12 @@ export class SaveService {
       new Set([...local.purchasedProducts, ...merged.purchasedProducts]),
     );
     merged.missions = mergeMissions(local.missions, merged.missions);
+    // Chests and weekly prizes are payout ledgers: a restore must never
+    // re-open one this device (or the other) has already paid.
+    for (const [k, v] of Object.entries(local.chests)) {
+      merged.chests[k] = Math.max(v, merged.chests[k] ?? 0);
+    }
+    merged.weekly = mergeWeekly(local.weekly, merged.weekly);
     // A half-played level from another device makes no sense here.
     merged.inProgress = null;
     this.data = merged;
@@ -536,8 +762,9 @@ export class SaveService {
     const keepGranted = this.data.grantedPurchaseTokens;
     // One-time offers stay closed too: a reset is not a second starter bundle.
     const keepPurchased = this.data.purchasedProducts;
-    // Nor a second payout of today's missions.
+    // Nor a second payout of today's missions, or of this week's event prizes.
     const keepMissions = this.data.missions;
+    const keepWeekly = this.data.weekly;
     this.data = defaultSave(this.startingCoins);
     this.data.settings = keepSettings;
     this.data.supportId = keepSupportId;
@@ -545,6 +772,7 @@ export class SaveService {
     this.data.grantedPurchaseTokens = keepGranted;
     this.data.purchasedProducts = keepPurchased;
     this.data.missions = keepMissions;
+    this.data.weekly = keepWeekly;
     this.flush();
   }
 
@@ -608,6 +836,12 @@ export class SaveService {
         if (!d.levels[key]) {
           d.levels[key] = { stars: 1, bestMoves: Number.MAX_SAFE_INTEGER, clearedAt: Date.now() };
         }
+      }
+      // A support unlock never paid the chapter bonus, and must not start
+      // paying it later: chapters it completed count their bronze chest as
+      // opened (silver and gold still have to be earned with real stars).
+      for (const c of CHAPTERS) {
+        if (d.levels[String(c.last)] && !d.chests[String(c.index)]) d.chests[String(c.index)] = 1;
       }
     });
   }

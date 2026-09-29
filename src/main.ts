@@ -1,15 +1,23 @@
 import './styles/main.css';
 
 import { LEVELS, LEVEL_COUNT, endlessIndex, getLevelSpec, isEndless } from '@/core/levels';
-import { CHAPTER_SIZE, chapterFor, isChapterEnd, type Chapter } from '@/core/chapters';
-import { dailyId, dateFromDay, dayFromDailyId, isDaily, todayDayNumber } from '@/core/daily';
+import {
+  CHAPTER_SIZE, chapterFor, chestTierFor, silverChestStars, type Chapter, type ChestTier,
+} from '@/core/chapters';
+import {
+  MAX_STREAK_FREEZES, dailyId, dateFromDay, dayFromDailyId, isDaily, todayDayNumber,
+} from '@/core/daily';
+import {
+  WEEKLY_BOARDS, WEEKLY_UNLOCK_LEVEL, boardFromWeeklyId, isWeekly, weekFromWeeklyId, weekOfDay,
+  weekStartDay, weeklyId,
+} from '@/core/weekly';
 import { getCampaignLevel } from '@/core/campaign';
 import { TUBE_CAPACITY } from '@/core/board';
 import { solverClient } from '@/services/SolverClient';
 import {
   COIN_SHOP, LIVES_MAX, LOGIN_CYCLE, LOGIN_REWARDS, coinsFor, loginCycleDay, loginRewardFor,
-  scaledReward, starThresholds, starValue, starsFor, streakBonusFor, timeBonusSeconds,
-  type CoinShopItem, type PowerupId,
+  freeUsesFor, scaledReward, starThresholds, starValue, starsFor, streakBonusFor,
+  timeBonusFor, timeBonusSeconds, type CoinShopItem, type PowerupId,
 } from '@/core/progression';
 import { MISSIONS_ALL_BONUS, missionsFor, type MissionKind } from '@/core/missions';
 import { ACHIEVEMENTS, achievementById, unlockedAchievements } from '@/core/achievements';
@@ -55,7 +63,7 @@ import { installFormViewport } from '@/ui/formViewport';
 installFormViewport();
 
 type ScreenId = 'boot' | 'profile' | 'home' | 'map' | 'board' | 'shop' | 'game';
-type WinMode = 'campaign' | 'endless' | 'daily';
+type WinMode = 'campaign' | 'endless' | 'daily' | 'weekly';
 const SCREENS: readonly ScreenId[] = ['boot', 'profile', 'home', 'map', 'board', 'shop', 'game'];
 
 const AVATARS = ['🐱', '🦊', '🐼', '🐸', '🦉', '🐙', '🦄', '🐧'];
@@ -114,6 +122,47 @@ const POWERUP_ICON: Record<PowerupId, string> = {
 };
 
 const HEART_ICON = `<svg viewBox="0 0 24 24" class="heart"><use href="#cf-heart"/></svg>`;
+/** A gift box, for the coin shop's mixed booster bundle. */
+const BUNDLE_ICON = `<svg viewBox="0 0 24 24"><path d="M4 11h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z
+  M3 7h18v4H3ZM12 7v14M12 7c-1.5-3.5-6-4-6-1.2C6 7 9 7 12 7Zm0 0c1.5-3.5 6-4 6-1.2C18 7 15 7 12 7Z"
+  fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>`;
+
+/** A snowflake, for the streak freeze. */
+const FREEZE_ICON = `<svg viewBox="0 0 24 24"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 3.5l3 2.5 3-2.5
+  M9 20.5l3-2.5 3 2.5M3.8 10.6 7.5 12l-3.7 1.4M20.2 10.6 16.5 12l3.7 1.4" fill="none"
+  stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+/** The shop row icon for a coin item. */
+function coinItemIcon(item: CoinShopItem): string {
+  switch (item.grant.kind) {
+    case 'powerup':
+      return POWERUP_ICON[item.grant.powerup];
+    case 'bundle':
+      return BUNDLE_ICON;
+    case 'streakFreeze':
+      return FREEZE_ICON;
+    case 'refillLives':
+    case 'addLives':
+    case 'infiniteLives':
+      return HEART_ICON;
+  }
+}
+
+/** "3d 4h" above a day, else the lives countdown format. */
+function formatLongCountdown(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const d = Math.floor(total / 86_400);
+  if (d > 0) return `${d}d ${Math.floor((total % 86_400) / 3600)}h`;
+  return formatCountdown(ms);
+}
+
+/** "★★☆" for a star count. */
+const starString = (n: number): string => `${'★'.repeat(n)}${'☆'.repeat(3 - n)}`;
+
+/** Coins each chest tier pays (index = tier). */
+function chestCoins(tier: ChestTier, eco: { chapterBonus: number; chestSilverCoins: number; chestGoldCoins: number }): number {
+  return tier === 1 ? eco.chapterBonus : tier === 2 ? eco.chestSilverCoins : tier === 3 ? eco.chestGoldCoins : 0;
+}
 const COIN_ICON = `<span class="chip__icon chip__icon--coin"></span>`;
 
 /**
@@ -144,9 +193,12 @@ function skinPreviewSvg(skin: GlassSkin): string {
 
 /**
  * A saved attempt is only trusted if it is plausibly this level: same colour
- * units in the same quantities, no tube over capacity, and no more tubes than
- * the level plus the bottle powerup could produce. Anything else (a corrupted
- * or hand-edited save, a level retuned since) starts fresh.
+ * units in the same quantities, no tube over capacity, no more tubes than
+ * the level plus the bottle powerup could produce - and rewinding its full
+ * move history must land exactly on the level's starting board, so a
+ * campaign update that re-deals a level (same colours, different board)
+ * never resumes the old position against the new par and solution. Anything
+ * else (a corrupted or hand-edited save, a level retuned since) starts fresh.
  */
 function isValidRestore(level: GeneratedLevel, state: InProgressState, maxExtra: number): boolean {
   const base = level.board.length;
@@ -162,7 +214,33 @@ function isValidRestore(level: GeneratedLevel, state: InProgressState, maxExtra:
   const have = count(state.board);
   if (want.size !== have.size) return false;
   for (const [c, n] of want) if (have.get(c) !== n) return false;
-  return Array.isArray(state.history) && Array.isArray(state.hidden);
+  if (!Array.isArray(state.history) || !Array.isArray(state.hidden)) return false;
+
+  const work = state.board.map((tube) => [...tube]);
+  for (let i = state.history.length - 1; i >= 0; i--) {
+    const m = state.history[i];
+    if (
+      !m || !Number.isInteger(m.from) || !Number.isInteger(m.to) || !Number.isInteger(m.count) ||
+      m.count < 1 || m.from === m.to
+    ) return false;
+    const src = work[m.from];
+    const dst = work[m.to];
+    // The pour's units must still sit on top of its target, in its colour.
+    if (!src || !dst || dst.length < m.count || src.length + m.count > TUBE_CAPACITY) return false;
+    for (let k = 0; k < m.count; k++) {
+      const unit = dst.pop() as number;
+      if (unit !== m.color) return false;
+      src.push(unit);
+    }
+  }
+  // Extra bottles are appended empty and everything poured into them has
+  // now been taken back out.
+  return work.every((tube, i) =>
+    i < base
+      ? tube.length === (level.board[i] as readonly number[]).length &&
+        tube.every((c, k) => c === (level.board[i] as readonly number[])[k])
+      : tube.length === 0,
+  );
 }
 
 /** "1h 12m" above an hour, "12:07" below, for lives countdowns. */
@@ -497,7 +575,9 @@ class App {
         moves: this.board.moveCount,
         tubes: this.board.tubeCount,
         selected: this.board.selectedIndex,
+        busy: this.board.isBusy,
         coins: this.save.coins,
+        inventory: { ...this.save.snapshot.inventory },
         achievementCoins: this.achievementCoins,
         missionCoins: this.missionCoins,
         missionsPaid: this.save.snapshot.missions?.paid.filter(Boolean).length ?? 0,
@@ -794,6 +874,11 @@ class App {
       this.showLivesDialog();
     });
     $('#home-missions').addEventListener('click', () => this.showMissions());
+    $('#home-weekly').addEventListener('click', () => {
+      audio.play('button');
+      haptic(8);
+      this.openWeekly();
+    });
     $('#btn-play').addEventListener('click', () => {
       audio.play('button');
       haptic(10);
@@ -834,6 +919,7 @@ class App {
 
   /** Today's challenge: play it, or see today's result if it is already done. */
   private openDaily(): void {
+    this.settleFreezes();
     const today = todayDayNumber();
     const record = this.save.dailyRecord(today);
     if (record) {
@@ -866,8 +952,20 @@ class App {
     bar.setAttribute('aria-valuemax', String(LEVEL_COUNT));
     bar.setAttribute('aria-valuenow', String(done));
     bar.setAttribute('aria-label', t('home.progressAria', { done, total: LEVEL_COUNT, stars, max: LEVEL_COUNT * 3 }));
+    // Freezes and chests are settled here, the one screen every session
+    // passes through; both are idempotent, so repeat visits change nothing.
+    this.settleFreezes();
+    this.settleChests();
     this.renderDailyButton();
     this.renderMissions();
+    this.renderWeeklyRow();
+    // A board saved mid-way in a week that has since ended cannot be
+    // finished for anything; drop it rather than offer to continue it.
+    const saved = this.save.inProgress;
+    if (saved && isWeekly(saved.levelId)) {
+      const week = weekFromWeeklyId(saved.levelId);
+      if (week !== this.currentWeek() || !this.save.weeklyOpen(week)) this.save.setInProgress(null);
+    }
     const resume = this.save.inProgress;
     $('#btn-play').textContent = resume
       ? t('home.continue', { label: this.levelLabel(resume.levelId) })
@@ -997,8 +1095,9 @@ class App {
     }, 500);
   }
 
-  /** "Level 12" inside the campaign, "Endless #7" beyond it, or the daily. */
+  /** "Level 12" inside the campaign, "Endless #7" beyond it, the daily, or a weekly board. */
   private levelLabel(id: number): string {
+    if (isWeekly(id)) return t('level.weekly', { n: boardFromWeeklyId(id) + 1, total: WEEKLY_BOARDS });
     if (isDaily(id)) return t('level.daily');
     return isEndless(id) ? t('level.endless', { n: endlessIndex(id) }) : t('level.n', { n: id });
   }
@@ -1016,6 +1115,11 @@ class App {
     content.appendChild(el('div', 'dailydone__best', tp('daily.done.best', bestMoves)));
     const streak = this.save.dailyStreak(today);
     if (streak > 1) content.appendChild(el('div', 'win__streak', t('daily.streak', { n: streak })));
+    if (this.save.streakFreezes > 0) {
+      content.appendChild(
+        el('div', 'dailydone__freezes', t('daily.freezes', { n: this.save.streakFreezes, max: MAX_STREAK_FREEZES })),
+      );
+    }
     const next = el('div', 'dailydone__next');
     content.appendChild(next);
 
@@ -1174,6 +1278,144 @@ class App {
     });
   }
 
+  // ---------------------------------------------------------- weekly event
+  private currentWeek(): number {
+    return weekOfDay(todayDayNumber());
+  }
+
+  private get weeklyUnlocked(): boolean {
+    return this.save.highestUnlocked(LEVEL_COUNT) >= WEEKLY_UNLOCK_LEVEL;
+  }
+
+  /** The home row: this week's boards cleared, or the level that opens the event. */
+  private renderWeeklyRow(): void {
+    if (!this.save.snapshot.profile) return;
+    const row = $('#home-weekly');
+    row.hidden = false;
+    const count = $('#weekly-count');
+    if (!this.weeklyUnlocked) {
+      count.textContent = t('weekly.lockedShort', { n: WEEKLY_UNLOCK_LEVEL });
+      row.classList.add('missions--locked');
+      return;
+    }
+    row.classList.remove('missions--locked');
+    const week = this.currentWeek();
+    const st = this.save.weeklyState(week);
+    const done = Object.keys(st.records).length;
+    count.textContent =
+      this.save.weeklyOpen(week) && st.prizePaid ? `✓ ${done}/${WEEKLY_BOARDS}` : `${done}/${WEEKLY_BOARDS}`;
+  }
+
+  /** This week's five boards, their stars, the prizes, and when the week ends. */
+  private openWeekly(): void {
+    if (!this.weeklyUnlocked) {
+      this.toast.show(t('weekly.locked', { n: WEEKLY_UNLOCK_LEVEL }), 'info', 2600);
+      return;
+    }
+    const eco = this.remote.current.economy;
+    const week = this.currentWeek();
+    // The save already tracks a later week (a clock set back): nothing here
+    // could record or pay, so say so rather than list dead boards.
+    if (!this.save.weeklyOpen(week)) {
+      this.toast.show(t('weekly.ended'), 'info', 2600);
+      return;
+    }
+    const st = this.save.weeklyState(week);
+    const list = el('div', 'missions-detail');
+    for (let i = 0; i < WEEKLY_BOARDS; i++) {
+      const record = st.records[String(i)];
+      const row = el('button', `mission weekly__board${record ? ' mission--done' : ''}`);
+      row.type = 'button';
+      row.appendChild(el('span', 'mission__name', t('weekly.board', { n: i + 1 })));
+      row.appendChild(
+        el('span', 'mission__meta', record ? starString(record.stars) : t('weekly.play')),
+      );
+      row.addEventListener('click', () => {
+        audio.play('button');
+        this.modal.close();
+        void this.startLevel(weeklyId(week, i));
+      });
+      list.appendChild(row);
+    }
+    const prize = el('div', 'missions-detail__bonus');
+    prize.textContent = (st.prizePaid ? '✓ ' : '') +
+      t('weekly.prize', { coins: eco.weeklyPrizeCoins, hints: eco.weeklyPrizeHints, total: WEEKLY_BOARDS });
+    list.appendChild(prize);
+    const perfect = el('div', 'missions-detail__bonus');
+    perfect.textContent = (st.perfectPaid ? '✓ ' : '') +
+      t('weekly.perfectPrize', { coins: eco.weeklyPerfectCoins, stars: WEEKLY_BOARDS * 3 });
+    list.appendChild(perfect);
+    const ends = el('div', 'dailydone__next');
+    const endsAt = dateFromDay(weekStartDay(week + 1)).getTime();
+    const refresh = () => {
+      ends.textContent = t('weekly.ends', { time: formatLongCountdown(endsAt - Date.now()) });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 1000);
+    list.appendChild(ends);
+    this.modal.open({
+      title: t('weekly.title'),
+      content: list,
+      bottomSheet: true,
+      buttons: [{ label: t('common.gotIt'), kind: 'primary' }],
+      onClose: () => {
+        window.clearInterval(timer);
+        if (this.current === 'home') this.renderWeeklyRow();
+      },
+    });
+  }
+
+  // ---------------------------------------------------------- streak freeze
+  /**
+   * Spend freezes on daily days missed before `day` (today by default), and
+   * say so when one saved the streak.
+   */
+  private settleFreezes(day: number = todayDayNumber()): void {
+    const used = this.save.settleStreakFreezes(day);
+    if (used === 0) return;
+    const streak = this.save.snapshot.daily.streak;
+    this.analytics.track({ type: 'streak_freeze_used', count: used, streak });
+    window.setTimeout(
+      () => this.toast.show(t('toast.freezeUsed', { used, streak }), 'info', 3600),
+      600,
+    );
+  }
+
+  // --------------------------------------------------------- chapter chests
+  /**
+   * Open every chest `chapter` has earned but not yet paid, in order. Returns
+   * the coins per tier opened now (index = tier); the caller pays them.
+   */
+  private openChests(chapter: Chapter): number[] {
+    const eco = this.remote.current.economy;
+    let stars = 0;
+    for (let id = chapter.first; id <= chapter.last; id++) stars += this.save.levelRecord(id)?.stars ?? 0;
+    const size = chapter.last - chapter.first + 1;
+    const earned = chestTierFor(!!this.save.levelRecord(chapter.last), stars, size);
+    const paid = this.save.chestTier(chapter.index);
+    const out = [0, 0, 0, 0];
+    for (let tier = paid + 1; tier <= earned; tier++) {
+      out[tier] = chestCoins(tier as ChestTier, eco);
+      this.analytics.track({ type: 'chest_open', chapter: chapter.index, tier });
+    }
+    this.save.setChestTier(chapter.index, earned);
+    return out;
+  }
+
+  /**
+   * Chests earned before chests existed (a chapter already at 45 or 60 stars
+   * on an older save) are paid once, at home, with one toast for the lot.
+   * Every later chest opens on the win that earns it, so this finds nothing.
+   */
+  private settleChests(): void {
+    let coins = 0;
+    for (const chapter of CHAPTERS) coins += this.openChests(chapter).reduce((a, b) => a + b, 0);
+    if (coins <= 0) return;
+    this.save.addCoins(coins);
+    $('#home-coins').textContent = String(this.save.coins);
+    window.setTimeout(() => this.toast.show(t('toast.chests', { n: coins }), 'info', 3600), 900);
+  }
+
   private renderLivesChip(): void {
     const lives = this.save.lives;
     const count = $('#home-lives');
@@ -1329,6 +1571,22 @@ class App {
     fill.style.width = `${Math.round((cleared / size) * 100)}%`;
     bar.appendChild(fill);
     head.appendChild(bar);
+
+    // The next chest and what it takes, so a finished chapter still has a goal.
+    if (!locked) {
+      const eco = this.remote.current.economy;
+      const opened = this.save.chestTier(chapter.index);
+      const chest = el('div', 'chapter__chest');
+      chest.textContent =
+        opened >= 3
+          ? t('chapter.chestDone')
+          : opened === 0
+            ? t('chapter.chestFinish', { n: eco.chapterBonus })
+            : opened === 1
+              ? t('chapter.chestNext', { chest: t('chest.silver'), stars: silverChestStars(size), n: eco.chestSilverCoins })
+              : t('chapter.chestNext', { chest: t('chest.gold'), stars: size * 3, n: eco.chestGoldCoins });
+      head.appendChild(chest);
+    }
     return head;
   }
 
@@ -1507,9 +1765,9 @@ class App {
   private buildCoinItem(item: CoinShopItem): HTMLElement {
     const row = el('div', 'shopitem');
 
+    row.dataset.item = item.id;
     const icon = el('span', 'shopitem__icon');
-    icon.innerHTML =
-      item.grant.kind === 'refillLives' ? HEART_ICON : POWERUP_ICON[item.grant.powerup];
+    icon.innerHTML = coinItemIcon(item);
     row.appendChild(icon);
 
     const body = el('div', 'shopitem__body');
@@ -1519,10 +1777,20 @@ class App {
 
     const buy = el('button', 'pricebtn');
     buy.innerHTML = `${COIN_ICON} ${item.price}`;
+    // Hearts on top of full (or unlimited) hearts would be coins for nothing.
+    // Unlimited hearts stay buyable: a second hour stacks onto the first.
     const heartsFull =
-      item.grant.kind === 'refillLives' &&
+      (item.grant.kind === 'refillLives' || item.grant.kind === 'addLives') &&
       (this.save.hasInfiniteLives || this.save.lives.count >= LIVES_MAX);
-    buy.disabled = heartsFull || this.save.coins < item.price;
+    // Freezes stack only to the cap; the row shows how many are held.
+    const freezesFull =
+      item.grant.kind === 'streakFreeze' && this.save.streakFreezes >= MAX_STREAK_FREEZES;
+    if (item.grant.kind === 'streakFreeze') {
+      body.appendChild(
+        el('div', 'shopitem__owned', t('shop.owned', { n: this.save.streakFreezes, max: MAX_STREAK_FREEZES })),
+      );
+    }
+    buy.disabled = heartsFull || freezesFull || this.save.coins < item.price;
     buy.addEventListener('click', () => this.buyCoinItem(item));
     row.appendChild(buy);
     return row;
@@ -1669,15 +1937,51 @@ class App {
   }
 
   private buyCoinItem(item: CoinShopItem): void {
+    // Checked again before charging: the shop may have been rendered before
+    // a heart regenerated, and hearts past full are coins for nothing.
+    if (
+      (item.grant.kind === 'refillLives' || item.grant.kind === 'addLives') &&
+      (this.save.hasInfiniteLives || this.save.lives.count >= LIVES_MAX)
+    ) {
+      audio.play('invalid');
+      this.toast.show(t('lives.full'), 'info', 1800);
+      this.renderShop();
+      return;
+    }
+    // Checked before charging: a full stock of freezes must never eat coins.
+    if (item.grant.kind === 'streakFreeze' && this.save.streakFreezes >= MAX_STREAK_FREEZES) {
+      audio.play('invalid');
+      this.toast.show(t('shop.freezeFull', { max: MAX_STREAK_FREEZES }), 'warn');
+      this.renderShop();
+      return;
+    }
     if (!this.save.trySpend(item.price)) {
       audio.play('invalid');
       this.toast.show(t('shop.notEnough', { n: item.price }), 'warn');
       return;
     }
-    if (item.grant.kind === 'refillLives') {
-      this.save.refillLives();
-    } else {
-      this.save.addInventory(item.grant.powerup, item.grant.count);
+    const grant = item.grant;
+    switch (grant.kind) {
+      case 'refillLives':
+        this.save.refillLives();
+        break;
+      case 'addLives':
+        this.save.addLives(grant.count);
+        break;
+      case 'infiniteLives':
+        this.save.addInfiniteLives(grant.hours);
+        break;
+      case 'powerup':
+        this.save.addInventory(grant.powerup, grant.count);
+        break;
+      case 'bundle':
+        for (const [id, n] of Object.entries(grant.powerups)) {
+          if (n) this.save.addInventory(id as PowerupId, n);
+        }
+        break;
+      case 'streakFreeze':
+        this.save.addStreakFreezes(grant.count);
+        break;
     }
     this.analytics.track({ type: 'shop_coin_spend', item: item.id, price: item.price });
     audio.play('powerup');
@@ -1707,6 +2011,20 @@ class App {
 
   private async startLevel(id: number): Promise<void> {
     if (this.starting) return;
+    // A weekly board belongs to its week: once the week is over it cannot be
+    // started, resumed or replayed (there is nowhere left to record it).
+    if (isWeekly(id)) {
+      const week = weekFromWeeklyId(id);
+      const open = week === this.currentWeek() && this.save.weeklyOpen(week);
+      if (!open || !this.weeklyUnlocked) {
+        if (!open && this.save.inProgress?.levelId === id) this.save.setInProgress(null);
+        this.toast.show(
+          open ? t('weekly.locked', { n: WEEKLY_UNLOCK_LEVEL }) : t('weekly.ended'), 'info', 2600,
+        );
+        if (this.current === 'game') this.goHome();
+        return;
+      }
+    }
     // An attempt saved mid-level for this id is resumed; starting any other
     // level abandons it.
     const saved = this.save.inProgress;
@@ -1729,7 +2047,7 @@ class App {
     this.hudTier = 3;
 
     try {
-      if (isEndless(id) || isDaily(id)) {
+      if (isEndless(id) || isDaily(id) || isWeekly(id)) {
         // Generated on demand in the worker; usually well under a second, but a
         // cauldron deal on a slow phone can take a few, so say so.
         this.starting = true;
@@ -1752,9 +2070,21 @@ class App {
       return;
     }
 
-    const maxExtra = this.remote.current.economy.maxUses.bottle;
+    // At least 2: attempts saved under the old two-bottle cap must still
+    // resume (they simply sit at the cap).
+    const maxExtra = Math.max(2, this.remote.current.economy.maxUses.bottle);
     const restore = resume && isValidRestore(this.level, resume, maxExtra) ? resume : null;
-    if (resume && !restore) this.save.setInProgress(null);
+    if (resume && !restore) {
+      this.save.setInProgress(null);
+      // The saved attempt could not be resumed (the level was re-dealt by an
+      // update, or the save is damaged), so this is a fresh start after all
+      // and the hearts gate the top of this method skipped applies.
+      if (!this.save.canPlay && this.save.snapshot.tutorialDone) {
+        this.analytics.track({ type: 'out_of_lives', level: id });
+        this.showLivesDialog(id);
+        return;
+      }
+    }
 
     this.attemptStartedAt = Date.now() - (restore?.elapsedMs ?? 0);
     this.uses = restore ? { ...restore.uses } : { undo: 0, hint: 0, bottle: 0 };
@@ -1782,7 +2112,9 @@ class App {
       const chapter = chapterFor(id);
       this.showLevelIntro(
         this.levelLabel(id),
-        isDaily(id)
+        isWeekly(id)
+          ? t('weekly.title')
+          : isDaily(id)
           ? formatLongDate(dateFromDay(dayFromDailyId(id)))
           : chapter
             ? chapter.name
@@ -2018,6 +2350,16 @@ class App {
 
   private restartLevel(): void {
     if (!this.level) return;
+    // Replaying a weekly board from a week that has ended would pay nothing
+    // and record nowhere; send the player home instead.
+    if (isWeekly(this.levelId)) {
+      const week = weekFromWeeklyId(this.levelId);
+      if (week !== this.currentWeek() || !this.save.weeklyOpen(week)) {
+        this.toast.show(t('weekly.ended'), 'info', 2600);
+        this.goHome();
+        return;
+      }
+    }
     // Starting over a board already played ends the clean run; replaying one
     // just won (the win screen's Replay), or an untouched one, does not.
     if (!this.board.isResolved && this.board.moveCount > 0) this.save.breakCleanStreak();
@@ -2141,10 +2483,19 @@ class App {
 
   /** Whether winning this attempt can still pay the time bonus (first clears only). */
   private timeBonusOnOffer(): boolean {
+    if (isWeekly(this.levelId)) {
+      const week = weekFromWeeklyId(this.levelId);
+      // A board from a week that has ended pays nothing, so it offers nothing.
+      return week === this.currentWeek() && this.save.weeklyOpen(week) &&
+        !this.save.weeklyRecord(week, boardFromWeeklyId(this.levelId));
+    }
     return isDaily(this.levelId)
       ? !this.save.dailyRecord(dayFromDailyId(this.levelId))
       : !this.save.levelRecord(this.levelId);
   }
+
+  /** Missing the next star by at most this many moves counts as a near miss on the win screen. */
+  private static readonly NEAR_MISS = 3;
 
   /** Circumference of the timer chip's ring (2 * PI * r=15.5 in its viewBox). */
   private static readonly CLOCK_RING = 97.4;
@@ -2163,8 +2514,11 @@ class App {
     const elapsed = Math.floor(this.attemptElapsedMs() / 1000);
     const remaining = target - elapsed;
     // A replay cannot earn the bonus, so it gets the plain clock throughout
-    // rather than a countdown promising coins that will not be paid.
-    const live = remaining >= 0 && this.timeBonusOnOffer();
+    // rather than a countdown promising coins that will not be paid. Nor can
+    // a finish off the three-star line: the tag goes the moment the third
+    // star slips (and comes back if an undo recovers it).
+    const threeStarPace = this.board.moveCount <= starThresholds(par).three;
+    const live = remaining > 0 && threeStarPace && this.timeBonusOnOffer();
 
     // Live: the ring drains through the bonus window with the +coins tag on
     // show. Expired: the tag and ring go, and the chip dims into a plain
@@ -2177,8 +2531,9 @@ class App {
       `${Math.floor(shown / 60)}:${String(shown % 60).padStart(2, '0')}`;
     const bonus = $('#game-clock-bonus');
     bonus.hidden = !live;
-    // The same scaled amount the win will pay, never the headline figure.
-    if (live) bonus.textContent = `+${scaledReward(this.remote.current.economy.timeBonusCoins, par)}`;
+    // Exactly what a win this second would pay: the tag steps down with the
+    // clock, so finishing faster visibly earns more.
+    if (live) bonus.textContent = `+${timeBonusFor(elapsed, par, this.remote.current.economy)}`;
     const ring = document.querySelector<SVGCircleElement>('#game-clock-ring');
     if (ring) {
       const fraction = live ? remaining / target : 0;
@@ -2259,7 +2614,8 @@ class App {
   }
 
   private remainingUses(id: PowerupId): number {
-    return Math.max(0, this.remote.current.economy.freeUses[id] - this.uses[id]);
+    const free = freeUsesFor(this.levelId, this.remote.current.economy)[id];
+    return Math.max(0, free - this.uses[id]);
   }
 
   private async usePowerup(id: PowerupId): Promise<void> {
@@ -2408,7 +2764,7 @@ class App {
     const outcome = await this.ads.maybeShowInterstitial({
       level,
       payer: this.save.hasEverPurchased,
-      eligible: !isDaily(level) && this.save.snapshot.tutorialDone,
+      eligible: !isDaily(level) && !isWeekly(level) && this.save.snapshot.tutorialDone,
       cfg: this.remote.current.ads,
     });
     if (outcome !== 'skipped') this.analytics.track({ type: 'ad_interstitial', level, outcome });
@@ -2462,30 +2818,55 @@ class App {
     const stars = starsFor(moves, level.par);
     const eco = this.remote.current.economy;
     const daily = isDaily(this.levelId);
+    const weekly = isWeekly(this.levelId);
     const day = daily ? dayFromDailyId(this.levelId) : 0;
-    const before = daily ? this.save.dailyRecord(day) : this.save.levelRecord(this.levelId);
+    const week = weekly ? weekFromWeeklyId(this.levelId) : 0;
+    const board = weekly ? boardFromWeeklyId(this.levelId) : 0;
+    // A weekly board finished after its week rolled over (Sunday midnight,
+    // mid-board): recording it would wipe the new week's progress, so it
+    // records nothing and pays nothing, and the win screen says why.
+    const staleWeekly = weekly && (week !== this.currentWeek() || !this.save.weeklyOpen(week));
+    // Freezes cover the days missed before *this* daily's day, settled now
+    // that nothing is left in progress: finishing yesterday's board spends
+    // none (it closes the gap itself), today's board spends one per day missed.
+    if (daily) this.settleFreezes(day);
+    const before = weekly
+      ? staleWeekly ? undefined : this.save.weeklyRecord(week, board)
+      : daily ? this.save.dailyRecord(day) : this.save.levelRecord(this.levelId);
     // Support unlocks store a sentinel; treat those as "no real best yet".
     const prevBest = before && before.bestMoves < 100_000 ? before.bestMoves : null;
-    // Daily clears are recorded in their own section, never in the campaign map.
-    const cleared = daily
-      ? this.save.recordDailyClear(day, stars, moves)
-      : this.save.recordClear(this.levelId, stars, moves);
+    // Daily and weekly clears are recorded in their own sections, never in the campaign map.
+    const cleared = staleWeekly
+      ? { prevStars: 3, isFirstClear: false }
+      : weekly
+        ? this.save.recordWeeklyClear(week, board, stars, moves)
+        : daily
+          ? this.save.recordDailyClear(day, stars, moves)
+          : this.save.recordClear(this.levelId, stars, moves);
     const { prevStars, isFirstClear } = cleared;
     // Replays only pay for newly earned stars - see coinsFor. Everything is
     // scaled by the level's difficulty (par), time bonus included.
-    let reward = coinsFor(stars, prevStars, level.par, eco);
-    // First clear of a chapter's last level: the chapter is complete.
-    const chapterDone =
-      !daily && isFirstClear && isChapterEnd(this.levelId) ? chapterFor(this.levelId) : null;
-    const chapterBonus = chapterDone ? eco.chapterBonus : 0;
+    let reward = staleWeekly ? 0 : coinsFor(stars, prevStars, level.par, eco);
+    // Chapter chests: bronze on the first clear of the chapter's last level
+    // (the old chapter bonus), silver and gold as the chapter's stars grow -
+    // on this win or a replay. Campaign levels only.
+    const winChapter = !daily && !weekly ? chapterFor(this.levelId) : null;
+    const chests = winChapter ? this.openChests(winChapter) : [0, 0, 0, 0];
+    const chapterDone = winChapter && (chests[1] ?? 0) > 0 ? winChapter : null;
+    const chapterBonus = chests[1] ?? 0;
+    const chestSilver = chests[2] ?? 0;
+    const chestGold = chests[3] ?? 0;
     // First clear of today's challenge: the daily bonus, and the streak moves.
     const dailyBonus = daily && isFirstClear ? eco.dailyBonus : 0;
     const dailyStreak = daily ? this.save.dailyStreak(todayDayNumber()) : 0;
     // Beat the clock on a first clear: the time bonus. First clears only, or
-    // speed-replaying an early level becomes a coin farm.
-    const beatClock = seconds <= timeBonusSeconds(level.par);
-    const timeBonus =
-      isFirstClear && beatClock ? scaledReward(eco.timeBonusCoins, level.par) : 0;
+    // speed-replaying an early level becomes a coin farm; three-star finishes
+    // only, so speed never pays for a sloppy line (the HUD drops the tag the
+    // moment the third star slips). Whole seconds, floored exactly as the HUD
+    // clock counts them, so the win pays the value the timer tag showed.
+    const clockSeconds = Math.floor(this.attemptElapsedMs() / 1000);
+    const beatClock = stars === 3 && clockSeconds < timeBonusSeconds(level.par);
+    const timeBonus = isFirstClear && stars === 3 ? timeBonusFor(clockSeconds, level.par, eco) : 0;
     reward += timeBonus;
     this.save.recordWinForStreak();
     // The multiplier streak counts fresh clears only (replays neither build
@@ -2493,8 +2874,30 @@ class App {
     if (isFirstClear) this.save.recordCleanWin();
     const streak = this.save.snapshot.stats.cleanStreak;
     const streakBonus = isFirstClear ? streakBonusFor(reward, streak, eco) : 0;
-    reward += streakBonus + chapterBonus + dailyBonus;
+    // Weekly prizes: every board cleared, then every board three-starred.
+    // Each is claimed through the save first, so it can only ever pay once.
+    let weeklyPrize = 0;
+    let weeklyPrizeHints = 0;
+    let weeklyPerfect = 0;
+    let weeklyCleared = 0;
+    if (weekly && !staleWeekly) {
+      const records = Array.from({ length: WEEKLY_BOARDS }, (_, i) => this.save.weeklyRecord(week, i));
+      weeklyCleared = records.filter(Boolean).length;
+      if (weeklyCleared === WEEKLY_BOARDS && this.save.claimWeeklyPrize(week, 'prize')) {
+        weeklyPrize = eco.weeklyPrizeCoins;
+        weeklyPrizeHints = eco.weeklyPrizeHints;
+        this.save.addInventory('hint', weeklyPrizeHints);
+        this.analytics.track({ type: 'weekly_complete', week, perfect: false });
+      }
+      if (records.every((r) => r?.stars === 3) && this.save.claimWeeklyPrize(week, 'perfect')) {
+        weeklyPerfect = eco.weeklyPerfectCoins;
+        this.analytics.track({ type: 'weekly_complete', week, perfect: true });
+      }
+    }
+    reward += streakBonus + chapterBonus + chestSilver + chestGold + dailyBonus + weeklyPrize + weeklyPerfect;
     this.save.addCoins(reward);
+    // A weekly prize's paid flag and its coins and hints go to disk together.
+    if (weeklyPrize > 0 || weeklyPerfect > 0) this.save.flush();
     if (chapterDone) this.analytics.track({ type: 'chapter_complete', chapter: chapterDone.index });
     if (daily && isFirstClear) this.analytics.track({ type: 'daily_complete', streak: dailyStreak });
     this.save.bumpStat('wins');
@@ -2537,18 +2940,30 @@ class App {
 
     // Finishing the last campaign level is the finale; the door to endless opens.
     const isLast = this.levelId === LEVEL_COUNT;
-    const chapter = chapterFor(this.levelId);
-    const mode: WinMode = daily ? 'daily' : chapter ? 'campaign' : 'endless';
-    const eyebrow = daily
-      ? formatLongDate(dateFromDay(day))
-      : chapter
-        ? t('win.eyebrow.chapter', { n: chapter.index, name: chapter.name })
-        : t('win.eyebrow.endless', { name: level.spec.name });
+    const chapter = winChapter;
+    const mode: WinMode = weekly ? 'weekly' : daily ? 'daily' : chapter ? 'campaign' : 'endless';
+    const eyebrow = weekly
+      ? t('win.eyebrow.weekly', { n: board + 1, total: WEEKLY_BOARDS })
+      : daily
+        ? formatLongDate(dateFromDay(day))
+        : chapter
+          ? t('win.eyebrow.chapter', { n: chapter.index, name: chapter.name })
+          : t('win.eyebrow.endless', { name: level.spec.name });
+    // The next weekly board still to clear, for the win screen's main button.
+    let nextBoard: number | null = null;
+    if (weekly && !staleWeekly) {
+      for (let k = 1; k <= WEEKLY_BOARDS && nextBoard === null; k++) {
+        const i = (board + k) % WEEKLY_BOARDS;
+        if (!this.save.weeklyRecord(week, i)) nextBoard = i;
+      }
+    }
     window.setTimeout(
       () => this.showWinModal({
         stars, moves, seconds, reward, isLast, prevStars, prevBest, streak,
-        par: level.par, eyebrow, chapterDone, chapterBonus, mode, dailyBonus, dailyStreak,
-        timeBonus, streakBonus,
+        par: level.par, eyebrow, chapterDone, chapterBonus, chestSilver, chestGold, mode,
+        dailyBonus, dailyStreak, timeBonus, streakBonus, weeklyPrize, weeklyPrizeHints,
+        weeklyPerfect, weeklyCleared, staleWeekly,
+        nextWeekly: nextBoard === null ? null : weeklyId(week, nextBoard),
       }),
       620,
     );
@@ -2769,8 +3184,10 @@ class App {
     stars: number; moves: number; seconds: number; reward: number; isLast: boolean;
     prevStars: number | null; prevBest: number | null; streak: number;
     par: number; eyebrow: string; chapterDone: Chapter | null; chapterBonus: number;
+    chestSilver: number; chestGold: number;
     mode: WinMode; dailyBonus: number; dailyStreak: number; timeBonus: number;
-    streakBonus: number;
+    streakBonus: number; weeklyPrize: number; weeklyPrizeHints: number; weeklyPerfect: number;
+    weeklyCleared: number; staleWeekly: boolean; nextWeekly: number | null;
   }): void {
     const eco = this.remote.current.economy;
     const reduced =
@@ -2802,7 +3219,10 @@ class App {
     }
     content.appendChild(starRow);
 
-    // Verdict: celebrate a perfect, otherwise say exactly what the next star needs.
+    // Verdict: celebrate a perfect, otherwise say exactly what the next star
+    // needs - and when it was missed by a whisker, say that instead, and make
+    // trying again the main button (see the actions below).
+    let nearMiss = false;
     if (w.stars === 3) {
       // Inner span carries the gradient text clip; the wrapper carries the filter
       // (WebKit paints the two on one element as a solid box).
@@ -2812,7 +3232,17 @@ class App {
     } else {
       const th = starThresholds(w.par);
       const need = w.stars === 2 ? th.three : th.two;
-      content.appendChild(el('div', 'win__verdict', t('win.verdict', { n: need, stars: w.stars + 1 })));
+      const over = w.moves - need;
+      // Only when the missed star is one the player does not already hold:
+      // pushing "try again" on an already-perfect replay would be nagging.
+      const nextIsNew = w.prevStars === null || w.prevStars < w.stars + 1;
+      nearMiss = over >= 1 && over <= App.NEAR_MISS && nextIsNew && !w.staleWeekly;
+      content.appendChild(
+        nearMiss
+          ? el('div', 'win__verdict win__verdict--near', tp('win.nearMiss', over, { stars: starString(w.stars + 1) }))
+          : el('div', 'win__verdict', t('win.verdict', { n: need, stars: w.stars + 1 })),
+      );
+      if (nearMiss) this.analytics.track({ type: 'win_near_miss', level: this.levelId, over });
     }
 
     // Reward, with how it was earned. Replays that add no stars say so plainly.
@@ -2831,13 +3261,18 @@ class App {
       } else {
         const gained = Math.max(0, w.stars - w.prevStars);
         parts.push(tp('win.newStars', gained, {
-          coins: w.reward - w.chapterBonus - w.dailyBonus - w.timeBonus - w.streakBonus,
+          coins: w.reward - w.chapterBonus - w.chestSilver - w.chestGold - w.dailyBonus -
+            w.timeBonus - w.streakBonus - w.weeklyPrize - w.weeklyPerfect,
         }));
       }
       if (w.timeBonus > 0) parts.push(t('win.timeBonus', { n: w.timeBonus }));
       if (w.streakBonus > 0) parts.push(t('win.streakBonus', { n: w.streakBonus }));
       if (w.chapterBonus > 0) parts.push(t('win.chapterBonus', { n: w.chapterBonus }));
+      if (w.chestSilver > 0) parts.push(t('win.chest', { chest: t('chest.silver'), n: w.chestSilver }));
+      if (w.chestGold > 0) parts.push(t('win.chest', { chest: t('chest.gold'), n: w.chestGold }));
       if (w.dailyBonus > 0) parts.push(t('win.dailyBonus', { n: w.dailyBonus }));
+      if (w.weeklyPrize > 0) parts.push(t('win.weeklyPrize', { n: w.weeklyPrize, hints: w.weeklyPrizeHints }));
+      if (w.weeklyPerfect > 0) parts.push(t('win.weeklyPerfect', { n: w.weeklyPerfect }));
       card.appendChild(el('div', 'win__breakdown', parts.join(' · ')));
       content.appendChild(card);
       const counter = big.querySelector('b') as HTMLElement;
@@ -2852,7 +3287,7 @@ class App {
         startAt,
       );
     } else {
-      content.appendChild(el('div', 'win__note', t('win.allStars')));
+      content.appendChild(el('div', 'win__note', t(w.staleWeekly ? 'weekly.ended' : 'win.allStars')));
     }
 
     // Stats, with a "New best" tag when the move count improved.
@@ -2872,7 +3307,11 @@ class App {
     // Progress through the campaign (or the endless tally), plus the streak
     // when there is one worth showing.
     const meta = el('div', 'win__meta');
-    if (w.mode === 'daily') {
+    if (w.mode === 'weekly') {
+      if (!w.staleWeekly) {
+        meta.appendChild(el('span', 'win__streak', t('win.weeklyProgress', { n: w.weeklyCleared, total: WEEKLY_BOARDS })));
+      }
+    } else if (w.mode === 'daily') {
       // The daily's progress *is* the streak.
       meta.appendChild(
         el('span', 'win__streak',
@@ -2904,7 +3343,27 @@ class App {
       });
       return b;
     };
-    if (w.mode === 'daily') {
+    if (w.mode === 'weekly') {
+      // On to the next board still to clear, else home. A near miss makes
+      // trying again the main button instead.
+      const row = el('div', 'modal__row');
+      const replay = (cls: string) =>
+        act(nearMiss ? t('win.tryAgain', { stars: starString(w.stars + 1) }) : t('common.replay'), cls, () => this.restartLevel());
+      const next = w.nextWeekly;
+      if (nearMiss) {
+        actions.appendChild(replay('btn btn--success btn--wide win__next'));
+        if (next !== null) row.appendChild(act(t('win.nextBoard'), 'btn btn--ghost', () => void this.startLevel(next)));
+        row.appendChild(act(t('common.home'), 'btn btn--ghost', () => this.quitToHome()));
+      } else if (next !== null) {
+        actions.appendChild(act(t('win.nextBoard'), 'btn btn--success btn--wide win__next', () => void this.startLevel(next)));
+        if (!w.staleWeekly) row.appendChild(replay('btn btn--ghost'));
+        row.appendChild(act(t('common.home'), 'btn btn--ghost', () => this.quitToHome()));
+      } else {
+        actions.appendChild(act(t('common.home'), 'btn btn--success btn--wide win__next', () => this.quitToHome()));
+        if (!w.staleWeekly) row.appendChild(replay('btn btn--ghost'));
+      }
+      if (row.childElementCount > 0) actions.appendChild(row);
+    } else if (w.mode === 'daily') {
       // There is no "next" daily until tomorrow: home is the way on.
       actions.appendChild(act(t('common.home'), 'btn btn--success btn--wide win__next', () => this.quitToHome()));
       const row = el('div', 'modal__row');
@@ -2921,15 +3380,20 @@ class App {
       // The campaign finale leads into endless mode; everything else leads to the next level.
       // Every way off this screen passes the interstitial gate (afterWinAd).
       const nextLabel = w.isLast ? t('win.startEndless') : t('win.nextLevel');
-      actions.appendChild(
-        act(nextLabel, 'btn btn--success btn--wide win__next', () => {
-          void this.afterWinAd(() => void this.startLevel(this.levelId + 1));
-        }),
-      );
+      const goNext = () => void this.afterWinAd(() => void this.startLevel(this.levelId + 1));
+      const retry = () => void this.afterWinAd(() => this.restartLevel());
       const row = el('div', 'modal__row');
-      row.appendChild(
-        act(t('common.replay'), 'btn btn--ghost', () => void this.afterWinAd(() => this.restartLevel())),
-      );
+      if (nearMiss) {
+        // So close that one more go is the obvious move: it leads, and the
+        // next level steps back to a quiet button.
+        actions.appendChild(
+          act(t('win.tryAgain', { stars: starString(w.stars + 1) }), 'btn btn--success btn--wide win__next', retry),
+        );
+        row.appendChild(act(nextLabel, 'btn btn--ghost', goNext));
+      } else {
+        actions.appendChild(act(nextLabel, 'btn btn--success btn--wide win__next', goNext));
+        row.appendChild(act(t('common.replay'), 'btn btn--ghost', retry));
+      }
       row.appendChild(
         act(t('common.home'), 'btn btn--ghost', () => void this.afterWinAd(() => this.quitToHome())),
       );
@@ -3083,11 +3547,12 @@ class App {
 
   // ------------------------------------------------------------------ skip
   /**
-   * Skip is offered on campaign and endless levels, never on the daily (one
-   * board per day, nothing to skip to) and never inside the tutorial.
+   * Skip is offered on campaign and endless levels, never on the daily or a
+   * weekly board (nothing to skip to, and a skip there would unlock nothing)
+   * and never inside the tutorial.
    */
   private get canSkip(): boolean {
-    return !isDaily(this.levelId) && !this.tutorial.active && !this.board.isResolved;
+    return !isDaily(this.levelId) && !isWeekly(this.levelId) && !this.tutorial.active && !this.board.isResolved;
   }
 
   /**
@@ -3757,8 +4222,9 @@ class App {
     this.modal.open({
       title: t('howto.title'),
       bodyHtml:
-        t('howto.body', { undo: eco.freeUses.undo, hint: eco.freeUses.hint }) +
-        t('howto.more', { undo: eco.maxUses.undo, hint: eco.maxUses.hint, bottle: eco.maxUses.bottle }),
+        t('howto.body', { undo: eco.freeUses.undo, hint: eco.freeUses.hint, levels: eco.freeHintLevels }) +
+        t('howto.more', { undo: eco.maxUses.undo, hint: eco.maxUses.hint, bottle: eco.maxUses.bottle }) +
+        t('howto.extras', { weekly: WEEKLY_UNLOCK_LEVEL, freezes: MAX_STREAK_FREEZES }),
       buttons: [{ label: t('common.gotIt'), kind: 'primary' }],
     });
   }

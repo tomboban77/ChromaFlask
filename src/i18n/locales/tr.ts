@@ -110,6 +110,9 @@ const table: Record<string, string> = {
   'skin.amber': 'Kehribar cam',
   'skin.emerald': 'Zümrüt cam',
   'skin.obsidian': 'Obsidyen',
+  'skin.sapphire': 'Safir',
+  'skin.sunset': 'Gün batımı',
+  'skin.gilded': 'Yaldızlı',
   'product.cf.bundle.starter': 'Başlangıç paketi',
   'product.cf.bundle.alchemist': 'Simyacı paketi',
   'product.cf.coins.small': 'Kese altın',
@@ -123,6 +126,54 @@ const table: Record<string, string> = {
   'item.hint.x3.desc': 'Kazandıran bir hamle gösterir',
   'item.bottle.x3.title': 'Şişe ×3',
   'item.bottle.x3.desc': 'Gerektiğinde fazladan yer',
+  'item.lives.one.title': '+1 kalp',
+  'item.lives.one.desc': 'Hemen bir deneme daha',
+  'item.lives.hour.title': 'Sınırsız kalp · 1 sa',
+  'item.lives.hour.desc': 'Bir saat boyunca istediğin kadar oyna',
+  'item.bundle.boost.title': 'Güçlendirici paketi',
+  'item.bundle.boost.desc': '3 geri alma, 3 ipucu ve 1 şişe',
+  'item.undo.x10.title': 'Geri al ×10',
+  'item.undo.x10.desc': 'Bol bol ikinci şans',
+  'item.hint.x10.title': 'İpucu ×10',
+  'item.hint.x10.desc': 'En zor tahtalar için kazandıran hamleler',
+  'item.bottle.x10.title': 'Şişe ×10',
+  'item.bottle.x10.desc': 'Her sıkışık seviyede nefes alanı',
+  'level.weekly': 'Haftalık {n}/{total}',
+  'daily.freezes': '🧊 Seri dondurucu: {n}/{max}',
+  'weekly.title': 'Haftalık etkinlik',
+  'weekly.lockedShort': '🔒 Seviye {n}',
+  'weekly.locked': 'Haftalık etkinlik {n}. seviyede açılır',
+  'weekly.board': 'Tahta {n}',
+  'weekly.play': 'Oyna ›',
+  'weekly.prize': '{total} tahtanın hepsini geç: +{coins} altın ve İpucu ×{hints}',
+  'weekly.perfectPrize': 'Tüm {stars} ★: +{coins} altın daha',
+  'weekly.ends': 'Yeni tahtalara {time}',
+  'weekly.ended': 'O haftanın etkinliği bitti - yeni tahtalar seni bekliyor',
+  'toast.freezeUsed': '🧊 Seri dondurucu ×{used} kullanıldı - 🔥{streak} serin güvende',
+  'toast.chests': '🎁 Bölüm sandıkları açıldı · +{n} altın',
+  'chest.silver': 'Gümüş sandık',
+  'chest.gold': 'Altın sandık',
+  'chapter.chestFinish': '🎁 Bölümü bitir: +{n}',
+  'chapter.chestNext': '🎁 ★{stars} ile {chest}: +{n}',
+  'chapter.chestDone': '🎁 Tüm sandıklar açıldı',
+  'shop.owned': 'Sahip {n}/{max}',
+  'shop.freezeFull': 'Zaten {max} seri dondurucun var',
+  'win.eyebrow.weekly': 'Haftalık etkinlik · tahta {n}/{total}',
+  'win.chest': '{chest} +{n}',
+  'win.weeklyPrize': 'Haftalık ödül +{n} ve İpucu ×{hints}',
+  'win.weeklyPerfect': 'Kusursuz hafta +{n}',
+  'win.weeklyProgress': 'Bu hafta {n}/{total} tahta',
+  'win.nextBoard': 'Sonraki tahta',
+  'win.tryAgain': '{stars} için tekrar dene',
+  'item.streak.freeze.title': 'Seri dondurucu',
+  'item.streak.freeze.desc': 'Bir günü kaçırırsan günlük serini korur',
+  'win.nearMiss.other': 'Az kaldı! {stars} sınırını sadece {n} hamleyle aştın',
+  'howto.extras': `<div class="howto">
+    <h3>Sandıklar, etkinlikler ve dondurucular</h3>
+    <p>Her bölümde üç <b>sandık</b> var: bitirince bronz, 60 yıldızın 45'inde gümüş, her seviyede üç yıldızla altın. Tekrar oynamalar da sayılır.</p>
+    <p>{weekly}. seviyeden itibaren <b>haftalık etkinlik</b> her pazartesi beş zor tahta getirir; hepsini geçmek için bir ödül, her birinde üç yıldız için bir ödül daha.</p>
+    <p>Mağazadaki <b>seri dondurucu</b>, bir günü kaçırdığında günlük görev serini korur. En fazla {freezes} tane tutabilirsin.</p>
+  </div>`,
 
   'powerup.undo': 'Geri al',
   'powerup.hint': 'İpucu',
@@ -371,7 +422,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>Sınırlar, saat ve seriler</h3>
     <p>Her denemede, sahip olduğun miktardan bağımsız olarak en fazla <b>{undo} geri alma</b>, <b>{hint} ipucu</b> ve <b>{bottle} ekstra şişe</b> kullanılabilir.</p>
-    <p><b>Saat</b> bir bonus süresi gösterir: bir bölümü süre bitmeden ilk kez geçersen ekstra altın kazanırsın. Seni asla bölümden düşürmez.</p>
+    <p><b>Saat</b> bir bonus süresi gösterir: bir bölümü süre bitmeden ilk kez <b>üç yıldızla</b> geçersen ekstra altın kazanırsın. Ne kadar hızlı bitirirsen bonus o kadar büyük olur - saatteki altın etiketi zamanla azalır. Seni asla bölümden düşürmez.</p>
     <p>Yeni bölümleri yeniden başlatmadan veya çıkmadan art arda geç; üçüncüden itibaren her galibiyet <b>seri bonusu</b> öder.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -383,7 +434,7 @@ const table: Record<string, string> = {
     <h3>Kalpler</h3>
     <p>Bir kalbi yalnızca seviye gerçekten <b>kaybedilmişse</b> (dökme kalmamış ya da oyun kazanılamayacağını kanıtlamışsa) ve yeniden başlatır veya çıkarsan kaybedersin. Devam eden bir seviyeden çıkmak veya yeniden başlatmak ücretsizdir. Kalpler 30 dakikada bir dolar.</p>
     <h3>Güçlendiriciler</h3>
-    <p>Her deneme <b>{undo} ücretsiz geri alma</b> ve <b>{hint} ücretsiz ipucu</b> ile başlar. Ek şişeler ile daha fazla ipucu veya geri alma, kazandığın altınlarla mağazadan alınır.</p>
+    <p>Her deneme <b>{undo} ücretsiz geri alma</b> ile başlar; 1-{levels}. seviyelerde ayrıca <b>{hint} ücretsiz ipucu</b> verilir. Ek şişeler ile daha fazla ipucu veya geri alma, kazandığın altınlarla mağazadan alınır.</p>
     <h3>Sürprizler</h3>
     <p>Altın kenarlı <b>kazan</b> üstüne her rengi kabul eder ama kazanmak için boş olmalıdır. <b>Bulanık iksirler</b> yüzeye çıkana dek renklerini gizler. <b>Kilitli şişe</b>, kilidinin altındaki noktaların gösterdiği sayıda şişeyi mühürlemeden ne doldurulabilir ne boşaltılabilir. Turkuaz <b>tek yönlü şişe</b> dökmeleri alır ama asla geri vermez; seviye yalnızca o dolduğunda kazanılır, rengini dikkatle seç.</p>
   </div>`,

@@ -936,6 +936,13 @@ body {
   transition: width 0.5s ease;
 }
 
+.chapter__chest {
+  margin-top: 6px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--accent-warm);
+}
+
 .chapter--locked { opacity: 0.5; }
 .chapter--locked .chapter__stars { color: var(--ink-faint); }
 .chapter--done .chapter__name::after { content: ' ✓'; color: var(--success); }
@@ -1695,6 +1702,13 @@ body {
   filter: drop-shadow(0 0 12px rgba(255, 176, 32, 0.6));
 }
 .dailydone__best { font-size: 14px; color: #e9defc; }
+.dailydone__freezes {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #bfe9ff;
+}
+
 .dailydone__next {
   margin-top: 4px;
   padding: 6px 14px;
@@ -1796,6 +1810,12 @@ body {
   margin: 0 0 12px;
   font-size: 13.5px;
   color: #e9defc;
+}
+
+/* "So close!" - the missed star is the headline, so it glows warm. */
+.win__verdict--near {
+  font-weight: 900;
+  color: var(--gold-hi);
 }
 
 .win__reward {
@@ -2074,6 +2094,18 @@ body {
   color: var(--brown);
 }
 .missions-detail__bonus { text-align: center; font-weight: 800; color: var(--gold-hi); }
+/* Weekly event: a locked row reads as a teaser, and each board is a button. */
+.missions--locked { opacity: 0.7; }
+.weekly__board {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+.weekly__board:active { transform: translateY(1px); }
+.weekly__board:focus-visible { outline: 3px solid white; outline-offset: 2px; }
 .modal-root--sheet { align-items: flex-end; padding-bottom: calc(12px + var(--safe-b)); }
 .modal-root--sheet .modal { width: min(440px, 100%); }
 
@@ -2761,6 +2793,7 @@ button.chip:active { transform: scale(0.94); }
 .shopitem__body { flex: 1 1 auto; min-width: 0; text-align: left; }
 .shopitem__title { font-weight: 900; font-size: 14.5px; }
 .shopitem__desc { font-size: 11.5px; color: var(--brown-soft); margin-top: 2px; font-weight: 700; }
+.shopitem__owned { font-size: 11px; font-weight: 900; color: var(--brown); margin-top: 2px; }
 
 /* -------------------------------------------------------- tutorial hand -- */
 .hand {

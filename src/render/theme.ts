@@ -193,6 +193,25 @@ export const SKINS: readonly GlassSkin[] = [
     collar: 0xd6c6ff, collarAlpha: 0.3, cavity: 0x050311, cavityAlpha: 0.8,
     cork: 0xffc531, corkDark: 0xb88a1c, corkEdge: 0x6e4d0a,
   },
+  // Premium looks: long-term coin goals for players who have everything else.
+  {
+    id: 'sapphire', price: 4000,
+    rim: 0x7fb2ff, rimAlpha: 0.78, body: 0x3a6dff, bodyAlpha: 0.1,
+    collar: 0xbcd4ff, collarAlpha: 0.3, cavity: 0x07112e, cavityAlpha: 0.6,
+    cork: 0xc9d3e0, corkDark: 0x8f9bb0, corkEdge: 0x4d576b,
+  },
+  {
+    id: 'sunset', price: 5500,
+    rim: 0xff9a6b, rimAlpha: 0.75, body: 0xff6f5a, bodyAlpha: 0.1,
+    collar: 0xffc6a8, collarAlpha: 0.3, cavity: 0x2a0d10, cavityAlpha: 0.55,
+    cork: 0x6b3b5e, corkDark: 0x472240, corkEdge: 0x2a1025,
+  },
+  {
+    id: 'gilded', price: 8000,
+    rim: 0xffd760, rimAlpha: 0.9, body: 0xfff0b8, bodyAlpha: 0.12,
+    collar: 0xfff3c4, collarAlpha: 0.45, cavity: 0x1b1405, cavityAlpha: 0.6,
+    cork: 0xffc531, corkDark: 0xc28f16, corkEdge: 0x7a560a,
+  },
 ];
 
 export const DEFAULT_SKIN_ID = 'classic';

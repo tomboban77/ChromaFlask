@@ -112,6 +112,9 @@ const table: Record<string, string> = {
   'skin.amber': 'Bernsteinglas',
   'skin.emerald': 'Smaragdglas',
   'skin.obsidian': 'Obsidian',
+  'skin.sapphire': 'Saphir',
+  'skin.sunset': 'Sonnenuntergang',
+  'skin.gilded': 'Vergoldet',
   'product.cf.bundle.starter': 'Starterpaket',
   'product.cf.bundle.alchemist': 'Alchemistenpaket',
   'product.cf.coins.small': 'Beutel Münzen',
@@ -125,6 +128,55 @@ const table: Record<string, string> = {
   'item.hint.x3.desc': 'Zeigt einen Gewinnzug',
   'item.bottle.x3.title': 'Flasche ×3',
   'item.bottle.x3.desc': 'Extra Platz, wenn du ihn brauchst',
+  'item.lives.one.title': '+1 Herz',
+  'item.lives.one.desc': 'Noch ein Versuch, sofort',
+  'item.lives.hour.title': 'Unendlich Herzen · 1 h',
+  'item.lives.hour.desc': 'Spiel eine Stunde lang so viel du willst',
+  'item.bundle.boost.title': 'Booster-Paket',
+  'item.bundle.boost.desc': '3× Rückgängig, 3 Tipps und 1 Flasche',
+  'item.undo.x10.title': 'Rückgängig ×10',
+  'item.undo.x10.desc': 'Ein großer Vorrat an zweiten Chancen',
+  'item.hint.x10.title': 'Tipp ×10',
+  'item.hint.x10.desc': 'Gewinnzüge für die schwersten Level',
+  'item.bottle.x10.title': 'Flasche ×10',
+  'item.bottle.x10.desc': 'Luft für jedes enge Level',
+  'level.weekly': 'Woche {n}/{total}',
+  'daily.freezes': '🧊 Serienschutz: {n}/{max}',
+  'weekly.title': 'Wochen-Event',
+  'weekly.lockedShort': '🔒 Level {n}',
+  'weekly.locked': 'Das Wochen-Event startet ab Level {n}',
+  'weekly.board': 'Rätsel {n}',
+  'weekly.play': 'Spielen ›',
+  'weekly.prize': 'Alle {total} schaffen: +{coins} Münzen & Tipp ×{hints}',
+  'weekly.perfectPrize': 'Alle {stars} ★: +{coins} Münzen extra',
+  'weekly.ends': 'Neue Rätsel in {time}',
+  'weekly.ended': 'Das Event dieser Woche ist vorbei – neue Rätsel warten',
+  'toast.freezeUsed': '🧊 Serienschutz ×{used} genutzt – deine 🔥{streak}-Serie bleibt',
+  'toast.chests': '🎁 Kapitel-Truhen geöffnet · +{n} Münzen',
+  'chest.silver': 'Silbertruhe',
+  'chest.gold': 'Goldtruhe',
+  'chapter.chestFinish': '🎁 Kapitel beenden: +{n}',
+  'chapter.chestNext': '🎁 {chest} bei ★{stars}: +{n}',
+  'chapter.chestDone': '🎁 Alle Truhen geöffnet',
+  'shop.owned': 'Besitz {n}/{max}',
+  'shop.freezeFull': 'Du hast schon {max}× Serienschutz',
+  'win.eyebrow.weekly': 'Wochen-Event · Rätsel {n} von {total}',
+  'win.chest': '{chest} +{n}',
+  'win.weeklyPrize': 'Wochenpreis +{n} & Tipp ×{hints}',
+  'win.weeklyPerfect': 'Perfekte Woche +{n}',
+  'win.weeklyProgress': '{n}/{total} Rätsel diese Woche',
+  'win.nextBoard': 'Nächstes Rätsel',
+  'win.tryAgain': 'Nochmal für {stars}',
+  'item.streak.freeze.title': 'Serienschutz',
+  'item.streak.freeze.desc': 'Rettet deine Tagesserie, wenn du einen Tag verpasst',
+  'win.nearMiss.one': 'Knapp! Nur {n} Zug über der {stars}-Grenze',
+  'win.nearMiss.other': 'Knapp! Nur {n} Züge über der {stars}-Grenze',
+  'howto.extras': `<div class="howto">
+    <h3>Truhen, Events und Serienschutz</h3>
+    <p>Jedes Kapitel hat drei <b>Truhen</b>: Bronze fürs Beenden, Silber bei 45 von 60 Sternen, Gold für drei Sterne in jedem Level. Wiederholungen zählen.</p>
+    <p>Ab Level {weekly} bringt das <b>Wochen-Event</b> jeden Montag fünf schwere Rätsel – mit einem Preis, wenn du alle schaffst, und einem weiteren für drei Sterne in jedem.</p>
+    <p>Ein <b>Serienschutz</b> aus dem Shop rettet deine Serie der Tagesaufgabe, wenn du einen Tag verpasst. Du kannst bis zu {freezes} besitzen.</p>
+  </div>`,
 
   'powerup.undo': 'Zurück',
   'powerup.hint': 'Tipp',
@@ -378,8 +430,8 @@ const table: Record<string, string> = {
   'howto.title': 'Spielanleitung',
   'howto.more': `<div class="howto">
     <h3>Limits, Uhr und Serien</h3>
-    <p>Jeder Versuch erlaubt höchstens <b>{undo}-mal Zurück</b>, <b>{hint} Hinweise</b> und <b>{bottle} Extraflaschen</b>, egal wie viele du besitzt.</p>
-    <p>Die <b>Uhr</b> zeigt ein Bonusfenster: Schaffst du ein Level zum ersten Mal, bevor es abläuft, gibt es Extramünzen. Sie lässt dich nie ein Level verlieren.</p>
+    <p>Jeder Versuch erlaubt höchstens <b>Rückgängig ×{undo}</b>, <b>Tipp ×{hint}</b> und <b>Extraflasche ×{bottle}</b>, egal wie viele du besitzt.</p>
+    <p>Die <b>Uhr</b> zeigt ein Bonusfenster: Schaffst du ein Level zum ersten Mal mit <b>drei Sternen</b>, bevor es abläuft, gibt es Extramünzen. Je schneller du bist, desto größer der Bonus – die Münzanzeige an der Uhr sinkt mit der Zeit. Sie lässt dich nie ein Level verlieren.</p>
     <p>Schaffe neue Level hintereinander, ohne neu zu starten oder sie zu verlassen – ab dem dritten zahlt jeder Sieg einen <b>Serienbonus</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -391,7 +443,7 @@ const table: Record<string, string> = {
     <h3>Herzen</h3>
     <p>Ein Herz verlierst du nur, wenn ein Level wirklich <b>verloren</b> ist – keine Güsse mehr möglich, oder das Spiel hat bewiesen, dass es nicht mehr zu gewinnen ist – und du neu startest oder gehst. Ein laufendes Level zu verlassen oder neu zu starten ist kostenlos. Alle 30 Minuten kommt ein Herz zurück.</p>
     <h3>Booster</h3>
-    <p>Jeder Versuch beginnt mit <b>{undo} kostenlosen Rückgängig</b> und <b>{hint} kostenlosem Tipp</b>. Extra-Flaschen und weitere Tipps oder Rückgängig gibt es im Shop für erspielte Münzen.</p>
+    <p>Jeder Versuch beginnt mit <b>Rückgängig ×{undo}</b> gratis, und die Level 1–{levels} geben zusätzlich <b>Tipp ×{hint}</b> gratis. Extra-Flaschen und weitere Tipps oder Rückgängig gibt es im Shop für erspielte Münzen.</p>
     <h3>Besonderheiten</h3>
     <p>Der goldgeränderte <b>Kessel</b> nimmt oben jede Farbe an, muss aber leer sein, um zu gewinnen. <b>Trübe Tränke</b> verbergen ihre Farben, bis sie an die Oberfläche kommen. Eine <b>gesperrte Flasche</b> kann weder befüllt noch geleert werden, bis du so viele andere Flaschen versiegelt hast, wie die Punkte unter ihrem Schloss zeigen. Das türkise <b>Einwegfläschchen</b> nimmt Güsse an, gibt sie aber nie zurück, und das Level ist erst gewonnen, wenn es voll ist – wähle seine Farbe mit Bedacht.</p>
   </div>`,

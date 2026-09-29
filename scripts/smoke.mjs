@@ -151,7 +151,10 @@ async function runViewport(browser, label, width, height, isMobile) {
   const coinItemCount = await page.locator('.shopitem').count();
   console.log(`  shop screen     OK (${bundleCount} bundles, ${coinItemCount} coin items)`);
   if (bundleCount !== 2) problems.push(`[${label}] expected 2 IAP bundles in dev, got ${bundleCount}`);
-  if (coinItemCount !== 4) problems.push(`[${label}] expected 4 coin items, got ${coinItemCount}`);
+  if (coinItemCount !== 11) problems.push(`[${label}] expected 11 coin items, got ${coinItemCount}`);
+  // Hearts are full on a fresh profile: topping them up must not be sellable.
+  const oneHeartDisabled = await page.locator('.shopitem[data-item="lives.one"] .pricebtn').isDisabled();
+  if (!oneHeartDisabled) problems.push(`[${label}] +1 heart must be disabled while hearts are full`);
   const freshEquipped = (await page.locator('.skin--equipped .skin__name').textContent())?.trim();
   if (freshEquipped !== 'Classic glass') problems.push(`[${label}] a fresh profile should have Classic glass equipped, got "${freshEquipped}"`);
   await shot('1c-shop');
@@ -221,10 +224,11 @@ async function runViewport(browser, label, width, height, isMobile) {
     problems.push(`[${label}] onWin fired ${afterWin.winCount} times, expected exactly 1`);
   }
   // Achievements ("First Pour", "Precise") also pay on this win; count them separately.
-  // Level 1 (par 2) sits on the reward-scale floor of 0.3: base 50 -> 15,
-  // 3 stars 70 -> 20, plus the time bonus 25 -> 10 when the run beat the
-  // level's clock (it nearly always does, but a slow machine may not).
-  const expectedGains = [15 + 20, 15 + 20 + 10];
+  // Level 1 (par 4) sits on the reward-scale floor of 0.3: base 50 -> 15,
+  // 3 stars 70 -> 20, plus a time bonus of at most 25 -> 10 that drains in
+  // 5-coin steps over the 26-second window (a slow machine may land in the
+  // second half, or miss it).
+  const expectedGains = [15 + 20, 15 + 20 + 5, 15 + 20 + 10];
   const achievementGain = afterWin.achievementCoins - initial.achievementCoins;
   // Daily missions rotate by real date, so whichever completed during this win
   // is counted separately, like achievements.
@@ -273,21 +277,34 @@ async function runViewport(browser, label, width, height, isMobile) {
   await sleep(500);
   await shot('7-hint');
 
-  // Play the first move of the real solution so the pour is certain to be legal.
+  // Play the first move of the real solution so the pour is certain to be
+  // legal, then undo the instant input reopens - while the source bottle is
+  // still drifting home. That used to kill the return tween and leave the
+  // bottle stranded sideways over its neighbour.
   const first = await page.evaluate(() => window.__cf.move(0));
-  await page.evaluate((mv) => window.__cf.tap(mv.from), first);
-  await page.evaluate((mv) => window.__cf.tap(mv.to), first);
-  await sleep(1100);
-  const beforeUndo = await page.evaluate(() => window.__cf.state());
+  const beforeUndo = await page.evaluate(async (mv) => {
+    window.__cf.tap(mv.from);
+    window.__cf.tap(mv.to);
+    const t0 = performance.now();
+    while ((window.__cf.state().busy || window.__cf.state().moves !== 1) && performance.now() - t0 < 5000) {
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    const state = window.__cf.state();
+    document.querySelector('#btn-undo').click();
+    return state;
+  }, first);
   if (beforeUndo.moves !== 1) {
     problems.push(`[${label}] solution move ${first.from}->${first.to} did not register`);
   }
-  await page.click('#btn-undo');
-  await sleep(450);
+  await sleep(900);
   const afterUndo = await page.evaluate(() => window.__cf.state());
-  console.log(`  undo            ${beforeUndo.moves} -> ${afterUndo.moves} moves`);
+  const undoGeo = await page.evaluate(() => window.__cf.boardGeometry());
+  console.log(`  undo            ${beforeUndo.moves} -> ${afterUndo.moves} moves, mid-return undo drift ${undoGeo.drift.toFixed(1)}px tilt ${undoGeo.tilt.toFixed(3)}`);
   if (afterUndo.moves !== beforeUndo.moves - 1) {
     problems.push(`[${label}] undo did not reduce the move count`);
+  }
+  if (undoGeo.drift > 1 || undoGeo.tilt > 0.01) {
+    problems.push(`[${label}] undo during the return arc left a bottle off its slot (drift ${undoGeo.drift.toFixed(1)}px, tilt ${undoGeo.tilt.toFixed(3)})`);
   }
 
   // ---- bottles are never free: the first tap opens the shop, nothing is charged
@@ -301,8 +318,8 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (coinsAtShop !== coinsBeforeBottle) {
     problems.push(`[${label}] tapping Bottle with none in stock must open the shop, not charge coins`);
   }
-  // buy a Bottle x3 pack (item order: hearts, undo, hint, bottle)
-  await page.locator('.shopitem .pricebtn').nth(3).click();
+  // buy a Bottle x3 pack
+  await page.locator('.shopitem[data-item="bottle.x3"] .pricebtn').click();
   await sleep(400);
   const afterBottlePack = (await page.evaluate(() => window.__cf.state())).coins;
   console.log(`  coin purchase   bottle x3 for 320 (coins ${coinsAtShop} -> ${afterBottlePack})`);
@@ -330,8 +347,8 @@ async function runViewport(browser, label, width, height, isMobile) {
   }
   await shot('8b-shop-from-game');
 
-  // buy a Hint x3 pack with coins (item order: hearts, undo, hint, bottle)
-  await page.locator('.shopitem .pricebtn').nth(2).click();
+  // buy a Hint x3 pack with coins
+  await page.locator('.shopitem[data-item="hint.x3"] .pricebtn').click();
   await sleep(400);
   const afterPack = await page.evaluate(() => window.__cf.state());
   console.log(`  coin purchase   hint x3 for 200 (coins ${coinsAfterEmpty} -> ${afterPack.coins})`);
@@ -346,7 +363,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   const afterSkin = await page.evaluate(() => window.__cf.state());
   const equippedName = (await page.locator('.skin--equipped .skin__name').textContent())?.trim();
   console.log(`  bottle look     ${skinCards} skins, bought+equipped "${equippedName}" (coins ${coinsBeforeSkin} -> ${afterSkin.coins}), save skin=${afterSkin.skin}`);
-  if (skinCards !== 6) problems.push(`[${label}] expected 6 bottle looks in the shop, got ${skinCards}`);
+  if (skinCards !== 9) problems.push(`[${label}] expected 9 bottle looks in the shop, got ${skinCards}`);
   if (afterSkin.coins !== coinsBeforeSkin - 500) problems.push(`[${label}] Frosted glass should cost 500 coins (${coinsBeforeSkin} -> ${afterSkin.coins})`);
   if (afterSkin.skin !== 'frost' || equippedName !== 'Frosted glass') problems.push(`[${label}] buying a skin should equip it (skin=${afterSkin.skin}, card="${equippedName}")`);
   // tapping an owned look again is free and re-equips: back to classic, then frost
@@ -366,6 +383,23 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (hintBadge !== '2') {
     problems.push(`[${label}] hint badge should read 2 after using 1 of 3 bought, got "${hintBadge}"`);
   }
+
+  // ---- the booster bundle: one coin purchase fills all three stocks
+  await page.evaluate(() => window.__cf.addCoins(500)); // fund the test account
+  const beforeBundle = await page.evaluate(() => window.__cf.state());
+  await page.click('#game-coins-chip');
+  await page.waitForSelector('#screen-shop.screen--active', { timeout: 8000 });
+  await page.locator('.shopitem[data-item="bundle.boost"] .pricebtn').click();
+  await sleep(400);
+  const afterBundle = await page.evaluate(() => window.__cf.state());
+  const gained = (k) => afterBundle.inventory[k] - beforeBundle.inventory[k];
+  console.log(`  booster bundle  coins ${beforeBundle.coins} -> ${afterBundle.coins}, +${gained('undo')} undo +${gained('hint')} hint +${gained('bottle')} bottle`);
+  if (afterBundle.coins !== beforeBundle.coins - 330) problems.push(`[${label}] booster bundle should cost 330 coins`);
+  if (gained('undo') !== 3 || gained('hint') !== 3 || gained('bottle') !== 1) {
+    problems.push(`[${label}] booster bundle should add 3 undos, 3 hints and 1 bottle`);
+  }
+  await page.click('#btn-shop-close');
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 8000 });
 
   // ---- settings, including the colourblind aid
   await page.click('#btn-settings-game');

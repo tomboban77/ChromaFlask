@@ -10,16 +10,23 @@ import {
 } from './board';
 import { ACHIEVEMENTS, unlockedAchievements } from './achievements';
 import { getCampaignLevel, isStoredOptimal, isStoredValid, storedLevelCount } from './campaign';
-import { CHAPTERS, CHAPTER_SIZE, chapterFor, isChapterEnd } from './chapters';
 import {
-  DAILY_BASE, advanceStreak, currentStreak, dailyId, dailySpec, dateFromDay, dayFromDailyId,
-  dayNumberFromDate, isDaily,
+  CHAPTERS, CHAPTER_SIZE, chapterFor, chestTierFor, isChapterEnd, silverChestStars,
+} from './chapters';
+import {
+  DAILY_BASE, MAX_STREAK_FREEZES, WEEKLY_BASE, advanceStreak, applyStreakFreezes, currentStreak,
+  dailyId, dailySpec, dateFromDay, dayFromDailyId, dayNumberFromDate, isDaily,
 } from './daily';
+import {
+  WEEKLY_BOARDS, boardFromWeeklyId, isWeekly, weekFromWeeklyId, weekOfDay, weekStartDay, weeklyId,
+  weeklySpec,
+} from './weekly';
 import { generateLevel } from './generator';
 import { ENDLESS_START, LEVELS, endlessSpec, getLevelSpec, isEndless } from './levels';
 import {
-  DEFAULT_ECONOMY, LOGIN_CYCLE, LOGIN_REWARDS, coinsFor, loginCycleDay, loginRewardFor,
-  rewardScale, starsFor, streakBonusFor, timeBonusSeconds,
+  COIN_SHOP, DEFAULT_ECONOMY, LOGIN_CYCLE, LOGIN_REWARDS, coinsFor, freeUsesFor, loginCycleDay,
+  loginRewardFor, rewardScale, scaledReward, starThresholds, starsFor, streakBonusFor,
+  timeBonusFor, timeBonusSeconds,
 } from './progression';
 import { MISSIONS_PER_DAY, mergeMissions, missionsFor } from './missions';
 import { solvability, solve } from './solver';
@@ -139,7 +146,60 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
     coinsFor(3, 1, 2, e) < e.starCoins[2] - e.starCoins[0]);
   // The time bonus scales with par and can always be beaten by a human pace.
   check('time bonus: window grows with par', timeBonusSeconds(20) > timeBonusSeconds(4));
-  check('time bonus: level 1 window is generous', timeBonusSeconds(2) >= 30);
+  check('time bonus: level 1 window still fits a new player', timeBonusSeconds(4) >= 25);
+  check('time bonus: window is tight (4 s a move plus reading time)', timeBonusSeconds(25) === 110);
+  // The bonus drains with the clock: full at the start, 5 in the last slice,
+  // nothing once the window is spent, and never more for a slower finish.
+  for (const par of [4, 12, 22, 27]) {
+    const w = timeBonusSeconds(par);
+    const max = scaledReward(e.timeBonusCoins, par);
+    check(`time bonus p${par}: full at the start`, timeBonusFor(0, par, e) === max);
+    check(`time bonus p${par}: 5 in the last second`, timeBonusFor(w - 1, par, e) === 5);
+    check(`time bonus p${par}: nothing once spent`, timeBonusFor(w, par, e) === 0 && timeBonusFor(w + 60, par, e) === 0);
+    let prev = Infinity;
+    let monotonic = true;
+    let steps = true;
+    for (let t = 0; t <= w + 2; t++) {
+      const b = timeBonusFor(t, par, e);
+      if (b > prev) monotonic = false;
+      if (b % 5 !== 0 || b > max || b < 0) steps = false;
+      prev = b;
+    }
+    check(`time bonus p${par}: faster never pays less`, monotonic);
+    check(`time bonus p${par}: friendly 5-coin steps within the max`, steps);
+  }
+  check('time bonus: an average finish earns part of it',
+    timeBonusFor(Math.floor(timeBonusSeconds(22) * 0.6), 22, e) < scaledReward(e.timeBonusCoins, 22));
+
+  // Free boosters: one undo everywhere, the free hint only in the first chapter.
+  check('free uses: one undo per attempt', freeUsesFor(1, e).undo === 1 && freeUsesFor(150, e).undo === 1);
+  check('free uses: hint through the first chapter', freeUsesFor(1, e).hint === 1 && freeUsesFor(e.freeHintLevels, e).hint === 1);
+  check('free uses: no free hint after it', freeUsesFor(e.freeHintLevels + 1, e).hint === 0);
+  check('free uses: endless and daily get no free hint',
+    freeUsesFor(ENDLESS_START, e).hint === 0 && freeUsesFor(DAILY_BASE + 20_000, e).hint === 0);
+  check('free uses: bottles are never free', freeUsesFor(1, e).bottle === 0);
+  check('free uses: never above the per-attempt caps',
+    (['undo', 'hint', 'bottle'] as const).every((k) => e.freeUses[k] <= e.maxUses[k]));
+
+  // Coin shop: unique ids, sane prices, and bigger packs are better value.
+  const shopIds = COIN_SHOP.map((i) => i.id);
+  check('shop: unique item ids', new Set(shopIds).size === shopIds.length);
+  check('shop: every price is a positive whole number', COIN_SHOP.every((i) => Number.isInteger(i.price) && i.price > 0));
+  const perUse = (id: string): number => {
+    const item = COIN_SHOP.find((i) => i.id === id);
+    return item && item.grant.kind === 'powerup' ? item.price / item.grant.count : NaN;
+  };
+  for (const p of ['undo', 'hint', 'bottle']) {
+    check(`shop: ${p} x10 beats x3 per use`, perUse(`${p}.x10`) < perUse(`${p}.x3`));
+  }
+  const bundle = COIN_SHOP.find((i) => i.id === 'bundle.boost');
+  const bundleWorth = bundle && bundle.grant.kind === 'bundle'
+    ? Object.entries(bundle.grant.powerups).reduce((sum, [p, n]) => sum + perUse(`${p}.x3`) * (n ?? 0), 0)
+    : NaN;
+  check('shop: booster bundle is cheaper than its parts', !!bundle && bundle.price < bundleWorth);
+  const refill = COIN_SHOP.find((i) => i.grant.kind === 'refillLives');
+  const oneHeart = COIN_SHOP.find((i) => i.grant.kind === 'addLives');
+  check('shop: a full refill beats five single hearts', !!refill && !!oneHeart && refill.price < oneHeart.price * 5);
 
   // Streak bonus: pays only from the threshold, never turns 0 into coins.
   check('streak: below threshold pays nothing', streakBonusFor(100, e.streakAfter - 1, e) === 0);
@@ -175,6 +235,14 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
   check('stars: par is 3 stars', starsFor(10, 10) === 3);
   check('stars: within tolerance is 3 stars', starsFor(12, 10) === 3);
   check('stars: well past par is 1 star', starsFor(40, 10) === 1);
+  // Tightened thresholds: three stars within ~10% of the ideal, two within ~30%.
+  check('stars: par 25 needs 28 for three, 33 for two',
+    starThresholds(25).three === 28 && starThresholds(25).two === 33);
+  check('stars: thresholds always leave room and stay ordered',
+    Array.from({ length: 40 }, (_, i) => i + 2).every((par) => {
+      const t = starThresholds(par);
+      return t.three >= par + 2 && t.two > t.three;
+    }));
 
   // Login reward: seven-day cycle that repeats, day 7 refills hearts.
   check('login: day 1 pays the first tile', loginRewardFor(1).coins === LOGIN_REWARDS[0] && !loginRewardFor(1).refillLives);
@@ -616,6 +684,196 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
 
   check('support: confusables normalized', normalizeCode('oil-u') === '011V');
   check('support: garbage rejected', !(await verifySupportCode('hello!!', id, [])).ok);
+}
+
+
+// ------------------------------------------------------- chapter chests --
+{
+  const size = CHAPTER_SIZE;
+  check('chests: silver at three quarters of the stars', silverChestStars(size) === 45);
+  check('chests: nothing before the last level is cleared', chestTierFor(false, 60, size) === 0);
+  check('chests: bronze for finishing', chestTierFor(true, 20, size) === 1 && chestTierFor(true, 44, size) === 1);
+  check('chests: silver from 45 stars', chestTierFor(true, 45, size) === 2 && chestTierFor(true, 59, size) === 2);
+  check('chests: gold only for every star', chestTierFor(true, 60, size) === 3);
+  const e = DEFAULT_ECONOMY;
+  check('chests: each tier pays more than the last',
+    e.chapterBonus > 0 && e.chestSilverCoins > e.chapterBonus && e.chestGoldCoins > e.chestSilverCoins);
+}
+
+// -------------------------------------------------------- streak freeze --
+{
+  const alive = { streak: 5, lastDay: 100 };
+  check('freeze: nothing missed, nothing spent',
+    applyStreakFreezes(alive, 101, 2).used === 0 && applyStreakFreezes(alive, 100, 2).used === 0);
+  const one = applyStreakFreezes(alive, 102, 1);
+  check('freeze: one missed day costs one freeze', one.used === 1 && one.streak.lastDay === 101 && one.streak.streak === 5);
+  check('freeze: the saved streak is alive today', currentStreak(one.streak, 102) === 5);
+  check('freeze: the next clear extends it by one', advanceStreak(one.streak, 102).streak === 6);
+  const two = applyStreakFreezes(alive, 103, 2);
+  check('freeze: two missed days cost two', two.used === 2 && two.streak.lastDay === 102);
+  check('freeze: too few freezes spend none', applyStreakFreezes(alive, 104, 2).used === 0);
+  check('freeze: idempotent once applied', applyStreakFreezes(one.streak, 102, 1).used === 0);
+  check('freeze: no streak, nothing to save',
+    applyStreakFreezes({ streak: 0, lastDay: 100 }, 102, 2).used === 0 &&
+    applyStreakFreezes({ streak: 3, lastDay: -1 }, 102, 2).used === 0);
+  check('freeze: a clock set backwards spends nothing', applyStreakFreezes(alive, 90, 2).used === 0);
+  check('freeze: cap is small', MAX_STREAK_FREEZES === 2);
+}
+
+// --------------------------------------------------------- weekly event --
+{
+  const monday = dayNumberFromDate(new Date(2026, 8, 28));
+  const sunday = dayNumberFromDate(new Date(2026, 8, 27));
+  check('weekly: a week starts on Monday', weekStartDay(weekOfDay(monday)) === monday);
+  check('weekly: Sunday closes the previous week', weekOfDay(sunday) === weekOfDay(monday) - 1);
+  check('weekly: seven days per week', Array.from({ length: 7 }, (_, i) => weekOfDay(monday + i))
+    .every((w) => w === weekOfDay(monday)) && weekOfDay(monday + 7) === weekOfDay(monday) + 1);
+  const week = weekOfDay(monday);
+  const ids = Array.from({ length: WEEKLY_BOARDS }, (_, i) => weeklyId(week, i));
+  check('weekly: ids round-trip', ids.every((id, i) => weekFromWeeklyId(id) === week && boardFromWeeklyId(id) === i));
+  check('weekly: ids are their own range', ids.every((id) =>
+    isWeekly(id) && !isDaily(id) && !isEndless(id) && id >= WEEKLY_BASE));
+  check('weekly: dailies are not weekly', !isWeekly(dailyId(monday)) && isDaily(dailyId(monday)));
+  check('weekly: ranges stay disjoint for millennia', dailyId(dayNumberFromDate(new Date(3000, 0, 1))) < WEEKLY_BASE);
+  check('weekly: consecutive weeks never share ids', weeklyId(week, WEEKLY_BOARDS - 1) < weeklyId(week + 1, 0));
+  check('weekly: getLevelSpec resolves weekly ids', getLevelSpec(ids[2] as number).id === ids[2]);
+  // Generated live in the solver worker, like endless: two weeks (both murk
+  // phases) must deal reliably and fast.
+  let worst = 0;
+  for (const id of [...ids, ...Array.from({ length: WEEKLY_BOARDS }, (_, i) => weeklyId(week + 1, i))]) {
+    const spec = weeklySpec(id);
+    const t0 = performance.now();
+    const gen = generateLevel(spec);
+    const ms = performance.now() - t0;
+    worst = Math.max(worst, ms);
+    const rules = rulesFor(spec);
+    check(`W${id} solution wins`, isSolved(replay(gen.board, gen.solution, rules), rules));
+    check(`W${id} meets minPar`, gen.par >= spec.minPar, `par=${gen.par} min=${spec.minPar}`);
+    check(`W${id} generates under 3s`, ms < 3000, `${ms.toFixed(0)}ms`);
+    check(`W${id} deterministic`, JSON.stringify(generateLevel(spec).board) === JSON.stringify(gen.board));
+  }
+  console.log(`  weekly sample of ${WEEKLY_BOARDS * 2} generated, worst ${worst.toFixed(0)}ms`);
+}
+
+// ----------------------------------------------------------- save layer --
+// The payout ledgers (chests, weekly prizes) and freezes, through the real
+// SaveService on an in-memory driver: migration, cloud merge and the
+// never-pay-twice guards.
+{
+  const g = globalThis as unknown as { window?: unknown };
+  g.window ??= globalThis;
+  const { SaveService } = await import('../services/SaveService');
+  const memory = (initial: string | null) => {
+    let value = initial;
+    return { name: 'test', read: () => value, write: (_k: string, v: string) => { value = v; } };
+  };
+  const rec = { stars: 2, bestMoves: 30, clearedAt: 1 };
+  const levels = (n: number) => Object.fromEntries(Array.from({ length: n }, (_, i) => [String(i + 1), rec]));
+
+  // A v17 save with chapter 1 finished: its old chapter bonus was the bronze chest.
+  const v17 = new SaveService(200, memory(JSON.stringify({ version: 17, coins: 500, levels: levels(20) })));
+  check('save: v17 finished chapter starts at bronze', v17.chestTier(1) === 1 && v17.chestTier(2) === 0);
+  check('save: v17 gets no freezes and an empty week', v17.streakFreezes === 0 && v17.snapshot.weekly.week === -1);
+  const v17b = new SaveService(200, memory(JSON.stringify({ version: 17, levels: levels(19) })));
+  check('save: v17 unfinished chapter has no chest', v17b.chestTier(1) === 0);
+  v17.setChestTier(1, 3);
+  v17.setChestTier(1, 2);
+  check('save: chest tiers never go down', v17.chestTier(1) === 3);
+
+  // Weekly: a newer week resets, an older one never touches the save.
+  const wk = new SaveService(200, memory(null));
+  wk.weeklyState(50);
+  wk.recordWeeklyClear(50, 0, 3, 20);
+  check('save: weekly board recorded', wk.weeklyRecord(50, 0)?.stars === 3);
+  const past = wk.weeklyState(49);
+  check('save: a past week reads closed', past.prizePaid && past.perfectPaid && Object.keys(past.records).length === 0);
+  check('save: reading a past week keeps this one', wk.snapshot.weekly.week === 50 && !!wk.weeklyRecord(50, 0));
+  check('save: a past week records nothing', !wk.recordWeeklyClear(49, 1, 3, 20).isFirstClear && !wk.weeklyRecord(50, 1));
+  check('save: a past week claims nothing', !wk.claimWeeklyPrize(49, 'prize'));
+  check('save: a prize pays once', wk.claimWeeklyPrize(50, 'prize') && !wk.claimWeeklyPrize(50, 'prize'));
+  check('save: replays keep the best record', (() => {
+    wk.recordWeeklyClear(50, 0, 1, 40);
+    const r = wk.weeklyRecord(50, 0);
+    return r?.stars === 3 && r.bestMoves === 20;
+  })());
+  wk.weeklyState(51);
+  check('save: a new week starts fresh', wk.snapshot.weekly.week === 51 && !wk.snapshot.weekly.prizePaid &&
+    Object.keys(wk.snapshot.weekly.records).length === 0);
+
+  // Cloud restore: payout ledgers are unioned, never re-opened.
+  const local = new SaveService(200, memory(null));
+  local.setChestTier(1, 3);
+  local.weeklyState(60);
+  local.recordWeeklyClear(60, 0, 3, 20);
+  local.claimWeeklyPrize(60, 'perfect');
+  local.replaceFromCloud({
+    version: 18, levels: levels(20), chests: { 1: 1, 2: 2 },
+    weekly: { week: 60, records: { 1: rec }, prizePaid: true, perfectPaid: false },
+  });
+  check('save: restore keeps the higher chest', local.chestTier(1) === 3 && local.chestTier(2) === 2);
+  check('save: restore unions weekly records',
+    !!local.weeklyRecord(60, 0) && !!local.weeklyRecord(60, 1));
+  check('save: restore unions weekly prizes', local.snapshot.weekly.prizePaid && local.snapshot.weekly.perfectPaid);
+  local.replaceFromCloud({ version: 17, levels: levels(20) });
+  check('save: restoring an old save keeps paid chests', local.chestTier(1) === 3 && local.chestTier(2) === 2);
+
+  // Freezes: capped, and spent on missed days.
+  const fz = new SaveService(200, memory(JSON.stringify({
+    version: 17, daily: { records: {}, streak: 4, lastDay: 200, bestStreak: 4 },
+  })));
+  check('save: freezes cap at the max', fz.addStreakFreezes(5) === MAX_STREAK_FREEZES && fz.addStreakFreezes(1) === 0);
+  check('save: a freeze saves a missed day', fz.settleStreakFreezes(202) === 1 && fz.streakFreezes === 1 &&
+    fz.dailyStreak(202) === 4);
+  check('save: settling again spends nothing', fz.settleStreakFreezes(202) === 0 && fz.streakFreezes === 1);
+  check('save: too many missed days spend nothing', fz.settleStreakFreezes(210) === 0 && fz.streakFreezes === 1 &&
+    fz.dailyStreak(210) === 0);
+  // A daily from inside the gap, still in progress: no freeze is spent on it,
+  // and finishing it extends the streak as it always did.
+  const pendingDay = 301;
+  const pend = new SaveService(200, memory(JSON.stringify({
+    version: 18, daily: { records: {}, streak: 10, lastDay: 300, bestStreak: 10, freezes: 1 },
+    inProgress: { levelId: dailyId(pendingDay), board: [], history: [], hidden: [], extraTubes: 0,
+      uses: { undo: 0, hint: 0, bottle: 0 }, elapsedMs: 0 },
+  })));
+  check('save: no freeze spent over a daily still in progress',
+    pend.settleStreakFreezes(302) === 0 && pend.streakFreezes === 1);
+  pend.setInProgress(null);
+  check('save: finishing it extends the streak', pend.recordDailyClear(pendingDay, 3, 20).streak === 11 &&
+    pend.dailyStreak(302) === 11 && pend.streakFreezes === 1);
+  // The same gap, but yesterday's board is abandoned for today's: the win
+  // settles freezes against today, so the freeze saves the streak.
+  const aband = new SaveService(200, memory(JSON.stringify({
+    version: 18, daily: { records: {}, streak: 10, lastDay: 300, bestStreak: 10, freezes: 1 },
+    inProgress: { levelId: dailyId(301), board: [], history: [], hidden: [], extraTubes: 0,
+      uses: { undo: 0, hint: 0, bottle: 0 }, elapsedMs: 0 },
+  })));
+  check('save: pending daily blocks the home settle', aband.settleStreakFreezes(302) === 0);
+  aband.setInProgress(null);
+  check('save: the win settles against its own day', aband.settleStreakFreezes(302) === 1 &&
+    aband.recordDailyClear(302, 3, 20).streak === 11 && aband.streakFreezes === 0);
+  // Finishing yesterday's board settles against yesterday: nothing is spent.
+  const resumed = new SaveService(200, memory(JSON.stringify({
+    version: 18, daily: { records: {}, streak: 10, lastDay: 300, bestStreak: 10, freezes: 1 },
+  })));
+  check('save: finishing the missed day itself spends no freeze', resumed.settleStreakFreezes(301) === 0 &&
+    resumed.recordDailyClear(301, 3, 20).streak === 11 && resumed.streakFreezes === 1);
+  // A clear for a day older than the streak's last day records, never restarts it.
+  const older = new SaveService(200, memory(JSON.stringify({
+    version: 18, daily: { records: {}, streak: 10, lastDay: 305, bestStreak: 10, freezes: 0 },
+  })));
+  const oldClear = older.recordDailyClear(303, 2, 25);
+  check('save: an older day never restarts the streak',
+    oldClear.isFirstClear && oldClear.streak === 10 && older.snapshot.daily.lastDay === 305 && !!older.dailyRecord(303));
+  // A later week already tracked: the current one reads closed.
+  check('save: weeklyOpen only for the tracked week', wk.weeklyOpen(51) && !wk.weeklyOpen(50) && wk.weeklyOpen(52));
+  const tampered = new SaveService(200, memory(JSON.stringify({ version: 18, daily: { freezes: 99 } })));
+  check('save: a tampered freeze count is clamped', tampered.streakFreezes === MAX_STREAK_FREEZES);
+
+  // Support unlocks never start paying chapter bonuses later.
+  const sup = new SaveService(200, memory(null));
+  sup.unlockThroughLevel(45);
+  check('save: support unlock marks finished chapters bronze', sup.chestTier(1) === 1 && sup.chestTier(2) === 1 &&
+    sup.chestTier(3) === 0);
 }
 
 console.log(`\n  ${passed} checks passed, ${failures.length} failed`);

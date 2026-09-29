@@ -14,6 +14,10 @@ export type AnalyticsEvent =
     }
   | { type: 'chapter_complete'; chapter: number }
   | { type: 'daily_complete'; streak: number }
+  | { type: 'weekly_complete'; week: number; perfect: boolean }
+  | { type: 'chest_open'; chapter: number; tier: number }
+  | { type: 'streak_freeze_used'; count: number; streak: number }
+  | { type: 'win_near_miss'; level: number; over: number }
   | { type: 'daily_share'; stars: number; streak: number; method: 'share' | 'copy' }
   | { type: 'achievement'; id: string }
   | { type: 'mission_complete'; id: string; day: number }

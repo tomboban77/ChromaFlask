@@ -110,6 +110,9 @@ const table: Record<string, string> = {
   'skin.amber': '앰버 유리',
   'skin.emerald': '에메랄드 유리',
   'skin.obsidian': '흑요석',
+  'skin.sapphire': '사파이어',
+  'skin.sunset': '노을',
+  'skin.gilded': '금박',
   'product.cf.bundle.starter': '스타터 번들',
   'product.cf.bundle.alchemist': '연금술사 번들',
   'product.cf.coins.small': '코인 주머니',
@@ -123,6 +126,54 @@ const table: Record<string, string> = {
   'item.hint.x3.desc': '이길 수 있는 수를 보여줘요',
   'item.bottle.x3.title': '병 ×3',
   'item.bottle.x3.desc': '필요할 때 여분의 공간',
+  'item.lives.one.title': '하트 +1',
+  'item.lives.one.desc': '지금 바로 한 번 더',
+  'item.lives.hour.title': '무제한 하트 · 1시간',
+  'item.lives.hour.desc': '한 시간 동안 마음껏 플레이',
+  'item.bundle.boost.title': '부스터 묶음',
+  'item.bundle.boost.desc': '되돌리기 3회, 힌트 3회, 병 1개',
+  'item.undo.x10.title': '되돌리기 ×10',
+  'item.undo.x10.desc': '넉넉한 두 번째 기회',
+  'item.hint.x10.title': '힌트 ×10',
+  'item.hint.x10.desc': '가장 어려운 판을 위한 승리의 수',
+  'item.bottle.x10.title': '병 ×10',
+  'item.bottle.x10.desc': '빡빡한 레벨마다 여유 공간',
+  'level.weekly': '주간 {n}/{total}',
+  'daily.freezes': '🧊 연속 기록 보호권: {n}/{max}',
+  'weekly.title': '주간 이벤트',
+  'weekly.lockedShort': '🔒 레벨 {n}',
+  'weekly.locked': '주간 이벤트는 레벨 {n}에서 열려요',
+  'weekly.board': '보드 {n}',
+  'weekly.play': '플레이 ›',
+  'weekly.prize': '{total}개 모두 클리어: +{coins} 코인 & 힌트 ×{hints}',
+  'weekly.perfectPrize': '★ {stars}개 모두: +{coins} 코인 추가',
+  'weekly.ends': '{time} 후 새 보드',
+  'weekly.ended': '그 주의 이벤트가 끝났어요 - 새 보드가 기다리고 있어요',
+  'toast.freezeUsed': '🧊 연속 기록 보호권 ×{used} 사용 - 🔥{streak}일 연속 기록이 지켜졌어요',
+  'toast.chests': '🎁 챕터 상자를 열었어요 · +{n} 코인',
+  'chest.silver': '은 상자',
+  'chest.gold': '금 상자',
+  'chapter.chestFinish': '🎁 챕터 완료: +{n}',
+  'chapter.chestNext': '🎁 ★{stars}에 {chest}: +{n}',
+  'chapter.chestDone': '🎁 모든 상자를 열었어요',
+  'shop.owned': '보유 {n}/{max}',
+  'shop.freezeFull': '연속 기록 보호권을 이미 {max}개 가지고 있어요',
+  'win.eyebrow.weekly': '주간 이벤트 · 보드 {n}/{total}',
+  'win.chest': '{chest} +{n}',
+  'win.weeklyPrize': '주간 보상 +{n} & 힌트 ×{hints}',
+  'win.weeklyPerfect': '완벽한 한 주 +{n}',
+  'win.weeklyProgress': '이번 주 {n}/{total} 보드',
+  'win.nextBoard': '다음 보드',
+  'win.tryAgain': '{stars} 다시 도전',
+  'item.streak.freeze.title': '연속 기록 보호권',
+  'item.streak.freeze.desc': '하루를 놓쳐도 일일 연속 기록을 지켜줘요',
+  'win.nearMiss.other': '아깝다! {stars} 기준보다 {n}수 많았어요',
+  'howto.extras': `<div class="howto">
+    <h3>상자, 이벤트, 보호권</h3>
+    <p>모든 챕터에는 <b>상자</b> 3개가 있어요. 챕터를 끝내면 동, 별 60개 중 45개면 은, 모든 레벨에서 별 3개면 금. 다시 플레이해도 인정돼요.</p>
+    <p>레벨 {weekly}부터 <b>주간 이벤트</b>가 매주 월요일 어려운 보드 5개를 가져와요. 모두 클리어하면 보상, 모든 보드에서 별 3개를 받으면 보상이 하나 더 있어요.</p>
+    <p>상점의 <b>연속 기록 보호권</b>은 하루를 놓쳐도 일일 챌린지 연속 기록을 지켜줘요. 최대 {freezes}개까지 가질 수 있어요.</p>
+  </div>`,
 
   'powerup.undo': '되돌리기',
   'powerup.hint': '힌트',
@@ -371,7 +422,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>한도, 시계, 연승</h3>
     <p>한 번의 도전에서는 보유량과 상관없이 <b>되돌리기 {undo}번</b>, <b>힌트 {hint}번</b>, <b>추가 병 {bottle}개</b>까지만 쓸 수 있어요.</p>
-    <p><b>시계</b>는 보너스 시간을 보여줘요. 시간이 끝나기 전에 레벨을 처음 클리어하면 코인을 더 받아요. 시간 때문에 실패하지는 않아요.</p>
+    <p><b>시계</b>는 보너스 시간을 보여줘요. 시간이 끝나기 전에 레벨을 <b>별 3개</b>로 처음 클리어하면 코인을 더 받아요. 빨리 끝낼수록 보너스가 커지고, 시계의 코인 표시는 시간이 지날수록 줄어들어요. 시간 때문에 실패하지는 않아요.</p>
     <p>다시 시작하거나 나가지 않고 새 레벨을 연속으로 클리어하면, 세 번째부터 매번 <b>연승 보너스</b>를 받아요.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -383,7 +434,7 @@ const table: Record<string, string> = {
     <h3>하트</h3>
     <p>하트는 레벨이 정말로 <b>실패</b>했을 때 - 남은 수가 없거나 게임이 여기서 이길 수 없다고 증명했을 때 - 다시 시작하거나 나가는 경우에만 잃어요. 진행 중인 레벨을 나가거나 다시 시작하는 건 무료예요. 하트는 30분마다 1개씩 채워져요.</p>
     <h3>부스터</h3>
-    <p>모든 시도는 <b>무료 되돌리기 {undo}회</b>와 <b>무료 힌트 {hint}회</b>로 시작해요. 추가 병과 더 많은 힌트나 되돌리기는 상점에서 얻은 코인으로 살 수 있어요.</p>
+    <p>모든 시도는 <b>무료 되돌리기 {undo}회</b>로 시작하고, 레벨 1-{levels}에서는 <b>무료 힌트 {hint}회</b>도 받아요. 추가 병과 더 많은 힌트나 되돌리기는 상점에서 얻은 코인으로 살 수 있어요.</p>
     <h3>변형</h3>
     <p>금테를 두른 <b>가마솥</b>은 위에 어떤 색이든 받지만 이기려면 비어 있어야 해요. <b>탁한 포션</b>은 표면에 닿을 때까지 색을 숨겨요. <b>잠긴 병</b>은 자물쇠 아래 점의 개수만큼 다른 병을 봉인하기 전까지 넣을 수도 꺼낼 수도 없어요. 청록색 <b>일방향 플라스크</b>는 붓기를 받지만 절대 돌려주지 않고, 가득 차야만 레벨이 끝나요 - 색을 신중히 고르세요.</p>
   </div>`,

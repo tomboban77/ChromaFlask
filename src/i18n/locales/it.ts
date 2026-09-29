@@ -112,6 +112,9 @@ const table: Record<string, string> = {
   'skin.amber': 'Vetro ambra',
   'skin.emerald': 'Vetro smeraldo',
   'skin.obsidian': 'Ossidiana',
+  'skin.sapphire': 'Zaffiro',
+  'skin.sunset': 'Tramonto',
+  'skin.gilded': 'Dorato',
   'product.cf.bundle.starter': 'Pacchetto iniziale',
   'product.cf.bundle.alchemist': 'Pacchetto alchimista',
   'product.cf.coins.small': 'Borsetta di monete',
@@ -125,6 +128,55 @@ const table: Record<string, string> = {
   'item.hint.x3.desc': 'Rivela una mossa vincente',
   'item.bottle.x3.title': 'Bottiglia ×3',
   'item.bottle.x3.desc': 'Spazio extra quando serve',
+  'item.lives.one.title': '+1 cuore',
+  'item.lives.one.desc': 'Un altro tentativo, subito',
+  'item.lives.hour.title': 'Cuori illimitati · 1 h',
+  'item.lives.hour.desc': 'Gioca quanto vuoi per un’ora',
+  'item.bundle.boost.title': 'Pacchetto potenziamenti',
+  'item.bundle.boost.desc': '3 annulla, 3 suggerimenti e 1 bottiglia',
+  'item.undo.x10.title': 'Annulla ×10',
+  'item.undo.x10.desc': 'Una bella scorta di seconde possibilità',
+  'item.hint.x10.title': 'Suggerimento ×10',
+  'item.hint.x10.desc': 'Mosse vincenti per i livelli più duri',
+  'item.bottle.x10.title': 'Bottiglia ×10',
+  'item.bottle.x10.desc': 'Respiro in ogni livello stretto',
+  'level.weekly': 'Settimanale {n}/{total}',
+  'daily.freezes': '🧊 Salva-serie: {n}/{max}',
+  'weekly.title': 'Evento settimanale',
+  'weekly.lockedShort': '🔒 Livello {n}',
+  'weekly.locked': 'L\'evento settimanale si apre al livello {n}',
+  'weekly.board': 'Tabellone {n}',
+  'weekly.play': 'Gioca ›',
+  'weekly.prize': 'Supera tutti e {total}: +{coins} monete e Suggerimento ×{hints}',
+  'weekly.perfectPrize': 'Tutte le {stars} ★: altre +{coins} monete',
+  'weekly.ends': 'Nuovi tabelloni tra {time}',
+  'weekly.ended': 'L\'evento di quella settimana è finito: ci sono nuovi tabelloni',
+  'toast.freezeUsed': '🧊 Salva-serie ×{used} usato: la tua serie 🔥{streak} è salva',
+  'toast.chests': '🎁 Forzieri del capitolo aperti · +{n} monete',
+  'chest.silver': 'Forziere d\'argento',
+  'chest.gold': 'Forziere d\'oro',
+  'chapter.chestFinish': '🎁 Finisci il capitolo: +{n}',
+  'chapter.chestNext': '🎁 {chest} a ★{stars}: +{n}',
+  'chapter.chestDone': '🎁 Tutti i forzieri aperti',
+  'shop.owned': 'Posseduti {n}/{max}',
+  'shop.freezeFull': 'Hai già {max} salva-serie',
+  'win.eyebrow.weekly': 'Evento settimanale · tabellone {n} di {total}',
+  'win.chest': '{chest} +{n}',
+  'win.weeklyPrize': 'Premio settimanale +{n} e Suggerimento ×{hints}',
+  'win.weeklyPerfect': 'Settimana perfetta +{n}',
+  'win.weeklyProgress': '{n}/{total} tabelloni questa settimana',
+  'win.nextBoard': 'Tabellone successivo',
+  'win.tryAgain': 'Riprova per {stars}',
+  'item.streak.freeze.title': 'Salva-serie',
+  'item.streak.freeze.desc': 'Salva la tua serie giornaliera se salti un giorno',
+  'win.nearMiss.one': 'Quasi! Solo {n} mossa oltre il limite per {stars}',
+  'win.nearMiss.other': 'Quasi! Solo {n} mosse oltre il limite per {stars}',
+  'howto.extras': `<div class="howto">
+    <h3>Forzieri, eventi e salva-serie</h3>
+    <p>Ogni capitolo custodisce tre <b>forzieri</b>: bronzo per finirlo, argento a 45 delle sue 60 stelle, oro per tre stelle in ogni livello. Anche le rigiocate contano.</p>
+    <p>Dal livello {weekly}, l'<b>evento settimanale</b> porta cinque tabelloni difficili ogni lunedì, con un premio per superarli tutti e un altro per tre stelle in ognuno.</p>
+    <p>Un <b>salva-serie</b> del negozio protegge la tua serie della sfida giornaliera se salti un giorno. Puoi tenerne fino a {freezes}.</p>
+  </div>`,
 
   'powerup.undo': 'Annulla',
   'powerup.hint': 'Aiuto',
@@ -378,8 +430,8 @@ const table: Record<string, string> = {
   'howto.title': 'Come si gioca',
   'howto.more': `<div class="howto">
     <h3>Limiti, orologio e serie</h3>
-    <p>Ogni tentativo consente al massimo <b>{undo} annullamenti</b>, <b>{hint} indizi</b> e <b>{bottle} bottiglie extra</b>, qualunque sia la tua scorta.</p>
-    <p>L'<b>orologio</b> mostra una finestra bonus: supera un livello per la prima volta prima che scada per ottenere monete extra. Non ti fa mai perdere un livello.</p>
+    <p>Ogni tentativo consente al massimo <b>Annulla ×{undo}</b>, <b>Suggerimento ×{hint}</b> e <b>Bottiglia extra ×{bottle}</b>, qualunque sia la tua scorta.</p>
+    <p>L'<b>orologio</b> mostra una finestra bonus: supera un livello per la prima volta con <b>tre stelle</b> prima che scada per ottenere monete extra. Più sei veloce, più grande è il bonus: l'etichetta di monete sull'orologio cala col tempo. Non ti fa mai perdere un livello.</p>
     <p>Supera livelli nuovi di fila senza ricominciare né uscire e, dal terzo, ogni vittoria paga un <b>bonus serie</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -391,7 +443,7 @@ const table: Record<string, string> = {
     <h3>Cuori</h3>
     <p>Perdi un cuore solo quando un livello è davvero <b>perso</b> (nessun versamento possibile, o il gioco ha dimostrato che non si può più vincere) e lo ricominci o lo lasci. Uscire o ricominciare un livello in corso è gratis. I cuori tornano uno ogni 30 minuti.</p>
     <h3>Potenziamenti</h3>
-    <p>Ogni tentativo parte con <b>{undo} annulla gratis</b> e <b>{hint} suggerimento gratis</b>. Bottiglie extra e altri suggerimenti o annulla si comprano nel negozio con le monete guadagnate.</p>
+    <p>Ogni tentativo parte con <b>Annulla ×{undo}</b> gratis, e i livelli 1-{levels} danno anche <b>Suggerimento ×{hint}</b> gratis. Bottiglie extra e altri suggerimenti o annulla si comprano nel negozio con le monete guadagnate.</p>
     <h3>Varianti</h3>
     <p>Il <b>calderone</b> dal bordo dorato accetta qualsiasi colore in cima, ma deve essere vuoto per vincere. Le <b>pozioni torbide</b> nascondono i colori finché non salgono in superficie. Una <b>bottiglia bloccata</b> non riceve né dà versamenti finché non hai sigillato il numero di bottiglie indicato dai puntini sotto il lucchetto. L'<b>ampolla a senso unico</b> turchese riceve i versamenti ma non li restituisce mai, e il livello si vince solo quando è piena: scegli il suo colore con cura.</p>
   </div>`,

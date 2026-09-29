@@ -66,3 +66,27 @@ export function isChapterEnd(id: number): boolean {
   const ch = chapterFor(id);
   return ch !== null && id === ch.last;
 }
+
+// ---------------------------------------------------------- chapter chests
+/**
+ * Every chapter holds three chests, opened in order and paid once each:
+ *  1 bronze - the chapter's last level cleared (the old chapter bonus),
+ *  2 silver - three quarters of the chapter's stars (45 of 60),
+ *  3 gold   - every level three-starred.
+ * Silver and gold are what make replaying for stars pay off: a chapter
+ * finished sloppily still has two chests waiting in it.
+ */
+export type ChestTier = 0 | 1 | 2 | 3;
+
+/** Stars a chapter of `size` levels needs for its silver chest. */
+export function silverChestStars(size: number): number {
+  return Math.ceil(size * 3 * 0.75);
+}
+
+/** The highest chest a chapter has earned, from its last-level clear and its stars. */
+export function chestTierFor(lastCleared: boolean, stars: number, size: number): ChestTier {
+  if (!lastCleared) return 0;
+  if (stars >= size * 3) return 3;
+  if (stars >= silverChestStars(size)) return 2;
+  return 1;
+}

@@ -112,6 +112,9 @@ const table: Record<string, string> = {
   'skin.amber': 'Vidrio ámbar',
   'skin.emerald': 'Vidrio esmeralda',
   'skin.obsidian': 'Obsidiana',
+  'skin.sapphire': 'Zafiro',
+  'skin.sunset': 'Atardecer',
+  'skin.gilded': 'Dorado',
   'product.cf.bundle.starter': 'Pack inicial',
   'product.cf.bundle.alchemist': 'Pack alquimista',
   'product.cf.coins.small': 'Bolsita de monedas',
@@ -125,6 +128,55 @@ const table: Record<string, string> = {
   'item.hint.x3.desc': 'Revela un movimiento ganador',
   'item.bottle.x3.title': 'Botella ×3',
   'item.bottle.x3.desc': 'Espacio extra cuando lo necesitas',
+  'item.lives.one.title': '+1 corazón',
+  'item.lives.one.desc': 'Un intento más, ahora mismo',
+  'item.lives.hour.title': 'Corazones ilimitados · 1 h',
+  'item.lives.hour.desc': 'Juega todo lo que quieras durante una hora',
+  'item.bundle.boost.title': 'Pack de potenciadores',
+  'item.bundle.boost.desc': '3 deshacer, 3 pistas y 1 botella',
+  'item.undo.x10.title': 'Deshacer ×10',
+  'item.undo.x10.desc': 'Un buen montón de segundas oportunidades',
+  'item.hint.x10.title': 'Pista ×10',
+  'item.hint.x10.desc': 'Jugadas ganadoras para los niveles más duros',
+  'item.bottle.x10.title': 'Botella ×10',
+  'item.bottle.x10.desc': 'Espacio para respirar en cada nivel ajustado',
+  'level.weekly': 'Semanal {n}/{total}',
+  'daily.freezes': '🧊 Protectores de racha: {n}/{max}',
+  'weekly.title': 'Evento semanal',
+  'weekly.lockedShort': '🔒 Nivel {n}',
+  'weekly.locked': 'El evento semanal se abre en el nivel {n}',
+  'weekly.board': 'Tablero {n}',
+  'weekly.play': 'Jugar ›',
+  'weekly.prize': 'Supera los {total}: +{coins} monedas y Pista ×{hints}',
+  'weekly.perfectPrize': 'Las {stars} ★: +{coins} monedas más',
+  'weekly.ends': 'Nuevos tableros en {time}',
+  'weekly.ended': 'El evento de esa semana terminó: hay tableros nuevos esperando',
+  'toast.freezeUsed': '🧊 Protector de racha ×{used} usado: tu racha 🔥{streak} está a salvo',
+  'toast.chests': '🎁 Cofres de capítulo abiertos · +{n} monedas',
+  'chest.silver': 'Cofre de plata',
+  'chest.gold': 'Cofre de oro',
+  'chapter.chestFinish': '🎁 Termina el capítulo: +{n}',
+  'chapter.chestNext': '🎁 {chest} con ★{stars}: +{n}',
+  'chapter.chestDone': '🎁 Todos los cofres abiertos',
+  'shop.owned': 'Tienes {n}/{max}',
+  'shop.freezeFull': 'Ya tienes {max} protectores de racha',
+  'win.eyebrow.weekly': 'Evento semanal · tablero {n} de {total}',
+  'win.chest': '{chest} +{n}',
+  'win.weeklyPrize': 'Premio semanal +{n} y Pista ×{hints}',
+  'win.weeklyPerfect': 'Semana perfecta +{n}',
+  'win.weeklyProgress': '{n}/{total} tableros esta semana',
+  'win.nextBoard': 'Siguiente tablero',
+  'win.tryAgain': 'Intenta {stars}',
+  'item.streak.freeze.title': 'Protector de racha',
+  'item.streak.freeze.desc': 'Salva tu racha diaria si faltas un día',
+  'win.nearMiss.one': '¡Casi! Solo {n} movimiento por encima de {stars}',
+  'win.nearMiss.other': '¡Casi! Solo {n} movimientos por encima de {stars}',
+  'howto.extras': `<div class="howto">
+    <h3>Cofres, eventos y protectores</h3>
+    <p>Cada capítulo guarda tres <b>cofres</b>: bronce por terminarlo, plata con 45 de sus 60 estrellas y oro con tres estrellas en cada nivel. Las repeticiones cuentan.</p>
+    <p>Desde el nivel {weekly}, el <b>evento semanal</b> trae cinco tableros difíciles cada lunes, con un premio por superarlos todos y otro por tres estrellas en cada uno.</p>
+    <p>Un <b>protector de racha</b> de la tienda salva tu racha del desafío diario si faltas un día. Puedes tener hasta {freezes}.</p>
+  </div>`,
 
   'powerup.undo': 'Deshacer',
   'powerup.hint': 'Pista',
@@ -378,8 +430,8 @@ const table: Record<string, string> = {
   'howto.title': 'Cómo jugar',
   'howto.more': `<div class="howto">
     <h3>Límites, reloj y rachas</h3>
-    <p>Cada intento permite como máximo <b>{undo} deshacer</b>, <b>{hint} pistas</b> y <b>{bottle} botellas extra</b>, tengas las que tengas.</p>
-    <p>El <b>reloj</b> muestra una ventana de bonus: supera un nivel por primera vez antes de que se agote y ganas monedas extra. Nunca te hace perder un nivel.</p>
+    <p>Cada intento permite como máximo <b>Deshacer ×{undo}</b>, <b>Pista ×{hint}</b> y <b>Botella extra ×{bottle}</b>, tengas las que tengas.</p>
+    <p>El <b>reloj</b> muestra una ventana de bonus: supera un nivel por primera vez con <b>tres estrellas</b> antes de que se agote y ganas monedas extra. Cuanto antes termines, mayor es el bonus: la etiqueta de monedas del reloj baja con el tiempo. Nunca te hace perder un nivel.</p>
     <p>Supera niveles nuevos seguidos sin reiniciarlos ni salir y, desde el tercero, cada victoria paga un <b>bonus de racha</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -391,7 +443,7 @@ const table: Record<string, string> = {
     <h3>Corazones</h3>
     <p>Solo pierdes un corazón cuando un nivel está realmente <b>perdido</b> (sin vertidos posibles, o el juego ha demostrado que ya no se puede ganar) y lo reinicias o lo abandonas. Salir o reiniciar un nivel vivo es gratis. Los corazones se recargan uno cada 30 minutos.</p>
     <h3>Potenciadores</h3>
-    <p>Cada intento empieza con <b>{undo} deshacer gratis</b> y <b>{hint} pista gratis</b>. Las botellas extra y más pistas o deshacer se compran en la tienda con las monedas que ganas.</p>
+    <p>Cada intento empieza con <b>Deshacer ×{undo}</b> gratis, y los niveles 1-{levels} dan además <b>Pista ×{hint}</b> gratis. Las botellas extra y más pistas o deshacer se compran en la tienda con las monedas que ganas.</p>
     <h3>Giros</h3>
     <p>El <b>caldero</b> con borde dorado acepta cualquier color encima, pero debe estar vacío para ganar. Las <b>pociones turbias</b> ocultan sus colores hasta que llegan a la superficie. Una <b>botella bloqueada</b> no admite vertidos hacia dentro ni hacia fuera hasta que hayas sellado el número de botellas que indican los puntos bajo su candado. El <b>frasco de un solo sentido</b> turquesa recibe vertidos pero nunca los devuelve, y el nivel solo se gana cuando está lleno: elige su color con cuidado.</p>
   </div>`,

@@ -1,4 +1,5 @@
 import { DAILY_BASE, dailySpec, isDaily } from './daily';
+import { isWeekly, weeklySpec } from './weekly';
 import type { LevelSpec } from './types';
 
 /**
@@ -14,14 +15,14 @@ import type { LevelSpec } from './types';
  *  - murky:        from level 25, colours below each tube's mouth start hidden
  *
  * Levels 1-200 ramp from the tutorial to the full eight-colour game (the
- * curve here is deliberately steep after the opening: seven colours by 20,
- * eight by 35). Levels 201-300 are the endgame, five tiers of twenty - the
+ * curve here is deliberately steep after the opening: seven colours by 15,
+ * eight by 25). Levels 201-300 are the endgame, five tiers of twenty - the
  * same five tiers that once stretched over 300 levels, compressed so the
  * campaign ends at its peak instead of coasting. Because the campaign is
  * precomputed offline, the par floor can climb through the whole distribution
  * of deals (eight-colour boards reach an ideal of 27 by the last tier,
- * squeezes 19, cauldrons 18, breathers 17), a second squeeze joins each block
- * of ten from the third tier, and murk rises to three levels in four.
+ * squeezes 19, cauldrons 18, breathers 19), a second squeeze joins each block
+ * of ten from level 101, and murk rises to three levels in four.
  *
  * Every spec is deterministic (id seeds the generator) and machine-verified by
  * `npm run test:core`: solvable, meets minPar, conserves units, and generates
@@ -77,7 +78,9 @@ function tierFor(id: number): number {
 function specFor(id: number): LevelSpec {
   // Base colour band. The palette holds 8 colours; past that point the heat
   // comes from minPar, squeezes, the cauldron and the murky mechanic instead.
-  const colors = id <= 19 ? 6 : id <= 34 ? 7 : 8;
+  // Steepened again after player feedback (2026-09-29, "too easy"): seven
+  // colours from 15 and the full eight from 25.
+  const colors = id <= 14 ? 6 : id <= 24 ? 7 : 8;
   const tier = tierFor(id);
 
   // Cauldron every 10 levels from 22: it replaces one empty tube with a
@@ -91,45 +94,47 @@ function specFor(id: number): LevelSpec {
   if (id >= 22 && id % 10 === 2) {
     return {
       id, colors: 6, empties: 1, cauldron: true,
-      // 13 -> 15 across the original ramp, then 16, 16, 17, 17, 18.
-      minPar: id <= 60 ? 13 : id <= 200 ? 15 : Math.min(18, 15 + Math.ceil(tier / 2)),
+      // 14 -> 15 across the original ramp, then 16, 16, 17, 17, 18.
+      minPar: id <= 60 ? 14 : id <= 200 ? 15 : Math.min(18, 15 + Math.ceil(tier / 2)),
       name: nameFor(id), murky: isMurky(id),
     };
   }
 
-  // Par floor. Raw eight-colour deals have an ideal of 23-28 (median 25), so
+  // Par floor. Raw eight-colour deals have an ideal of 22-28 (median 25), so
   // a floor below that rejects nothing and the curve goes flat; this one
-  // climbs through the whole distribution instead:
-  //   35-100: 17, 18, 19   101-150: 20, 21   151-200: 22   tiers: 23 .. 27.
+  // sits inside the distribution from the first eight-colour board and
+  // climbs through it:
+  //   25-100: 21, 22   101-150: 23   151-200: 24   tiers: 24 .. 27.
   // The precompute pays for the rejected deals offline; players never wait.
   let minPar: number;
-  if (colors === 6) minPar = 13 + Math.min(2, Math.floor((id % 30) / 12));
-  else if (colors === 7) minPar = 15 + Math.min(2, Math.floor((id % 30) / 12));
-  else if (id <= 100) minPar = 17 + Math.min(2, Math.floor((id - 35) / 22));
-  else if (id <= 150) minPar = 20 + Math.floor((id - 101) / 25);
-  else if (id <= 200) minPar = 22;
-  else minPar = Math.min(27, 22 + tier);
+  if (colors === 6) minPar = 15 + Math.min(1, Math.floor((id - 11) / 2));
+  else if (colors === 7) minPar = 18 + Math.min(2, Math.floor((id - 15) / 4));
+  else if (id <= 100) minPar = id <= 60 ? 21 : 22;
+  else if (id <= 150) minPar = 23;
+  else if (id <= 200) minPar = 24;
+  else minPar = Math.min(27, 23 + tier);
 
   let empties = 2;
 
   // Breather every 10 levels: extra tube, fewer colours, gentler par.
   // Capped at 7 colours: an 11-tube 8-colour board makes the optimal solve
   // explode (seconds of generation on-device) without feeling any easier.
-  // Breathers deepen too (13 -> 17), staying well under the standard floor.
+  // Breathers deepen too (16 -> 19), staying well under the standard floor.
   if (id % 10 === 4) {
     const c = Math.min(colors, 7);
     return {
       id, colors: c, empties: 3,
-      minPar: c === 7 ? Math.min(17, 13 + tier) : 11,
+      minPar: c === 7 ? Math.min(19, 16 + tier) : 13,
       name: nameFor(id), murky: isMurky(id),
     };
   }
 
-  // The Locked Bottle, every 10 levels through the late tiers: a full board
-  // whose first bottle is padlocked until one other bottle is sealed - two
-  // from the third tier. Same par floor as a standard board; the lock itself
-  // adds the depth (and a planning problem no earlier level poses).
-  if (tier >= 1 && id % 10 === 5) {
+  // The Locked Bottle, every 10 levels from 45: a full board whose first
+  // bottle is padlocked until one other bottle is sealed - two from the third
+  // late tier. Same par floor as a standard board; the lock itself adds the
+  // depth (and a planning problem no earlier level poses). It used to wait
+  // until level 205, leaving 150 levels with nothing new to learn.
+  if (id >= 45 && id % 10 === 5) {
     return {
       id, colors, empties: 2, minPar,
       lock: { seals: tier >= 3 ? 2 : 1 },
@@ -137,11 +142,11 @@ function specFor(id: number): LevelSpec {
     };
   }
 
-  // The One-Way Flask, every 10 levels from the second late tier: a full
+  // The One-Way Flask, every 10 levels from 67 (was 267): a full
   // eight-colour board with a single ordinary empty plus the flask, which
   // takes pours but never gives them back and must be full to win. The
   // player has to choose a colour to commit and deliver it in order.
-  if (tier >= 2 && id % 10 === 7) {
+  if (id >= 67 && id % 10 === 7) {
     return {
       id, colors: 8, empties: 1, oneWay: true,
       minPar: Math.min(25, 20 + tier),
@@ -151,23 +156,26 @@ function specFor(id: number): LevelSpec {
 
   // Squeeze every 10 levels: one empty tube. Colours are capped because
   // single-empty boards get vanishingly rare to deal beyond six colours.
-  // From the third late tier a second squeeze joins each block of ten.
-  if (id % 10 === 8 || (tier >= 3 && id % 10 === 6)) {
+  // From level 101 a second squeeze joins each block of ten.
+  if (id % 10 === 8 || (id > 100 && id % 10 === 6)) {
     empties = 1;
     const squeezed = id <= 20 ? 5 : 6;
-    // 11 (five colours), then 14 -> 15 across the ramp, then 16 .. 19.
-    minPar = squeezed === 5 ? 11 : id <= 100 ? 14 : id <= 200 ? 15 : Math.min(19, 15 + tier);
+    // 12 (five colours), then 16 -> 17 across the ramp, then 17 .. 19.
+    minPar = squeezed === 5 ? 12 : id <= 100 ? 16 : id <= 200 ? 17 : Math.min(19, 16 + tier);
     return { id, colors: squeezed, empties, minPar, name: nameFor(id), murky: isMurky(id) };
   }
 
   return { id, colors, empties, minPar, name: nameFor(id), murky: isMurky(id) };
 }
 
-/** Murky cadence: introduced at 25, common by 60, dominant past 120, three in four from level 241. */
+/**
+ * Murky cadence: introduced at 27 (clear of the cauldron's debut at 22), one
+ * in three to 60, one in two to 120, two in three to 240, three in four after.
+ */
 function isMurky(id: number): boolean {
   if (id < 25) return false;
-  if (id <= 60) return id % 5 === 1;
-  if (id <= 120) return id % 3 === 0;
+  if (id <= 60) return id % 3 === 0;
+  if (id <= 120) return id % 2 === 0;
   if (tierFor(id) >= 3) return id % 4 !== 1;
   return id % 3 !== 1;
 }
@@ -238,6 +246,7 @@ export function endlessSpec(id: number): LevelSpec {
 
 export function getLevelSpec(id: number): LevelSpec {
   if (!Number.isInteger(id) || id < 1) throw new Error(`No level ${id}`);
+  if (isWeekly(id)) return weeklySpec(id);
   if (isDaily(id)) return dailySpec(id);
   if (isEndless(id)) return endlessSpec(id);
   const spec = LEVELS[id - 1];

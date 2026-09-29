@@ -379,19 +379,26 @@ export class BoardView {
    * A board laid out against stale, taller dimensions draws its bottom row
    * past the canvas, where it is clipped - see the layout regression test.
    */
-  geometry(): { viewW: number; viewH: number; bodyW: number; bottom: number; drift: number } {
+  geometry(): {
+    viewW: number; viewH: number; bodyW: number; bottom: number; drift: number; tilt: number;
+  } {
     const h = bottleHeight(this.bodyW);
     let bottom = 0;
     let drift = 0;
+    let tilt = 0;
     for (let i = 0; i < this.slots.length; i++) {
       const slot = this.slots[i] as Slot;
       bottom = Math.max(bottom, slot.y + h);
       const b = this.bottles[i];
-      // Once motion has settled a bottle sits on its slot; anything else means
-      // a stale tween landed after the layout that should have placed it.
-      if (b && this.pouring !== i) drift = Math.max(drift, Math.abs(b.y - slot.y));
+      // Once motion has settled a bottle sits upright on its slot; anything
+      // else means a stale or killed tween left it somewhere the layout did
+      // not put it (sideways drift counts: see undo()).
+      if (b && this.pouring !== i) {
+        drift = Math.max(drift, Math.abs(b.y - slot.y), Math.abs(b.x - slot.x));
+        tilt = Math.max(tilt, Math.abs(b.rotation));
+      }
     }
-    return { viewW: this.viewW, viewH: this.viewH, bodyW: this.bodyW, bottom, drift };
+    return { viewW: this.viewW, viewH: this.viewH, bodyW: this.bodyW, bottom, drift, tilt };
   }
 
   // ---------------------------------------------------------------- layout
@@ -639,6 +646,10 @@ export class BoardView {
     dst.x = dstSlot.x;
     dst.y = dstSlot.y;
     dst.rotation = 0;
+    // Either may have been mid fade-in (a bottle just added): killing its
+    // tween must not leave it half transparent.
+    src.alpha = 1;
+    dst.alpha = 1;
 
     const dir: 1 | -1 = dstSlot.x >= srcSlot.x ? 1 : -1;
     const angle = dir * POUR_ANGLE;
@@ -912,15 +923,25 @@ export class BoardView {
       // Undoing the sealing pour unseals the bottle.
       b.setCapped(isComplete(this.board[idx] as ColorId[]) && !this.isCauldron(idx), false);
       b.agitate(0.7);
+      // The previous pour's source may still be drifting home (input reopens
+      // before that arc ends). Killing its tween mid-flight must also put it
+      // back in its slot: resetting only y left it stranded sideways, tilted
+      // over a neighbour and stacked above it.
+      const slot = this.slots[idx] as Slot;
+      gsap.killTweensOf(b);
+      b.x = slot.x;
+      b.rotation = 0;
+      b.zIndex = 0;
+      // A just-added bottle may have been mid fade-in (addTube).
+      b.alpha = 1;
       if (this.motionScale >= 1) {
-        const slot = this.slots[idx] as Slot;
-        gsap.killTweensOf(b);
-        b.rotation = 0;
         gsap.fromTo(
           b,
           { y: slot.y - 12 },
           { y: slot.y, duration: 0.3, ease: 'back.out(2)' },
         );
+      } else {
+        b.y = slot.y;
       }
     }
     audio.play('powerup');

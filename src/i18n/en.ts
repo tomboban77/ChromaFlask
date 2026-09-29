@@ -127,6 +127,9 @@ export const en = {
   'skin.amber': 'Amber glass',
   'skin.emerald': 'Emerald glass',
   'skin.obsidian': 'Obsidian',
+  'skin.sapphire': 'Sapphire',
+  'skin.sunset': 'Sunset',
+  'skin.gilded': 'Gilded',
   'product.cf.bundle.starter': 'Starter Bundle',
   'product.cf.bundle.alchemist': 'Alchemist Bundle',
   'product.cf.coins.small': 'Pouch of coins',
@@ -140,6 +143,55 @@ export const en = {
   'item.hint.x3.desc': 'Reveals a winning move',
   'item.bottle.x3.title': 'Bottle ×3',
   'item.bottle.x3.desc': 'Extra room when you need it',
+  'item.lives.one.title': '+1 heart',
+  'item.lives.one.desc': 'One more try, right now',
+  'item.lives.hour.title': 'Unlimited hearts · 1h',
+  'item.lives.hour.desc': 'Play as much as you like for an hour',
+  'item.bundle.boost.title': 'Booster bundle',
+  'item.bundle.boost.desc': '3 undos, 3 hints and 1 bottle',
+  'item.undo.x10.title': 'Undo ×10',
+  'item.undo.x10.desc': 'A big stack of second chances',
+  'item.hint.x10.title': 'Hint ×10',
+  'item.hint.x10.desc': 'Winning moves for the hardest boards',
+  'item.bottle.x10.title': 'Bottle ×10',
+  'item.bottle.x10.desc': 'Room to breathe on every squeeze',
+  'level.weekly': 'Weekly {n}/{total}',
+  'daily.freezes': '🧊 Streak freezes: {n}/{max}',
+  'weekly.title': 'Weekly event',
+  'weekly.lockedShort': '🔒 Level {n}',
+  'weekly.locked': 'The weekly event opens at level {n}',
+  'weekly.board': 'Board {n}',
+  'weekly.play': 'Play ›',
+  'weekly.prize': 'Clear all {total}: +{coins} coins & Hint ×{hints}',
+  'weekly.perfectPrize': 'All {stars} ★: +{coins} more coins',
+  'weekly.ends': 'New boards in {time}',
+  'weekly.ended': 'That week\'s event has ended - new boards are waiting',
+  'toast.freezeUsed': '🧊 Streak freeze ×{used} used - your 🔥{streak} streak is safe',
+  'toast.chests': '🎁 Chapter chests opened · +{n} coins',
+  'chest.silver': 'Silver chest',
+  'chest.gold': 'Gold chest',
+  'chapter.chestFinish': '🎁 Finish the chapter: +{n}',
+  'chapter.chestNext': '🎁 {chest} at ★{stars}: +{n}',
+  'chapter.chestDone': '🎁 All chests opened',
+  'shop.owned': 'Owned {n}/{max}',
+  'shop.freezeFull': 'You already hold {max} streak freezes',
+  'win.eyebrow.weekly': 'Weekly event · board {n} of {total}',
+  'win.chest': '{chest} +{n}',
+  'win.weeklyPrize': 'Weekly prize +{n} & Hint ×{hints}',
+  'win.weeklyPerfect': 'Perfect week +{n}',
+  'win.weeklyProgress': '{n}/{total} boards this week',
+  'win.nextBoard': 'Next board',
+  'win.tryAgain': 'Try for {stars}',
+  'item.streak.freeze.title': 'Streak freeze',
+  'item.streak.freeze.desc': 'Saves your daily streak if you miss a day',
+  'win.nearMiss.one': 'So close! Just {n} move over the {stars} line',
+  'win.nearMiss.other': 'So close! Just {n} moves over the {stars} line',
+  'howto.extras': `<div class="howto">
+    <h3>Chests, events and freezes</h3>
+    <p>Every chapter holds three <b>chests</b>: bronze for finishing it, silver at 45 of its 60 stars, gold for three stars on every level. Replays count.</p>
+    <p>From level {weekly}, the <b>weekly event</b> brings five hard boards every Monday, with a prize for clearing them all and another for three stars on each.</p>
+    <p>A <b>streak freeze</b> from the shop saves your daily-challenge streak when you miss a day. You can hold up to {freezes}.</p>
+  </div>`,
 
   // powerups / game HUD
   'powerup.undo': 'Undo',
@@ -445,8 +497,8 @@ export const en = {
   'howto.title': 'How to play',
   'howto.more': `<div class="howto">
     <h3>Limits, clock and streaks</h3>
-    <p>Each attempt allows at most <b>{undo} undos</b>, <b>{hint} hints</b> and <b>{bottle} extra bottles</b>, however many you own.</p>
-    <p>The <b>clock</b> shows a bonus window: clear a level for the first time before it runs out for bonus coins. It never fails a level.</p>
+    <p>Each attempt allows at most <b>Undo ×{undo}</b>, <b>Hint ×{hint}</b> and <b>extra Bottle ×{bottle}</b>, however many you own.</p>
+    <p>The <b>clock</b> shows a bonus window: clear a level for the first time with <b>three stars</b> before it runs out for bonus coins. The faster you finish, the bigger the bonus - the coin tag on the clock shrinks as time passes. It never fails a level.</p>
     <p>Clear new levels in a row without restarting or leaving them and, from the third, every win pays a <b>streak bonus</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -458,7 +510,7 @@ export const en = {
     <h3>Hearts</h3>
     <p>You lose a heart only when a level is truly <b>failed</b> - no pours left, or the game has proven it cannot be won from here - and you restart or leave it. Leaving or restarting a live level is free. Hearts refill one every 30 minutes.</p>
     <h3>Boosters</h3>
-    <p>Each attempt starts with <b>{undo} free undos</b> and <b>{hint} free hint</b>. Extra bottles and more hints or undos come from the shop, bought with the coins you earn.</p>
+    <p>Each attempt starts with a free <b>Undo ×{undo}</b>, and levels 1-{levels} also give a free <b>Hint ×{hint}</b>. Extra bottles and more hints or undos come from the shop, bought with the coins you earn.</p>
     <h3>Twists</h3>
     <p>The gold-rimmed <b>Cauldron</b> accepts any colour on top but must be empty to win. <b>Murky potions</b> hide their colours until they reach the surface. A <b>locked bottle</b> cannot be poured into or out of until you have sealed the number of other bottles shown by the dots under its padlock. The teal <b>one-way flask</b> takes pours but never gives them back, and the level is only won once it is full - choose its colour with care.</p>
   </div>`,

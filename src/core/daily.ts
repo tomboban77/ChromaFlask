@@ -11,9 +11,15 @@ import type { LevelSpec } from './types';
 
 /** Daily ids start here; campaign ids are 1..300 and endless ids follow on. */
 export const DAILY_BASE = 1_000_000;
+/**
+ * Weekly-event ids start here (see weekly.ts). Defined beside DAILY_BASE so
+ * the two ranges are visibly disjoint: day numbers stay far below a million
+ * for the next two thousand years.
+ */
+export const WEEKLY_BASE = 2_000_000;
 
 export function isDaily(id: number): boolean {
-  return id >= DAILY_BASE;
+  return id >= DAILY_BASE && id < WEEKLY_BASE;
 }
 
 const MS_PER_DAY = 86_400_000;
@@ -85,4 +91,28 @@ export function advanceStreak(s: DailyStreak, day: number): DailyStreak {
  */
 export function currentStreak(s: DailyStreak, today: number): number {
   return s.lastDay === today || s.lastDay === today - 1 ? s.streak : 0;
+}
+
+// ---------------------------------------------------------- streak freeze
+/** Most streak freezes a player can hold at once. */
+export const MAX_STREAK_FREEZES = 2;
+
+/**
+ * Spend streak freezes on the days missed since the last clear. Each freeze
+ * covers one whole missed day; the streak is then kept as if yesterday had
+ * been played (it does not grow on frozen days - the next clear extends it by
+ * one, as usual). If more days were missed than freezes are held, nothing is
+ * spent and the streak lapses as it always did: a freeze never buys half a
+ * rescue. Idempotent: once applied, yesterday counts, so nothing is missed.
+ */
+export function applyStreakFreezes(
+  s: DailyStreak,
+  today: number,
+  freezes: number,
+): { streak: DailyStreak; used: number } {
+  const missed = today - s.lastDay - 1;
+  if (s.streak <= 0 || s.lastDay < 0 || missed <= 0 || missed > freezes) {
+    return { streak: s, used: 0 };
+  }
+  return { streak: { streak: s.streak, lastDay: today - 1 }, used: missed };
 }

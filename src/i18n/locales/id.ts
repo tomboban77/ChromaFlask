@@ -110,6 +110,9 @@ const table: Record<string, string> = {
   'skin.amber': 'Kaca amber',
   'skin.emerald': 'Kaca zamrud',
   'skin.obsidian': 'Obsidian',
+  'skin.sapphire': 'Safir',
+  'skin.sunset': 'Senja',
+  'skin.gilded': 'Berlapis emas',
   'product.cf.bundle.starter': 'Paket pemula',
   'product.cf.bundle.alchemist': 'Paket alkemis',
   'product.cf.coins.small': 'Kantong koin',
@@ -123,6 +126,54 @@ const table: Record<string, string> = {
   'item.hint.x3.desc': 'Menunjukkan langkah yang menang',
   'item.bottle.x3.title': 'Botol ×3',
   'item.bottle.x3.desc': 'Ruang ekstra saat kamu butuh',
+  'item.lives.one.title': '+1 nyawa',
+  'item.lives.one.desc': 'Satu kesempatan lagi, sekarang juga',
+  'item.lives.hour.title': 'Nyawa tanpa batas · 1 jam',
+  'item.lives.hour.desc': 'Main sepuasnya selama satu jam',
+  'item.bundle.boost.title': 'Paket booster',
+  'item.bundle.boost.desc': '3 urungkan, 3 petunjuk, dan 1 botol',
+  'item.undo.x10.title': 'Urungkan ×10',
+  'item.undo.x10.desc': 'Banyak kesempatan kedua',
+  'item.hint.x10.title': 'Petunjuk ×10',
+  'item.hint.x10.desc': 'Langkah menang untuk papan tersulit',
+  'item.bottle.x10.title': 'Botol ×10',
+  'item.bottle.x10.desc': 'Ruang lega di setiap level sempit',
+  'level.weekly': 'Mingguan {n}/{total}',
+  'daily.freezes': '🧊 Pembeku runtutan: {n}/{max}',
+  'weekly.title': 'Event mingguan',
+  'weekly.lockedShort': '🔒 Level {n}',
+  'weekly.locked': 'Event mingguan terbuka di level {n}',
+  'weekly.board': 'Papan {n}',
+  'weekly.play': 'Main ›',
+  'weekly.prize': 'Selesaikan semua {total}: +{coins} koin & Petunjuk ×{hints}',
+  'weekly.perfectPrize': 'Semua {stars} ★: +{coins} koin lagi',
+  'weekly.ends': 'Papan baru dalam {time}',
+  'weekly.ended': 'Event minggu itu sudah berakhir - papan baru sudah menunggu',
+  'toast.freezeUsed': '🧊 Pembeku runtutan ×{used} dipakai - runtutan 🔥{streak} kamu aman',
+  'toast.chests': '🎁 Peti bab dibuka · +{n} koin',
+  'chest.silver': 'Peti perak',
+  'chest.gold': 'Peti emas',
+  'chapter.chestFinish': '🎁 Selesaikan bab: +{n}',
+  'chapter.chestNext': '🎁 {chest} di ★{stars}: +{n}',
+  'chapter.chestDone': '🎁 Semua peti terbuka',
+  'shop.owned': 'Dimiliki {n}/{max}',
+  'shop.freezeFull': 'Kamu sudah punya {max} pembeku runtutan',
+  'win.eyebrow.weekly': 'Event mingguan · papan {n} dari {total}',
+  'win.chest': '{chest} +{n}',
+  'win.weeklyPrize': 'Hadiah mingguan +{n} & Petunjuk ×{hints}',
+  'win.weeklyPerfect': 'Minggu sempurna +{n}',
+  'win.weeklyProgress': '{n}/{total} papan minggu ini',
+  'win.nextBoard': 'Papan berikutnya',
+  'win.tryAgain': 'Coba lagi untuk {stars}',
+  'item.streak.freeze.title': 'Pembeku runtutan',
+  'item.streak.freeze.desc': 'Menyelamatkan runtutan harianmu jika kamu melewatkan sehari',
+  'win.nearMiss.other': 'Hampir! Hanya lebih {n} langkah dari batas {stars}',
+  'howto.extras': `<div class="howto">
+    <h3>Peti, event, dan pembeku</h3>
+    <p>Setiap bab punya tiga <b>peti</b>: perunggu saat bab selesai, perak di 45 dari 60 bintang, dan emas untuk tiga bintang di setiap level. Main ulang ikut dihitung.</p>
+    <p>Mulai level {weekly}, <b>event mingguan</b> menghadirkan lima papan sulit setiap Senin, dengan hadiah jika semuanya selesai dan hadiah lain untuk tiga bintang di setiap papan.</p>
+    <p><b>Pembeku runtutan</b> dari toko menyelamatkan runtutan tantangan harianmu jika kamu melewatkan sehari. Kamu bisa menyimpan hingga {freezes}.</p>
+  </div>`,
 
   'powerup.undo': 'Urungkan',
   'powerup.hint': 'Petunjuk',
@@ -371,7 +422,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>Batas, jam, dan beruntun</h3>
     <p>Setiap percobaan paling banyak <b>{undo} urungkan</b>, <b>{hint} petunjuk</b>, dan <b>{bottle} botol tambahan</b>, berapa pun yang kamu punya.</p>
-    <p><b>Jam</b> menunjukkan jendela bonus: selesaikan level untuk pertama kali sebelum habis untuk koin tambahan. Jam tidak pernah membuatmu gagal.</p>
+    <p><b>Jam</b> menunjukkan jendela bonus: selesaikan level untuk pertama kali dengan <b>tiga bintang</b> sebelum habis untuk koin tambahan. Makin cepat selesai, makin besar bonusnya - label koin di jam berkurang seiring waktu. Jam tidak pernah membuatmu gagal.</p>
     <p>Selesaikan level baru berturut-turut tanpa mengulang atau keluar, dan mulai yang ketiga setiap kemenangan membayar <b>bonus beruntun</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -383,7 +434,7 @@ const table: Record<string, string> = {
     <h3>Nyawa</h3>
     <p>Kamu hanya kehilangan nyawa saat level benar-benar <b>gagal</b> (tidak ada tuangan tersisa, atau game sudah membuktikan tidak bisa dimenangkan dari sini) dan kamu memulai ulang atau keluar. Keluar atau memulai ulang level yang masih berjalan itu gratis. Nyawa terisi satu tiap 30 menit.</p>
     <h3>Booster</h3>
-    <p>Setiap percobaan dimulai dengan <b>{undo} urungkan gratis</b> dan <b>{hint} petunjuk gratis</b>. Botol tambahan serta petunjuk atau urungkan ekstra dibeli di toko dengan koin yang kamu dapat.</p>
+    <p>Setiap percobaan dimulai dengan <b>{undo} urungkan gratis</b>, dan level 1-{levels} juga memberi <b>{hint} petunjuk gratis</b>. Botol tambahan serta petunjuk atau urungkan ekstra dibeli di toko dengan koin yang kamu dapat.</p>
     <h3>Kejutan</h3>
     <p><b>Kuali</b> berbingkai emas menerima warna apa pun di atasnya tapi harus kosong untuk menang. <b>Ramuan keruh</b> menyembunyikan warnanya sampai mencapai permukaan. <b>Botol terkunci</b> tidak bisa diisi atau dituang sampai kamu menyegel sejumlah botol sesuai titik di bawah gemboknya. <b>Botol satu arah</b> berwarna toska menerima tuangan tapi tidak pernah mengembalikannya, dan level baru dimenangkan saat botol itu penuh: pilih warnanya dengan cermat.</p>
   </div>`,

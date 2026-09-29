@@ -112,6 +112,9 @@ const table: Record<string, string> = {
   'skin.amber': 'Verre ambré',
   'skin.emerald': 'Verre émeraude',
   'skin.obsidian': 'Obsidienne',
+  'skin.sapphire': 'Saphir',
+  'skin.sunset': 'Coucher de soleil',
+  'skin.gilded': 'Doré',
   'product.cf.bundle.starter': 'Pack de départ',
   'product.cf.bundle.alchemist': 'Pack alchimiste',
   'product.cf.coins.small': 'Bourse de pièces',
@@ -125,6 +128,55 @@ const table: Record<string, string> = {
   'item.hint.x3.desc': 'Révèle un coup gagnant',
   'item.bottle.x3.title': 'Bouteille ×3',
   'item.bottle.x3.desc': "De la place quand il en faut",
+  'item.lives.one.title': '+1 cœur',
+  'item.lives.one.desc': 'Un essai de plus, tout de suite',
+  'item.lives.hour.title': 'Cœurs illimités · 1 h',
+  'item.lives.hour.desc': 'Joue autant que tu veux pendant une heure',
+  'item.bundle.boost.title': 'Pack de bonus',
+  'item.bundle.boost.desc': '3 annulations, 3 indices et 1 bouteille',
+  'item.undo.x10.title': 'Annuler ×10',
+  'item.undo.x10.desc': 'Une bonne réserve de secondes chances',
+  'item.hint.x10.title': 'Indice ×10',
+  'item.hint.x10.desc': 'Des coups gagnants pour les niveaux les plus durs',
+  'item.bottle.x10.title': 'Bouteille ×10',
+  'item.bottle.x10.desc': 'De l’air pour chaque niveau serré',
+  'level.weekly': 'Hebdo {n}/{total}',
+  'daily.freezes': '🧊 Gels de série : {n}/{max}',
+  'weekly.title': 'Événement de la semaine',
+  'weekly.lockedShort': '🔒 Niveau {n}',
+  'weekly.locked': 'L\'événement de la semaine s\'ouvre au niveau {n}',
+  'weekly.board': 'Plateau {n}',
+  'weekly.play': 'Jouer ›',
+  'weekly.prize': 'Les {total} réussis : +{coins} pièces et Indice ×{hints}',
+  'weekly.perfectPrize': 'Les {stars} ★ : +{coins} pièces en plus',
+  'weekly.ends': 'Nouveaux plateaux dans {time}',
+  'weekly.ended': 'L\'événement de cette semaine est terminé : de nouveaux plateaux t\'attendent',
+  'toast.freezeUsed': '🧊 Gel de série ×{used} utilisé : ta série 🔥{streak} est sauve',
+  'toast.chests': '🎁 Coffres de chapitre ouverts · +{n} pièces',
+  'chest.silver': 'Coffre d\'argent',
+  'chest.gold': 'Coffre d\'or',
+  'chapter.chestFinish': '🎁 Termine le chapitre : +{n}',
+  'chapter.chestNext': '🎁 {chest} à ★{stars} : +{n}',
+  'chapter.chestDone': '🎁 Tous les coffres ouverts',
+  'shop.owned': 'Possédés {n}/{max}',
+  'shop.freezeFull': 'Tu as déjà {max} gels de série',
+  'win.eyebrow.weekly': 'Événement de la semaine · plateau {n} sur {total}',
+  'win.chest': '{chest} +{n}',
+  'win.weeklyPrize': 'Prix de la semaine +{n} et Indice ×{hints}',
+  'win.weeklyPerfect': 'Semaine parfaite +{n}',
+  'win.weeklyProgress': '{n}/{total} plateaux cette semaine',
+  'win.nextBoard': 'Plateau suivant',
+  'win.tryAgain': 'Viser {stars}',
+  'item.streak.freeze.title': 'Gel de série',
+  'item.streak.freeze.desc': 'Sauve ta série quotidienne si tu rates un jour',
+  'win.nearMiss.one': 'Presque ! Seulement {n} coup au-dessus de {stars}',
+  'win.nearMiss.other': 'Presque ! Seulement {n} coups au-dessus de {stars}',
+  'howto.extras': `<div class="howto">
+    <h3>Coffres, événements et gels</h3>
+    <p>Chaque chapitre cache trois <b>coffres</b> : bronze pour le terminer, argent à 45 de ses 60 étoiles, or pour trois étoiles à chaque niveau. Rejouer compte.</p>
+    <p>Dès le niveau {weekly}, l'<b>événement de la semaine</b> propose cinq plateaux difficiles chaque lundi, avec un prix pour tous les réussir et un autre pour trois étoiles sur chacun.</p>
+    <p>Un <b>gel de série</b> de la boutique sauve ta série du défi quotidien si tu rates un jour. Tu peux en garder jusqu'à {freezes}.</p>
+  </div>`,
 
   'powerup.undo': 'Annuler',
   'powerup.hint': 'Indice',
@@ -378,8 +430,8 @@ const table: Record<string, string> = {
   'howto.title': 'Comment jouer',
   'howto.more': `<div class="howto">
     <h3>Limites, chrono et séries</h3>
-    <p>Chaque essai permet au plus <b>{undo} annulations</b>, <b>{hint} indices</b> et <b>{bottle} flacons en plus</b>, quel que soit ton stock.</p>
-    <p>Le <b>chrono</b> affiche une fenêtre de bonus : termine un niveau pour la première fois avant la fin pour gagner des pièces en plus. Il ne fait jamais perdre un niveau.</p>
+    <p>Chaque essai permet au plus <b>Annuler ×{undo}</b>, <b>Indice ×{hint}</b> et <b>Flacon en plus ×{bottle}</b>, quel que soit ton stock.</p>
+    <p>Le <b>chrono</b> affiche une fenêtre de bonus : termine un niveau pour la première fois avec <b>trois étoiles</b> avant la fin pour gagner des pièces en plus. Plus tu es rapide, plus le bonus est gros : l'étiquette de pièces du chrono baisse avec le temps. Il ne fait jamais perdre un niveau.</p>
     <p>Enchaîne de nouveaux niveaux sans recommencer ni quitter et, dès le troisième, chaque victoire rapporte un <b>bonus de série</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -391,7 +443,7 @@ const table: Record<string, string> = {
     <h3>Cœurs</h3>
     <p>Tu ne perds un cœur que lorsqu'un niveau est vraiment <b>perdu</b> (plus aucun versement possible, ou le jeu a prouvé qu'il ne peut plus être gagné) et que tu recommences ou quittes. Quitter ou recommencer un niveau en cours est gratuit. Un cœur revient toutes les 30 minutes.</p>
     <h3>Bonus</h3>
-    <p>Chaque essai commence avec <b>{undo} annulations gratuites</b> et <b>{hint} indice gratuit</b>. Les bouteilles supplémentaires et les indices ou annulations en plus s'achètent en boutique avec les pièces gagnées.</p>
+    <p>Chaque essai commence avec <b>Annuler ×{undo}</b> offert, et les niveaux 1 à {levels} offrent aussi <b>Indice ×{hint}</b>. Les bouteilles supplémentaires et les indices ou annulations en plus s'achètent en boutique avec les pièces gagnées.</p>
     <h3>Variantes</h3>
     <p>Le <b>chaudron</b> cerclé d'or accepte n'importe quelle couleur dessus mais doit être vide pour gagner. Les <b>potions troubles</b> cachent leurs couleurs jusqu'à ce qu'elles remontent en surface. Une <b>bouteille verrouillée</b> ne peut ni recevoir ni donner tant que tu n'as pas scellé le nombre de bouteilles indiqué par les points sous son cadenas. La <b>fiole à sens unique</b> turquoise reçoit les versements sans jamais les rendre, et le niveau n'est gagné qu'une fois qu'elle est pleine : choisis sa couleur avec soin.</p>
   </div>`,

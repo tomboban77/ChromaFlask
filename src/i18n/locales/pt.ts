@@ -112,6 +112,9 @@ const table: Record<string, string> = {
   'skin.amber': 'Vidro âmbar',
   'skin.emerald': 'Vidro esmeralda',
   'skin.obsidian': 'Obsidiana',
+  'skin.sapphire': 'Safira',
+  'skin.sunset': 'Pôr do sol',
+  'skin.gilded': 'Dourado',
   'product.cf.bundle.starter': 'Pacote inicial',
   'product.cf.bundle.alchemist': 'Pacote alquimista',
   'product.cf.coins.small': 'Saquinho de moedas',
@@ -125,6 +128,55 @@ const table: Record<string, string> = {
   'item.hint.x3.desc': 'Revela uma jogada vencedora',
   'item.bottle.x3.title': 'Garrafa ×3',
   'item.bottle.x3.desc': 'Espaço extra quando você precisar',
+  'item.lives.one.title': '+1 coração',
+  'item.lives.one.desc': 'Mais uma tentativa, agora mesmo',
+  'item.lives.hour.title': 'Corações ilimitados · 1 h',
+  'item.lives.hour.desc': 'Jogue quanto quiser por uma hora',
+  'item.bundle.boost.title': 'Pacote de reforços',
+  'item.bundle.boost.desc': '3 desfazer, 3 dicas e 1 garrafa',
+  'item.undo.x10.title': 'Desfazer ×10',
+  'item.undo.x10.desc': 'Um bom estoque de segundas chances',
+  'item.hint.x10.title': 'Dica ×10',
+  'item.hint.x10.desc': 'Jogadas vencedoras para os níveis mais difíceis',
+  'item.bottle.x10.title': 'Garrafa ×10',
+  'item.bottle.x10.desc': 'Espaço de sobra em cada nível apertado',
+  'level.weekly': 'Semanal {n}/{total}',
+  'daily.freezes': '🧊 Protetores de sequência: {n}/{max}',
+  'weekly.title': 'Evento semanal',
+  'weekly.lockedShort': '🔒 Nível {n}',
+  'weekly.locked': 'O evento semanal abre no nível {n}',
+  'weekly.board': 'Tabuleiro {n}',
+  'weekly.play': 'Jogar ›',
+  'weekly.prize': 'Vença os {total}: +{coins} moedas e Dica ×{hints}',
+  'weekly.perfectPrize': 'Todas as {stars} ★: +{coins} moedas extras',
+  'weekly.ends': 'Novos tabuleiros em {time}',
+  'weekly.ended': 'O evento daquela semana acabou - há tabuleiros novos esperando',
+  'toast.freezeUsed': '🧊 Protetor de sequência ×{used} usado - sua sequência 🔥{streak} está salva',
+  'toast.chests': '🎁 Baús de capítulo abertos · +{n} moedas',
+  'chest.silver': 'Baú de prata',
+  'chest.gold': 'Baú de ouro',
+  'chapter.chestFinish': '🎁 Termine o capítulo: +{n}',
+  'chapter.chestNext': '🎁 {chest} com ★{stars}: +{n}',
+  'chapter.chestDone': '🎁 Todos os baús abertos',
+  'shop.owned': 'Você tem {n}/{max}',
+  'shop.freezeFull': 'Você já tem {max} protetores de sequência',
+  'win.eyebrow.weekly': 'Evento semanal · tabuleiro {n} de {total}',
+  'win.chest': '{chest} +{n}',
+  'win.weeklyPrize': 'Prêmio semanal +{n} e Dica ×{hints}',
+  'win.weeklyPerfect': 'Semana perfeita +{n}',
+  'win.weeklyProgress': '{n}/{total} tabuleiros nesta semana',
+  'win.nextBoard': 'Próximo tabuleiro',
+  'win.tryAgain': 'Tente {stars}',
+  'item.streak.freeze.title': 'Protetor de sequência',
+  'item.streak.freeze.desc': 'Salva sua sequência diária se você perder um dia',
+  'win.nearMiss.one': 'Quase! Só {n} jogada acima do limite de {stars}',
+  'win.nearMiss.other': 'Quase! Só {n} jogadas acima do limite de {stars}',
+  'howto.extras': `<div class="howto">
+    <h3>Baús, eventos e protetores</h3>
+    <p>Cada capítulo guarda três <b>baús</b>: bronze ao terminá-lo, prata com 45 das suas 60 estrelas e ouro com três estrelas em todos os níveis. Jogar de novo conta.</p>
+    <p>A partir do nível {weekly}, o <b>evento semanal</b> traz cinco tabuleiros difíceis toda segunda-feira, com um prêmio por vencer todos e outro por três estrelas em cada um.</p>
+    <p>Um <b>protetor de sequência</b> da loja salva sua sequência do desafio diário se você perder um dia. Você pode ter até {freezes}.</p>
+  </div>`,
 
   'powerup.undo': 'Desfazer',
   'powerup.hint': 'Dica',
@@ -378,8 +430,8 @@ const table: Record<string, string> = {
   'howto.title': 'Como jogar',
   'howto.more': `<div class="howto">
     <h3>Limites, relógio e sequências</h3>
-    <p>Cada tentativa permite no máximo <b>{undo} desfazer</b>, <b>{hint} dicas</b> e <b>{bottle} garrafas extras</b>, não importa quantas você tenha.</p>
-    <p>O <b>relógio</b> mostra uma janela de bônus: vença um nível pela primeira vez antes que ela acabe e ganhe moedas extras. Ele nunca faz você perder um nível.</p>
+    <p>Cada tentativa permite no máximo <b>Desfazer ×{undo}</b>, <b>Dica ×{hint}</b> e <b>Garrafa extra ×{bottle}</b>, não importa quantas você tenha.</p>
+    <p>O <b>relógio</b> mostra uma janela de bônus: vença um nível pela primeira vez com <b>três estrelas</b> antes que ela acabe e ganhe moedas extras. Quanto mais rápido você terminar, maior o bônus - a etiqueta de moedas do relógio diminui com o tempo. Ele nunca faz você perder um nível.</p>
     <p>Vença níveis novos em sequência sem reiniciar nem sair e, a partir do terceiro, cada vitória paga um <b>bônus de sequência</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -391,7 +443,7 @@ const table: Record<string, string> = {
     <h3>Corações</h3>
     <p>Você só perde um coração quando um nível está realmente <b>perdido</b> (sem despejos possíveis, ou o jogo provou que não dá mais para vencer) e você reinicia ou sai. Sair ou reiniciar um nível em andamento é grátis. Os corações recarregam um a cada 30 minutos.</p>
     <h3>Reforços</h3>
-    <p>Cada tentativa começa com <b>{undo} desfazer grátis</b> e <b>{hint} dica grátis</b>. Garrafas extras e mais dicas ou desfazer vêm da loja, compradas com as moedas que você ganha.</p>
+    <p>Cada tentativa começa com <b>Desfazer ×{undo}</b> grátis, e os níveis 1-{levels} também dão <b>Dica ×{hint}</b> grátis. Garrafas extras e mais dicas ou desfazer vêm da loja, compradas com as moedas que você ganha.</p>
     <h3>Reviravoltas</h3>
     <p>O <b>caldeirão</b> de borda dourada aceita qualquer cor por cima, mas precisa estar vazio para vencer. <b>Poções turvas</b> escondem suas cores até chegarem à superfície. Uma <b>garrafa bloqueada</b> não recebe nem entrega despejos até que você tenha selado o número de garrafas indicado pelos pontos sob o cadeado. O <b>frasco de mão única</b> turquesa recebe despejos mas nunca os devolve, e o nível só é vencido quando ele está cheio: escolha a cor com cuidado.</p>
   </div>`,
