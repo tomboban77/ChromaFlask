@@ -2,13 +2,13 @@
   "redirects": [
     {
       "source": "/get",
-      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*android.*" }],
+      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(android|windows).*" }],
       "destination": "https://play.google.com/store/apps/details?id=com.prismpotions.app",
       "permanent": false
     },
     {
       "source": "/get",
-      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(iphone|ipad|ipod).*" }],
+      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(iphone|ipad|ipod|macintosh).*" }],
       "destination": "https://apps.apple.com/app/id6810802796",
       "permanent": false
     },
