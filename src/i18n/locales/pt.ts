@@ -220,6 +220,24 @@ const table: Record<string, string> = {
   'toast.padlockOpen': 'Cadeado aberto!',
   'toast.stuckHint': 'Travou? Tente uma dica.',
   'toast.noWin': 'Não há como vencer daqui: use Desfazer ou Reiniciar',
+  'toast.noWinRestart': 'Esta poção não pode mais ser concluída: reinicie e planeje com antecedência',
+  'toast.recipe': 'Siga a receita: sele a próxima cor antes de qualquer outra',
+  'toast.label': 'Este frasco só aceita a cor da etiqueta',
+  'hud.pourBudget': '{used}/{max} despejos',
+  'hud.recipe': 'Sele em ordem',
+  'precision.title': 'Sem despejos',
+  'precision.body': 'Esta poção devia ser concluída em {n} despejos. Desfaça para achar um caminho mais curto ou recomece.',
+  'twist.recipe.title': 'Receita',
+  'twist.recipe.body': '<p>Sele primeiro estas cores, nesta ordem:</p><p class="twistrow">{colors}</p><p>Nenhuma outra garrafa pode ser selada antes, então evite que outras cores encham uma garrafa cedo demais. O cartão no topo mostra seu progresso - toque nele para ver isto de novo.</p>',
+  'twist.labels.title': 'Frasco etiquetado',
+  'twist.labels.body': '<p>Um frasco com borda colorida só aceita essa cor:</p><p class="twistrow">{colors}</p><p>É espaço extra - mas só para o líquido certo. Traga essa cor para o topo primeiro para aproveitá-lo.</p>',
+  'twist.precision.title': 'Despejo de precisão',
+  'twist.precision.body': '<p>Termine esta poção em <b>{n} despejos</b> ou menos.</p><p>Se acabarem antes, a tentativa falha. O contador no topo mostra os despejos usados - planeje seu caminho antes de começar.</p>',
+  'twist.cauldron.title': 'O caldeirão',
+  'twist.lock.title': 'Garrafa trancada',
+  'twist.oneWay.title': 'Frasco de mão única',
+  'twist.murky.title': 'Poção turva',
+  'rules.title': 'Regras deste nível',
   'toast.locked.one': 'Bloqueada: sele mais uma garrafa para abri-la',
   'toast.locked.other': 'Bloqueada: sele mais {n} garrafas para abri-la',
   'toast.oneWay': 'Frasco de mão única: o que entra não sai, e ele precisa estar cheio para vencer',
@@ -427,6 +445,10 @@ const table: Record<string, string> = {
   'reset.body': 'Isso apaga tudo o que você conquistou neste dispositivo: níveis, estrelas, moedas, reforços, visuais de garrafa, conquistas e sua sequência diária. O jogo recomeça no nível 1. Suas configurações são mantidas.',
   'reset.keep': 'Continuar jogando',
 
+  'howto.twists': `<div class="howto">
+    <h3>Mais reviravoltas</h3>
+    <p>Um cartão de <b>receita</b> lista cores que devem ser seladas primeiro, nessa ordem: até concluir, nenhuma outra garrafa pode ser selada. Um <b>frasco etiquetado</b> tem uma cor na borda e só aceita essa cor. Um <b>despejo de precisão</b> dá um número fixo de despejos - se acabarem antes da poção, a tentativa falha, então planeje todo o caminho antes de começar.</p>
+  </div>`,
   'howto.title': 'Como jogar',
   'howto.more': `<div class="howto">
     <h3>Limites, relógio e sequências</h3>

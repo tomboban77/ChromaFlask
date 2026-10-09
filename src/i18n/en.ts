@@ -240,6 +240,24 @@ export const en = {
   'toast.padlockOpen': 'Padlock open!',
   'toast.stuckHint': 'Stuck? Try a hint.',
   'toast.noWin': 'No way to win from here - use Undo or Restart',
+  'toast.noWinRestart': "This potion can't be finished any more - restart and plan ahead",
+  'toast.recipe': 'Follow the recipe: seal its next colour before any other',
+  'toast.label': 'This flask only takes the colour on its label',
+  'hud.pourBudget': '{used}/{max} pours',
+  'hud.recipe': 'Seal in order',
+  'precision.title': 'Out of pours',
+  'precision.body': 'This potion had to be finished in {n} pours. Undo to find a shorter line, or start again.',
+  'twist.recipe.title': 'Recipe',
+  'twist.recipe.body': '<p>Seal these colours first, in this order:</p><p class="twistrow">{colors}</p><p>No other bottle can be sealed until they are done, so keep the other colours from filling a bottle too early. The card at the top tracks your progress - tap it to see this again.</p>',
+  'twist.labels.title': 'Labelled flask',
+  'twist.labels.body': '<p>A flask with a coloured rim takes only that colour:</p><p class="twistrow">{colors}</p><p>It is extra room - but only for the right liquid. Bring that colour to the top first to make use of it.</p>',
+  'twist.precision.title': 'Precision pour',
+  'twist.precision.body': '<p>Finish this potion in <b>{n} pours</b> or fewer.</p><p>Run out before it is done and the attempt fails. The counter at the top shows the pours you have used - plan your line before you start.</p>',
+  'twist.cauldron.title': 'The Cauldron',
+  'twist.lock.title': 'Locked bottle',
+  'twist.oneWay.title': 'One-way flask',
+  'twist.murky.title': 'Murky potion',
+  'rules.title': "This level's rules",
   'toast.locked.one': 'Locked - seal one more bottle to open it',
   'toast.locked.other': 'Locked - seal {n} more bottles to open it',
   'toast.oneWay': 'One-way flask: pours go in, never out - and it must be full to win',
@@ -494,6 +512,10 @@ export const en = {
   'reset.keep': 'Keep playing',
 
   // how to play
+  'howto.twists': `<div class="howto">
+    <h3>More twists</h3>
+    <p>A <b>recipe</b> card lists colours that must be sealed first, in that order: until it is done, no other bottle can be sealed. A <b>labelled flask</b> wears one colour on its rim and takes only that colour. A <b>precision pour</b> gives you a set number of pours - run out before the potion is done and the attempt fails, so plan the whole line before you start.</p>
+  </div>`,
   'howto.title': 'How to play',
   'howto.more': `<div class="howto">
     <h3>Limits, clock and streaks</h3>

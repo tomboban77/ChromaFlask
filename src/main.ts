@@ -51,7 +51,7 @@ import gsap from 'gsap';
 import { audio } from '@/audio/AudioEngine';
 import { GameStage } from '@/render/GameStage';
 import { BoardView } from '@/render/BoardView';
-import { PALETTE, SKINS, cssHex, skinById, type GlassSkin } from '@/render/theme';
+import { GLYPH_CHARS, PALETTE, SKINS, colorOf, cssHex, skinById, type GlassSkin } from '@/render/theme';
 
 import {
   $, ModalHost, ToastHost, el, escapeHtml, haptic, installNativeHaptics, setHapticsEnabled,
@@ -253,6 +253,15 @@ function formatCountdown(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/** The twists a level can carry, each explained in its own dialog. */
+type Twist = 'recipe' | 'labels' | 'precision' | 'cauldron' | 'lock' | 'oneWay' | 'murky';
+
+/** The save flag recording that a twist has been introduced. */
+const TWIST_SEEN = {
+  recipe: 'recipeSeen', labels: 'labelSeen', precision: 'precisionSeen', cauldron: 'cauldronSeen',
+  lock: 'lockSeen', oneWay: 'oneWaySeen', murky: 'murkySeen',
+} as const satisfies Record<Twist, string>;
+
 class App {
   private readonly remote = new RemoteConfig();
   private readonly analytics = new Analytics();
@@ -388,6 +397,8 @@ class App {
       onInvalid: () => haptic([12, 40, 12], 'error'),
       onLockedTap: (left) => this.explainLock(left),
       onOneWayTap: () => this.explainOneWay(),
+      onRuleBlocked: (rule) => this.explainRule(rule),
+      onOutOfPours: () => this.onOutOfPours(),
       onUnlocked: () => {
         audio.play('unlock');
         haptic([10, 30, 20], 'success');
@@ -541,7 +552,10 @@ class App {
    * the `import.meta.env.DEV` guard, so it cannot be used to cheat a release.
    */
   private installDevHooks(): void {
-    if (!import.meta.env.DEV) return;
+    // The dev server, and the emulator-only `native-debug` build
+    // (`npm run cap:sync:debug`). Never the web or store builds.
+    if (!import.meta.env.DEV && import.meta.env.MODE !== 'native-debug') return;
+    this.installLevelPicker();
     const api = {
       tap: (i: number) => this.board.handleTap(i),
       start: (id: number) => this.startLevel(id),
@@ -574,6 +588,7 @@ class App {
         pourHeadroom: this.board.pourHeadroom,
         moves: this.board.moveCount,
         tubes: this.board.tubeCount,
+        board: this.board.snapshot(),
         selected: this.board.selectedIndex,
         busy: this.board.isBusy,
         coins: this.save.coins,
@@ -609,6 +624,63 @@ class App {
       },
     };
     (window as unknown as Record<string, unknown>).__cf = api;
+  }
+
+  /** Set when the test picker opened, so the press's trailing click is ignored. */
+  private pickerOpened = false;
+
+  /**
+   * Test builds only: long-press the level label in a level to jump anywhere
+   * (locks ignored), win the current board, or top up coins - so a tester on
+   * an emulator can reach level 21 without playing twenty levels first. A
+   * plain tap on the label stays the rules dialog.
+   */
+  private installLevelPicker(): void {
+    const pill = document.querySelector('.levelpill');
+    let timer: number | null = null;
+    const cancel = (): void => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = null;
+    };
+    pill?.addEventListener('pointerup', cancel);
+    pill?.addEventListener('pointerleave', cancel);
+    pill?.addEventListener('pointerdown', () => {
+      cancel();
+      timer = window.setTimeout(() => {
+        timer = null;
+        this.pickerOpened = true;
+        this.openLevelPicker();
+      }, 700);
+    });
+  }
+
+  private openLevelPicker(): void {
+    const answer = window.prompt(
+      'Test tools\n• level number (1-300, 301+ endless) to jump there\n• w = win this level\n• c = +5000 coins',
+    )?.trim().toLowerCase();
+    // The press's own click may or may not follow a blocking prompt.
+    window.setTimeout(() => {
+      this.pickerOpened = false;
+    }, 500);
+    if (!answer) return;
+    if (answer === 'c') {
+      this.save.addCoins(5000);
+      this.updateHud();
+    } else if (answer === 'w') {
+      void (async () => {
+        // From the opening position, so the stored winning line applies.
+        this.restartLevel();
+        for (const move of this.level?.solution ?? []) {
+          while (this.board.isBusy) await new Promise((r) => setTimeout(r, 30));
+          this.board.handleTap(move.from);
+          this.board.handleTap(move.to);
+          await new Promise((r) => setTimeout(r, 60));
+        }
+      })();
+    } else {
+      const id = Number(answer);
+      if (Number.isInteger(id) && id >= 1) void this.startLevel(id);
+    }
   }
 
   // ------------------------------------------------------------- plumbing
@@ -1994,6 +2066,15 @@ class App {
   private wireGame(): void {
     $('#btn-back').addEventListener('click', () => this.confirmQuit());
     $('#btn-restart').addEventListener('click', () => this.confirmRestart());
+    $('#hud-recipe').addEventListener('click', () => this.explainTwist('recipe'));
+    $('.levelpill').addEventListener('click', () => {
+      // The test builds' long-press picker swallows the click it ends with.
+      if (this.pickerOpened) {
+        this.pickerOpened = false;
+        return;
+      }
+      this.showLevelRules();
+    });
     $('#btn-settings-game').addEventListener('click', () => this.openSettings());
     $('#game-coins-chip').addEventListener('click', () => {
       audio.play('button');
@@ -2098,6 +2179,8 @@ class App {
     // The equipped look is read from the save at every mount, so a skin bought
     // between levels (or restored from an old save) is never missed.
     this.board.setSkin(skinById(this.save.snapshot.cosmetics.skin));
+    this.board.noWinGrace = this.noWinGrace;
+    this.board.moveBudget = this.pourBudget;
     this.board.mount(
       this.level,
       this.save.snapshot.settings.colorblind,
@@ -2124,19 +2207,10 @@ class App {
       this.analytics.track({ type: 'level_start', level: id, attempt: this.attempt });
     }
 
-    if (this.level.spec.lock && !this.save.snapshot.lockSeen) {
-      this.save.update((d) => {
-        d.lockSeen = true;
-      });
-      this.toast.show(tp('intro.lock', this.level.spec.lock.seals), 'info', 4600);
-    }
-
-    if (this.level.spec.oneWay && !this.save.snapshot.oneWaySeen) {
-      this.save.update((d) => {
-        d.oneWaySeen = true;
-      });
-      this.toast.show(t('intro.oneWay'), 'info', 4800);
-    }
+    // Each twist is explained in a dialog the first time it appears, once the
+    // level has settled on screen; the level label's badge reopens them.
+    this.updateRulesBadge();
+    window.setTimeout(() => this.introduceTwists(), 450);
 
     if (isEndless(id) && !this.save.snapshot.endlessSeen) {
       this.save.update((d) => {
@@ -2147,19 +2221,6 @@ class App {
 
     if (id === 1 && !this.save.snapshot.tutorialDone) {
       window.setTimeout(() => this.tutorial.start(), 700);
-    }
-
-    // One-time introductions of the twist mechanics, one idea at a time.
-    if (this.level.spec.cauldron && !this.save.snapshot.cauldronSeen) {
-      this.save.update((d) => {
-        d.cauldronSeen = true;
-      });
-      this.toast.show(t('intro.cauldron'), 'info', 4200);
-    } else if (this.level.spec.murky && !this.save.snapshot.murkySeen) {
-      this.save.update((d) => {
-        d.murkySeen = true;
-      });
-      this.toast.show(t('intro.murky'), 'info', 3800);
     }
   }
 
@@ -2369,6 +2430,8 @@ class App {
     this.nudged = false;
     this.hudTier = 3;
     this.attemptStartedAt = Date.now();
+    this.board.noWinGrace = this.noWinGrace;
+    this.board.moveBudget = this.pourBudget;
     this.board.mount(this.level, this.save.snapshot.settings.colorblind);
     this.updateHud();
   }
@@ -2388,6 +2451,123 @@ class App {
     if (now - this.oneWayToastAt < 2500) return;
     this.oneWayToastAt = now;
     this.toast.show(t('toast.oneWay'), 'warn', 2600);
+  }
+
+  /** Every twist on the current level, in the order the rules dialog lists them. */
+  private twistsHere(): Twist[] {
+    const spec = this.level?.spec;
+    if (!spec) return [];
+    const out: Twist[] = [];
+    if (spec.recipe) out.push('recipe');
+    if (spec.labels) out.push('labels');
+    if (spec.precision) out.push('precision');
+    if (spec.cauldron) out.push('cauldron');
+    if (spec.lock) out.push('lock');
+    if (spec.oneWay) out.push('oneWay');
+    if (spec.murky) out.push('murky');
+    return out;
+  }
+
+  /**
+   * First-time explanations, one dialog at a time, each shown once ever. A
+   * toast was too easy to miss for rules that change what a pour may do.
+   */
+  private introduceTwists(): void {
+    if (this.current !== 'game' || this.modal.isOpen || this.tutorial.active) return;
+    const seen = this.save.snapshot;
+    const next = this.twistsHere().find((k) => !seen[TWIST_SEEN[k]]);
+    if (!next) return;
+    this.save.update((d) => {
+      d[TWIST_SEEN[next]] = true;
+    });
+    this.openTwistDialog(t(`twist.${next}.title`), this.twistBody(next), () => this.introduceTwists());
+  }
+
+  /** One twist's rules as dialog markup, drawn with this level's own colours. */
+  private twistBody(kind: Twist): string {
+    const spec = this.level?.spec;
+    if (!spec) return '';
+    const colorblind = this.save.snapshot.settings.colorblind;
+    const chip = (c: number): string => {
+      const col = colorOf(c);
+      return `<span class="twistchip" style="--c: ${col.css}">${colorblind ? GLYPH_CHARS[col.glyph] : ''}</span>`;
+    };
+    const para = (text: string): string => `<p>${escapeHtml(text)}</p>`;
+    switch (kind) {
+      case 'recipe':
+        return t('twist.recipe.body', {
+          colors: (spec.recipe ?? []).map(chip).join('<b class="twistarrow">→</b>'),
+        });
+      case 'labels':
+        return t('twist.labels.body', { colors: (spec.labels ?? []).map(chip).join(' ') });
+      case 'precision':
+        return t('twist.precision.body', { n: this.pourBudget ?? 0 });
+      case 'cauldron':
+        return para(t('intro.cauldron'));
+      case 'lock':
+        return para(tp('intro.lock', spec.lock?.seals ?? 1));
+      case 'oneWay':
+        return para(t('intro.oneWay'));
+      case 'murky':
+        return para(t('intro.murky'));
+    }
+  }
+
+  /** The recipe card's tap: just the recipe. */
+  private explainTwist(kind: Twist): void {
+    if (this.modal.isOpen) return;
+    this.openTwistDialog(t(`twist.${kind}.title`), this.twistBody(kind));
+  }
+
+  /**
+   * The level label's tap on a twist level: every rule in play here, so a
+   * player who has forgotten what a padlock or a coloured rim means can
+   * check without leaving the board.
+   */
+  private showLevelRules(): void {
+    const twists = this.twistsHere();
+    if (twists.length === 0 || this.modal.isOpen || this.current !== 'game') return;
+    const body = twists.length === 1
+      ? this.twistBody(twists[0] as Twist)
+      : `<div class="howto">${twists.map((k) => `<h3>${escapeHtml(t(`twist.${k}.title`))}</h3>${this.twistBody(k)}`).join('')}</div>`;
+    this.openTwistDialog(
+      twists.length === 1 ? t(`twist.${twists[0] as Twist}.title`) : t('rules.title'), body,
+    );
+  }
+
+  /** The bonus clock holds while a rules dialog is open: reading is not playing. */
+  private openTwistDialog(title: string, bodyHtml: string, after?: () => void): void {
+    this.pauseClock();
+    this.modal.open({
+      title,
+      bodyHtml,
+      buttons: [{ label: t('common.gotIt'), kind: 'primary' }],
+      onClose: () => {
+        this.resumeClock();
+        if (after) window.setTimeout(after, 250);
+      },
+    });
+  }
+
+  /** The level label's ⓘ, shown only where special rules apply. */
+  private updateRulesBadge(): void {
+    const has = this.twistsHere().length > 0;
+    $('#game-rules').hidden = !has;
+    $('.levelpill').classList.toggle('levelpill--rules', has);
+  }
+
+  private ruleToastAt = 0;
+  private explainRule(rule: 'label' | 'recipe'): void {
+    const now = performance.now();
+    if (now - this.ruleToastAt < 2500) return;
+    this.ruleToastAt = now;
+    this.toast.show(t(rule === 'label' ? 'toast.label' : 'toast.recipe'), 'warn', 2600);
+  }
+
+  /** Precision pour: the most pours this level allows, or null for no limit. */
+  private get pourBudget(): number | null {
+    const precision = this.level?.spec.precision;
+    return precision && this.level ? this.level.par + precision.slack : null;
   }
 
   private onMove(count: number): void {
@@ -2412,6 +2592,7 @@ class App {
     $('#game-coins').textContent = String(this.save.coins);
     $('#game-level-label').textContent = this.levelLabel(this.levelId);
     this.updateMoveBudget();
+    this.updateRecipe();
 
     for (const id of ['undo', 'hint', 'bottle'] as PowerupId[]) {
       const stock = this.remainingUses(id) + this.save.inventoryCount(id);
@@ -2510,7 +2691,7 @@ class App {
     // A won board is final; the clock stops with it.
     if (this.board.isResolved) return;
 
-    const target = timeBonusSeconds(par);
+    const target = timeBonusSeconds(par, this.levelId);
     const elapsed = Math.floor(this.attemptElapsedMs() / 1000);
     const remaining = target - elapsed;
     // A replay cannot earn the bonus, so it gets the plain clock throughout
@@ -2533,7 +2714,7 @@ class App {
     bonus.hidden = !live;
     // Exactly what a win this second would pay: the tag steps down with the
     // clock, so finishing faster visibly earns more.
-    if (live) bonus.textContent = `+${timeBonusFor(elapsed, par, this.remote.current.economy)}`;
+    if (live) bonus.textContent = `+${timeBonusFor(elapsed, par, this.levelId, this.remote.current.economy)}`;
     const ring = document.querySelector<SVGCircleElement>('#game-clock-ring');
     if (ring) {
       const fraction = live ? remaining / target : 0;
@@ -2563,6 +2744,20 @@ class App {
       row.classList.toggle('hudbudget--last', last);
       row.classList.toggle('hudbudget--edge', edge);
     };
+
+    // Precision pour: the hard budget is the line that matters, so it replaces
+    // the star countdown (stars still grade the win as usual).
+    const budget = this.pourBudget;
+    if (budget !== null && par !== undefined) {
+      const left = budget - moves;
+      pips.hidden = false;
+      risk(left === 1 || left === 2, left <= 0);
+      const tier = starsFor(moves, par);
+      pips.querySelectorAll('i').forEach((s, i) => s.classList.toggle('on', i < tier));
+      label.textContent = t('hud.pourBudget', { used: moves, max: budget });
+      this.hudTier = tier;
+      return;
+    }
 
     if (par === undefined || this.tutorial.active) {
       pips.hidden = true;
@@ -2607,6 +2802,35 @@ class App {
     this.hudTier = tier;
   }
 
+  /**
+   * The recipe card: the colours to seal first, in order. Sealed ones carry a
+   * tick and the next one is ringed. Once the recipe is done the card stays
+   * (dimmed): hiding it would reflow the board mid-level.
+   */
+  private updateRecipe(): void {
+    const card = $('#hud-recipe');
+    const status = this.board.recipeStatus;
+    if (!status) {
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    card.classList.toggle('hudrecipe--done', status.done >= status.colors.length);
+    const dots = $('#hud-recipe-dots');
+    const colorblind = this.save.snapshot.settings.colorblind;
+    const key = `${status.colors.join()}|${status.done}|${colorblind}`;
+    if (dots.dataset.key === key) return;
+    dots.dataset.key = key;
+    dots.replaceChildren(...status.colors.map((c, i) => {
+      const dot = document.createElement('span');
+      dot.className =
+        'hudrecipe__dot' + (i < status.done ? ' is-done' : i === status.done ? ' is-next' : '');
+      dot.style.setProperty('--c', colorOf(c).css);
+      dot.textContent = i < status.done ? '\u2713' : colorblind ? GLYPH_CHARS[colorOf(c).glyph] : String(i + 1);
+      return dot;
+    }));
+  }
+
   /** At this attempt's ceiling for `id` (free and bought uses combined). */
   private isCapped(id: PowerupId): boolean {
     const used = id === 'bottle' ? this.extraTubes : this.uses[id];
@@ -2620,6 +2844,12 @@ class App {
 
   private async usePowerup(id: PowerupId): Promise<void> {
     if (this.board.isBusy) return;
+    // Out of pours: only an undo hands one back. A hint or a bottle would be
+    // spent on a board that cannot take another pour.
+    if (id !== 'undo' && this.board.isOverBudget) {
+      if (!this.modal.isOpen) this.showStuckDialog();
+      return;
+    }
     // A hint already being solved: a second tap must not spend another use.
     if (id === 'hint' && this.hintPending) return;
 
@@ -2865,8 +3095,8 @@ class App {
     // moment the third star slips). Whole seconds, floored exactly as the HUD
     // clock counts them, so the win pays the value the timer tag showed.
     const clockSeconds = Math.floor(this.attemptElapsedMs() / 1000);
-    const beatClock = stars === 3 && clockSeconds < timeBonusSeconds(level.par);
-    const timeBonus = isFirstClear && stars === 3 ? timeBonusFor(clockSeconds, level.par, eco) : 0;
+    const beatClock = stars === 3 && clockSeconds < timeBonusSeconds(level.par, level.spec.id);
+    const timeBonus = isFirstClear && stars === 3 ? timeBonusFor(clockSeconds, level.par, level.spec.id, eco) : 0;
     reward += timeBonus;
     this.save.recordWinForStreak();
     // The multiplier streak counts fresh clears only (replays neither build
@@ -3468,6 +3698,19 @@ class App {
   }
 
   // ---------------------------------------------------------------- stuck
+  /**
+   * Pours between a fatal move and the "no way to win" warning. Through the
+   * first chapter it is instant, so new players learn what a trap is and can
+   * undo out of it. After that it outlasts the undo cap: an instant warning
+   * let players pour without thinking and undo whatever it flagged (a random
+   * pourer cleared ~75% of standard boards that way), so the warning now
+   * says when to restart, never which pour to take back.
+   */
+  private get noWinGrace(): number {
+    const eco = this.remote.current.economy;
+    return this.levelId <= eco.freeHintLevels ? 0 : eco.maxUses.undo + 1;
+  }
+
   /** The solver proved no winning line remains, though legal moves do. */
   private onNoWin(): void {
     audio.play('stuck');
@@ -3475,7 +3718,18 @@ class App {
     this.analytics.track({
       type: 'level_no_win', level: this.levelId, moves: this.board.moveCount,
     });
-    this.toast.show(t('toast.noWin'), 'warn', 3400);
+    this.toast.show(t(this.noWinGrace > 0 ? 'toast.noWinRestart' : 'toast.noWin'), 'warn', 3400);
+  }
+
+  /** Precision pour: the budget is spent without a win. */
+  private onOutOfPours(): void {
+    if (this.modal.isOpen) return;
+    audio.play('stuck');
+    haptic([30, 80, 30], 'error');
+    this.analytics.track({
+      type: 'level_out_of_pours', level: this.levelId, moves: this.board.moveCount,
+    });
+    this.showStuckDialog();
   }
 
   private onStuck(): void {
@@ -3486,9 +3740,14 @@ class App {
   }
 
   private showStuckDialog(): void {
+    // Out of pours on a precision level: an undo hands a pour back, but an
+    // extra bottle cannot, so it is not offered.
+    const overBudget = this.board.isOverBudget;
     this.modal.open({
-      title: t('stuck.title'),
-      bodyHtml: escapeHtml(t('stuck.body')),
+      title: t(overBudget ? 'precision.title' : 'stuck.title'),
+      bodyHtml: escapeHtml(
+        overBudget ? t('precision.body', { n: this.pourBudget ?? 0 }) : t('stuck.body'),
+      ),
       inlineButtons: false,
       buttons: [
         // A capped powerup is not a way out, so it is not offered as one.
@@ -3499,7 +3758,7 @@ class App {
             void this.usePowerup('undo');
           },
         }]),
-        ...(this.isCapped('bottle') ? [] : [{
+        ...(this.isCapped('bottle') || overBudget ? [] : [{
           label: t('stuck.bottle'),
           kind: 'ghost' as const,
           onClick: () => {
@@ -4223,6 +4482,7 @@ class App {
       title: t('howto.title'),
       bodyHtml:
         t('howto.body', { undo: eco.freeUses.undo, hint: eco.freeUses.hint, levels: eco.freeHintLevels }) +
+        t('howto.twists') +
         t('howto.more', { undo: eco.maxUses.undo, hint: eco.maxUses.hint, bottle: eco.maxUses.bottle }) +
         t('howto.extras', { weekly: WEEKLY_UNLOCK_LEVEL, freezes: MAX_STREAK_FREEZES }),
       buttons: [{ label: t('common.gotIt'), kind: 'primary' }],

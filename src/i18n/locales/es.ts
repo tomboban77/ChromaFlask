@@ -220,6 +220,24 @@ const table: Record<string, string> = {
   'toast.padlockOpen': '¡Candado abierto!',
   'toast.stuckHint': '¿Atascado? Prueba una pista.',
   'toast.noWin': 'No hay forma de ganar desde aquí: usa Deshacer o Reiniciar',
+  'toast.noWinRestart': 'Esta poción ya no se puede completar: reinicia y planea con antelación',
+  'toast.recipe': 'Sigue la receta: sella su siguiente color antes que ningún otro',
+  'toast.label': 'Este frasco solo acepta el color de su etiqueta',
+  'hud.pourBudget': '{used}/{max} vertidos',
+  'hud.recipe': 'Sella en orden',
+  'precision.title': 'Sin vertidos',
+  'precision.body': 'Esta poción debía terminarse en {n} vertidos. Deshaz para buscar una ruta más corta o vuelve a empezar.',
+  'twist.recipe.title': 'Receta',
+  'twist.recipe.body': '<p>Sella primero estos colores, en este orden:</p><p class="twistrow">{colors}</p><p>Hasta terminarlos no se puede sellar ninguna otra botella, así que evita que otros colores llenen una botella antes de tiempo. La tarjeta de arriba muestra tu progreso: tócala para volver a ver esto.</p>',
+  'twist.labels.title': 'Frasco etiquetado',
+  'twist.labels.body': '<p>Un frasco con el borde de color solo acepta ese color:</p><p class="twistrow">{colors}</p><p>Es espacio extra, pero solo para el líquido correcto. Lleva ese color arriba primero para aprovecharlo.</p>',
+  'twist.precision.title': 'Vertido de precisión',
+  'twist.precision.body': '<p>Termina esta poción en <b>{n} vertidos</b> o menos.</p><p>Si se acaban antes, el intento falla. El contador de arriba muestra los vertidos usados: planea tu ruta antes de empezar.</p>',
+  'twist.cauldron.title': 'El caldero',
+  'twist.lock.title': 'Botella cerrada',
+  'twist.oneWay.title': 'Frasco de un solo sentido',
+  'twist.murky.title': 'Poción turbia',
+  'rules.title': 'Reglas de este nivel',
   'toast.locked.one': 'Bloqueada: sella una botella más para abrirla',
   'toast.locked.other': 'Bloqueada: sella {n} botellas más para abrirla',
   'toast.oneWay': 'Frasco de un solo sentido: lo que entra no sale, y debe estar lleno para ganar',
@@ -427,6 +445,10 @@ const table: Record<string, string> = {
   'reset.body': 'Esto borra todo lo que has conseguido en este dispositivo: niveles, estrellas, monedas, potenciadores, aspectos de botella, logros y tu racha diaria. El juego vuelve a empezar en el nivel 1. Se conservan tus ajustes.',
   'reset.keep': 'Seguir jugando',
 
+  'howto.twists': `<div class="howto">
+    <h3>Más giros</h3>
+    <p>Una tarjeta de <b>receta</b> indica colores que deben sellarse primero, en ese orden: hasta completarla no se puede sellar ninguna otra botella. Un <b>frasco etiquetado</b> lleva un color en el borde y solo acepta ese color. Un <b>vertido de precisión</b> te da un número fijo de vertidos: si se acaban antes de terminar la poción, el intento falla, así que planea toda la ruta antes de empezar.</p>
+  </div>`,
   'howto.title': 'Cómo jugar',
   'howto.more': `<div class="howto">
     <h3>Límites, reloj y rachas</h3>

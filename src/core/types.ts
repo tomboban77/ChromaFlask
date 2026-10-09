@@ -62,6 +62,32 @@ export interface LevelSpec {
    * chosen for it and delivered in order.
    */
   readonly oneWay?: boolean;
+  /**
+   * Accepted band for the deal's forgiveness (see difficulty.ts): the share
+   * of casual, no-lookahead playouts that win. Par says how long a board is;
+   * this says whether it has to be thought through. Omitted = no filter.
+   */
+  readonly forgiveness?: { readonly min: number; readonly max: number };
+  /**
+   * The Recipe: these colours must be the first bottles sealed, in exactly
+   * this order. Until the recipe is done, any pour that would seal a bottle
+   * of a different colour is not allowed. Tests sequencing - which colour to
+   * finish first, and how to keep the others from finishing early. A pure
+   * restriction on legal moves, so every solver bound stays admissible.
+   */
+  readonly recipe?: readonly ColorId[];
+  /**
+   * Labelled flasks: the last `labels.length` empty tubes each carry a colour
+   * label and accept only that colour. The space exists, but only for the
+   * right liquid. Also a pure restriction.
+   */
+  readonly labels?: readonly ColorId[];
+  /**
+   * Precision pour: the attempt fails once `par + slack` pours have been made
+   * without a win. Tests efficiency rather than survival. Board, solver and
+   * par are unaffected; the budget is enforced by the game.
+   */
+  readonly precision?: { readonly slack: number };
 }
 
 /** Rule variations that change what the engine considers legal or solved. */
@@ -72,6 +98,10 @@ export interface BoardRules {
   readonly lock?: { readonly index: number; readonly seals: number };
   /** When set, tube `index` is the One-Way Flask: pour in only, must end full. */
   readonly oneWay?: { readonly index: number };
+  /** Colours that must be sealed first, in this order (see LevelSpec.recipe). */
+  readonly recipe?: readonly ColorId[];
+  /** Labelled flasks: tube `index` accepts only `color`. */
+  readonly labels?: readonly { readonly index: number; readonly color: ColorId }[];
 }
 
 /** A generated, verified-solvable puzzle. */

@@ -216,6 +216,24 @@ const table: Record<string, string> = {
   'toast.padlockOpen': '錠が開いた！',
   'toast.stuckHint': '困ったら、ヒントを試そう。',
   'toast.noWin': 'ここから勝つ方法はありません - アンドゥかリスタートを',
+  'toast.noWinRestart': 'このポーションはもう完成できません - リスタートして先を読みましょう',
+  'toast.recipe': 'レシピ通りに:次の色を先に封をしよう',
+  'toast.label': 'このフラスコはラベルの色しか入りません',
+  'hud.pourBudget': '{used}/{max}回',
+  'hud.recipe': '順番に封をする',
+  'precision.title': '注ぎ切れ',
+  'precision.body': 'このポーションは{n}回で完成させる必要がありました。アンドゥで短い手順を探すか、やり直しましょう。',
+  'twist.recipe.title': 'レシピ',
+  'twist.recipe.body': '<p>まずこの色を、この順番で封をしよう:</p><p class="twistrow">{colors}</p><p>終わるまで他のボトルは封ができません。ほかの色でボトルが早く満杯にならないよう気をつけよう。上のカードが進み具合を示します - タップすると再表示。</p>',
+  'twist.labels.title': 'ラベル付きフラスコ',
+  'twist.labels.body': '<p>縁に色のあるフラスコは、その色しか入りません:</p><p class="twistrow">{colors}</p><p>追加のスペースですが、正しい液体専用です。使うには先にその色を上に出そう。</p>',
+  'twist.precision.title': '精密注ぎ',
+  'twist.precision.body': '<p>このポーションを<b>{n}回</b>以内で完成させよう。</p><p>完成前に使い切ると失敗です。上のカウンターが注いだ回数を示します - 始める前に手順を考えよう。</p>',
+  'twist.cauldron.title': '大釜',
+  'twist.lock.title': '鍵付きボトル',
+  'twist.oneWay.title': '一方通行フラスコ',
+  'twist.murky.title': '濁ったポーション',
+  'rules.title': 'このレベルのルール',
   'toast.locked.other': 'ロック中 - 開けるにはあと {n} 本のボトルを封印',
   'toast.oneWay': '一方通行フラスコ: 注げるが取り出せない - クリアには満タンが必要',
   'intro.lock.other': 'ロックされたボトル！錠を開けるには他のボトルをあと {n} 本封印しよう。',
@@ -418,6 +436,10 @@ const table: Record<string, string> = {
   'reset.body': 'この端末で獲得したものがすべて消えます。レベル、星、コイン、ブースター、ボトルの見た目、実績、デイリー連続記録が対象です。ゲームはレベル1から再開します。設定は保持されます。',
   'reset.keep': 'プレイを続ける',
 
+  'howto.twists': `<div class="howto">
+    <h3>その他のしかけ</h3>
+    <p><b>レシピ</b>カードには最初に封をする色が順番に並んでいます。完成するまで他のボトルは封ができません。<b>ラベル付きフラスコ</b>は縁に一色が示され、その色しか入りません。<b>精密注ぎ</b>では注げる回数が決まっています。完成前に使い切ると失敗なので、始める前に手順全体を考えましょう。</p>
+  </div>`,
   'howto.title': '遊び方',
   'howto.more': `<div class="howto">
     <h3>上限・時計・連勝</h3>

@@ -7,6 +7,7 @@
  * the campaign and endless ranges so the rest of the game can treat it as a
  * level. Records live in their own save section, never in the campaign map.
  */
+import { pickColors } from './rng';
 import type { LevelSpec } from './types';
 
 /** Daily ids start here; campaign ids are 1..300 and endless ids follow on. */
@@ -49,24 +50,44 @@ export function dayFromDailyId(id: number): number {
 
 /**
  * The day's shape. Mid-campaign depth on purpose: a player at level 60 and
- * one at level 400 should both find it a fair single sitting. Five shapes
- * rotate so a week never repeats a feel; murk alternates on top.
+ * one at level 400 should both find it a fair single sitting. Seven shapes
+ * rotate - plain, recipe, cauldron, squeeze, labelled flask, lock, gentle -
+ * so a week never repeats a kind of thinking; murk alternates on top.
  */
 export function dailySpec(id: number): LevelSpec {
   const day = dayFromDailyId(id);
   const murky = day % 2 === 1;
   const name = 'Daily challenge';
-  switch (((day % 5) + 5) % 5) {
+  switch (((day % 7) + 7) % 7) {
     case 0:
-      return { id, colors: 8, empties: 2, minPar: 22, name, murky };
+      return { id, colors: 8, empties: 2, minPar: 22, forgiveness: { min: 0, max: 0.2 }, name, murky };
     case 1:
-      return { id, colors: 7, empties: 2, minPar: 17, name, murky: true };
+      return {
+        id, colors: 8, empties: 2, minPar: 21, recipe: pickColors(id, 8, 3),
+        forgiveness: { min: 0.03, max: 0.2 }, name, murky,
+      };
     case 2:
-      return { id, colors: 6, empties: 1, cauldron: true, minPar: 15, name, murky };
+      return {
+        id, colors: 6, empties: 0, cauldron: true, minPar: 16,
+        forgiveness: { min: 0.05, max: 0.3 }, name, murky,
+      };
     case 3:
-      return { id, colors: 6, empties: 1, minPar: 15, name, murky };
+      return { id, colors: 6, empties: 1, minPar: 15, forgiveness: { min: 0, max: 0.2 }, name, murky };
+    case 4:
+      return {
+        id, colors: 8, empties: 2, minPar: 21, labels: pickColors(id, 8, 1),
+        forgiveness: { min: 0.03, max: 0.2 }, name, murky,
+      };
+    case 5:
+      return {
+        id, colors: 8, empties: 2, minPar: 22, lock: { seals: 1 },
+        forgiveness: { min: 0, max: 0.2 }, name, murky,
+      };
     default:
-      return { id, colors: 7, empties: 3, minPar: 14, name, murky: true };
+      // The gentle day: still two empties, never a free win.
+      return {
+        id, colors: 7, empties: 2, minPar: 16, forgiveness: { min: 0.15, max: 0.45 }, name, murky: true,
+      };
   }
 }
 

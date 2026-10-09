@@ -64,6 +64,17 @@ async function runViewport(browser, label, width, height, isMobile) {
     ...(useWebkit ? {} : { permissions: ['clipboard-read', 'clipboard-write'] }),
   });
   const page = await context.newPage();
+  // First-time twist dialogs (recipe, labelled flask, precision) open on
+  // whichever level brings them - including the day's daily. Close them
+  // whenever they get in the way, and count them for the checks below.
+  const twistDialogs = [];
+  await page.addLocatorHandler(
+    page.locator('.modal__title', { hasText: /^(Recipe|Labelled flask|Precision pour|The Cauldron|Locked bottle|One-way flask|Murky potion|This level's rules)$/ }),
+    async (title) => {
+      twistDialogs.push((await title.textContent())?.trim());
+      await page.locator('.modal button', { hasText: 'Got it' }).click();
+    },
+  );
 
   // Screenshots are diagnostics, never assertions. Playwright waits for a
   // composited frame before capturing; under software WebGL on a slow runner
@@ -269,7 +280,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   await sleep(900);
   const lvl2 = await page.evaluate(() => window.__cf.state());
   console.log(`  level 2         tubes=${lvl2.tubes} par=${lvl2.par}`);
-  if (lvl2.tubes !== 5) problems.push(`[${label}] level 2 should have 5 tubes, got ${lvl2.tubes}`);
+  if (lvl2.tubes !== 6) problems.push(`[${label}] level 2 should have 6 tubes, got ${lvl2.tubes}`);
   await shot('6-level2');
 
   // ---- powerups
@@ -447,8 +458,8 @@ async function runViewport(browser, label, width, height, isMobile) {
   await sleep(900);
   const resumed = await page.evaluate(() => window.__cf.state());
   console.log(`  resumed level   moves=${resumed.moves} tubes=${resumed.tubes}`);
-  if (resumed.moves !== 1 || resumed.tubes !== 5) {
-    problems.push(`[${label}] resumed level 2 should have 1 move and 5 tubes, got ${resumed.moves}/${resumed.tubes}`);
+  if (resumed.moves !== 1 || resumed.tubes !== 6) {
+    problems.push(`[${label}] resumed level 2 should have 1 move and 6 tubes, got ${resumed.moves}/${resumed.tubes}`);
   }
   // Leaving a live board is free and drops the saved attempt.
   await page.click('#btn-back');
@@ -597,6 +608,95 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (afterFlaskTap.selected !== null) problems.push(`[${label}] the one-way flask must never be selectable as a source`);
   await page.click('#btn-back');
   await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+
+  // ---- recipe (level 13): the card lists three colours, the first one next
+  await page.evaluate(() => window.__cf.start(13));
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
+  await sleep(1500);
+  const recipe = await page.evaluate(() => ({
+    hidden: document.querySelector('#hud-recipe').hidden,
+    dots: document.querySelectorAll('#hud-recipe-dots .hudrecipe__dot').length,
+    next: [...document.querySelectorAll('#hud-recipe-dots .hudrecipe__dot')].findIndex((d) => d.classList.contains('is-next')),
+  }));
+  console.log(`  recipe card     hidden=${recipe.hidden} dots=${recipe.dots} next=${recipe.next}`);
+  if (recipe.hidden || recipe.dots !== 3 || recipe.next !== 0) {
+    problems.push(`[${label}] level 13 should show a 3-colour recipe card with the first colour next`);
+  }
+  await page.click('#btn-back');
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+
+  // ---- labelled flask (level 19): tube 9 takes one colour; a wrong pour is
+  // refused with an explanation, and no recipe card shows
+  await page.evaluate(() => window.__cf.start(19));
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
+  await sleep(1500);
+  const lfState = await page.evaluate(() => window.__cf.state());
+  // Any filled tube whose top colour is wrong for the flask, found by trying:
+  // a legal pour into the flask would move liquid, a refused one must not.
+  let refused = false;
+  let toastText = '';
+  for (let i = 0; i < 8 && !refused; i++) {
+    await page.evaluate((n) => window.__cf.tap(n), i);
+    await sleep(150);
+    await page.evaluate(() => window.__cf.tap(9));
+    await sleep(700);
+    const after = await page.evaluate(() => window.__cf.state());
+    if (after.moves === 0) {
+      refused = true;
+      toastText = (await page.locator('#toast-root').textContent()) ?? '';
+    } else {
+      await page.click('#btn-undo');
+      await sleep(500);
+    }
+  }
+  const recipeHiddenHere = await page.locator('#hud-recipe').isHidden();
+  console.log(`  labelled flask  tubes=${lfState.tubes} refused=${refused} toast="${toastText.trim().slice(0, 48)}"`);
+  if (lfState.tubes !== 10) problems.push(`[${label}] level 19 should have 10 tubes, got ${lfState.tubes}`);
+  if (!refused || !/This flask only takes/.test(toastText)) problems.push(`[${label}] a wrong colour into the labelled flask must be refused with a toast`);
+  if (!recipeHiddenHere) problems.push(`[${label}] the recipe card must hide on a level without a recipe`);
+  await page.click('#btn-back');
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+
+  // ---- precision pour (level 21): the HUD shows the pour budget
+  await page.evaluate(() => window.__cf.start(21));
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
+  await sleep(1500);
+  const budgetLine = (await page.locator('#game-move-label').textContent())?.trim() ?? '';
+  const idealHere = (await page.evaluate(() => window.__cf.state())).par;
+  console.log(`  precision pour  "${budgetLine}" (ideal ${idealHere})`);
+  if (budgetLine !== `0/${idealHere + 3} pours`) {
+    problems.push(`[${label}] level 21 should show "0/${idealHere + 3} pours", got "${budgetLine}"`);
+  }
+  await page.click('#btn-back');
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+
+  // A twist level's label carries the rules badge; a plain level's does not.
+  await page.evaluate(() => window.__cf.start(21));
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
+  await sleep(1200);
+  const badgeOnTwist = await page.locator('#game-rules').isVisible();
+  await page.click('.levelpill');
+  await sleep(400);
+  const rulesTitle = (await page.locator('.modal__title').textContent().catch(() => ''))?.trim();
+  await page.locator('.modal button', { hasText: 'Got it' }).click().catch(() => {});
+  await page.click('#btn-back');
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+  await page.evaluate(() => window.__cf.start(11));
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 15_000 });
+  await sleep(1200);
+  const badgeOnPlain = await page.locator('#game-rules').isVisible();
+  await page.click('#btn-back');
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
+  console.log(`  rules badge     L21 shown=${badgeOnTwist} opens "${rulesTitle}", L11 shown=${badgeOnPlain}`);
+  if (!badgeOnTwist || badgeOnPlain) problems.push(`[${label}] the rules badge should show on twist levels only`);
+  if (rulesTitle !== 'Precision pour') problems.push(`[${label}] tapping the level label on L21 should open its rules, got "${rulesTitle}"`);
+
+  // Each twist explained itself once, in a dialog, by now.
+  await page.locator('#btn-back').hover().catch(() => {});
+  console.log(`  twist dialogs   ${[...new Set(twistDialogs)].join(', ')}`);
+  for (const name of ['Recipe', 'Labelled flask', 'Precision pour']) {
+    if (!twistDialogs.includes(name)) problems.push(`[${label}] the ${name} dialog never opened`);
+  }
 
   // ---- back button: closes an open dialog, then returns from map to home
   await page.click('#btn-settings-home');

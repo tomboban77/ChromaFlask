@@ -216,6 +216,24 @@ const table: Record<string, string> = {
   'toast.padlockOpen': 'Gembok terbuka!',
   'toast.stuckHint': 'Mentok? Coba petunjuk.',
   'toast.noWin': 'Tidak ada jalan menang dari sini; pakai Urungkan atau Mulai ulang',
+  'toast.noWinRestart': 'Ramuan ini tidak bisa diselesaikan lagi; mulai ulang dan rencanakan ke depan',
+  'toast.recipe': 'Ikuti resep: segel warna berikutnya lebih dulu',
+  'toast.label': 'Labu ini hanya menerima warna pada labelnya',
+  'hud.pourBudget': '{used}/{max} tuangan',
+  'hud.recipe': 'Segel berurutan',
+  'precision.title': 'Tuangan habis',
+  'precision.body': 'Ramuan ini harus selesai dalam {n} tuangan. Urungkan untuk mencari jalan lebih pendek, atau mulai lagi.',
+  'twist.recipe.title': 'Resep',
+  'twist.recipe.body': '<p>Segel warna-warna ini lebih dulu, sesuai urutan:</p><p class="twistrow">{colors}</p><p>Botol lain tidak bisa disegel sebelum selesai, jadi jangan biarkan warna lain memenuhi botol terlalu cepat. Kartu di atas menunjukkan kemajuanmu - ketuk untuk melihat ini lagi.</p>',
+  'twist.labels.title': 'Labu berlabel',
+  'twist.labels.body': '<p>Labu dengan bibir berwarna hanya menerima warna itu:</p><p class="twistrow">{colors}</p><p>Ini ruang tambahan - tapi hanya untuk cairan yang tepat. Bawa warna itu ke atas dulu untuk memakainya.</p>',
+  'twist.precision.title': 'Tuang presisi',
+  'twist.precision.body': '<p>Selesaikan ramuan ini dalam <b>{n} tuangan</b> atau kurang.</p><p>Habis sebelum selesai berarti gagal. Penghitung di atas menunjukkan tuanganmu - rencanakan langkahmu sebelum mulai.</p>',
+  'twist.cauldron.title': 'Kuali',
+  'twist.lock.title': 'Botol terkunci',
+  'twist.oneWay.title': 'Labu satu arah',
+  'twist.murky.title': 'Ramuan keruh',
+  'rules.title': 'Aturan level ini',
   'toast.locked.other': 'Terkunci: segel {n} botol lagi untuk membukanya',
   'toast.oneWay': 'Botol satu arah: yang masuk tidak keluar, dan harus penuh untuk menang',
   'intro.lock.other': 'Botol terkunci! Segel {n} botol lain untuk membuka gemboknya.',
@@ -418,6 +436,10 @@ const table: Record<string, string> = {
   'reset.body': 'Ini menghapus semua yang kamu dapatkan di perangkat ini: level, bintang, koin, booster, tampilan botol, pencapaian, dan runtunan harianmu. Permainan dimulai lagi dari level 1. Pengaturanmu tetap.',
   'reset.keep': 'Lanjut bermain',
 
+  'howto.twists': `<div class="howto">
+    <h3>Kejutan lain</h3>
+    <p>Kartu <b>resep</b> berisi warna yang harus disegel lebih dulu, sesuai urutan: sebelum selesai, botol lain tidak bisa disegel. <b>Labu berlabel</b> memakai satu warna di bibirnya dan hanya menerima warna itu. <b>Tuang presisi</b> memberi jumlah tuangan tetap - habis sebelum ramuan selesai berarti gagal, jadi rencanakan seluruh langkah sebelum mulai.</p>
+  </div>`,
   'howto.title': 'Cara bermain',
   'howto.more': `<div class="howto">
     <h3>Batas, jam, dan beruntun</h3>

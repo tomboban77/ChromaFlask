@@ -220,6 +220,24 @@ const table: Record<string, string> = {
   'toast.padlockOpen': 'Lucchetto aperto!',
   'toast.stuckHint': 'Bloccato? Prova un suggerimento.',
   'toast.noWin': 'Da qui non si può vincere: usa Annulla o Ricomincia',
+  'toast.noWinRestart': 'Questa pozione non si può più completare: ricomincia e pianifica in anticipo',
+  'toast.recipe': 'Segui la ricetta: sigilla prima il suo colore successivo',
+  'toast.label': 'Questa fiala accetta solo il colore della sua etichetta',
+  'hud.pourBudget': '{used}/{max} versate',
+  'hud.recipe': 'Sigilla in ordine',
+  'precision.title': 'Versate finite',
+  'precision.body': 'Questa pozione andava finita in {n} versate. Annulla per trovare una strada più corta, o ricomincia.',
+  'twist.recipe.title': 'Ricetta',
+  'twist.recipe.body': "<p>Sigilla prima questi colori, in quest'ordine:</p><p class=\"twistrow\">{colors}</p><p>Finché non sono fatti nessun'altra bottiglia può essere sigillata, quindi evita che altri colori riempiano una bottiglia troppo presto. La scheda in alto segue i tuoi progressi: toccala per rivedere questo.</p>",
+  'twist.labels.title': 'Fiala etichettata',
+  'twist.labels.body': '<p>Una fiala con il bordo colorato accetta solo quel colore:</p><p class="twistrow">{colors}</p><p>È spazio in più, ma solo per il liquido giusto. Porta prima in cima quel colore per sfruttarla.</p>',
+  'twist.precision.title': 'Versata di precisione',
+  'twist.precision.body': '<p>Finisci questa pozione in <b>{n} versate</b> o meno.</p><p>Se finiscono prima, il tentativo fallisce. Il contatore in alto mostra le versate usate: pianifica la strada prima di iniziare.</p>',
+  'twist.cauldron.title': 'Il calderone',
+  'twist.lock.title': 'Bottiglia bloccata',
+  'twist.oneWay.title': 'Fiala a senso unico',
+  'twist.murky.title': 'Pozione torbida',
+  'rules.title': 'Regole di questo livello',
   'toast.locked.one': "Bloccata: sigilla un'altra bottiglia per aprirla",
   'toast.locked.other': 'Bloccata: sigilla altre {n} bottiglie per aprirla',
   'toast.oneWay': 'Ampolla a senso unico: quel che entra non esce, e deve essere piena per vincere',
@@ -427,6 +445,10 @@ const table: Record<string, string> = {
   'reset.body': 'Questo cancella tutto ciò che hai guadagnato su questo dispositivo: livelli, stelle, monete, potenziamenti, look delle bottiglie, obiettivi e la tua serie giornaliera. Il gioco riparte dal livello 1. Le impostazioni restano.',
   'reset.keep': 'Continua a giocare',
 
+  'howto.twists': `<div class="howto">
+    <h3>Altre varianti</h3>
+    <p>Una scheda <b>ricetta</b> elenca i colori da sigillare per primi, in quell'ordine: finché non è completa nessun'altra bottiglia può essere sigillata. Una <b>fiala etichettata</b> porta un colore sul bordo e accetta solo quello. Una <b>versata di precisione</b> ti dà un numero fisso di versate: se finiscono prima della pozione il tentativo fallisce, quindi pianifica tutta la strada prima di iniziare.</p>
+  </div>`,
   'howto.title': 'Come si gioca',
   'howto.more': `<div class="howto">
     <h3>Limiti, orologio e serie</h3>

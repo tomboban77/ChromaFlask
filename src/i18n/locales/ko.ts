@@ -216,6 +216,24 @@ const table: Record<string, string> = {
   'toast.padlockOpen': '자물쇠가 열렸어요!',
   'toast.stuckHint': '막혔나요? 힌트를 써보세요.',
   'toast.noWin': '여기서는 이길 방법이 없어요 - 되돌리기나 다시 시작을 사용하세요',
+  'toast.noWinRestart': '이 물약은 더 이상 완성할 수 없어요 - 다시 시작하고 미리 계획하세요',
+  'toast.recipe': '레시피를 따르세요: 다음 색을 먼저 봉인하세요',
+  'toast.label': '이 플라스크는 라벨의 색만 받아요',
+  'hud.pourBudget': '{used}/{max}번',
+  'hud.recipe': '순서대로 봉인',
+  'precision.title': '붓기 소진',
+  'precision.body': '이 물약은 {n}번 안에 완성해야 했어요. 되돌려서 더 짧은 길을 찾거나 다시 시작하세요.',
+  'twist.recipe.title': '레시피',
+  'twist.recipe.body': '<p>먼저 이 색들을 이 순서대로 봉인하세요:</p><p class="twistrow">{colors}</p><p>끝나기 전엔 다른 병을 봉인할 수 없으니, 다른 색이 병을 너무 일찍 채우지 않게 하세요. 위쪽 카드가 진행 상황을 보여줘요 - 탭하면 다시 볼 수 있어요.</p>',
+  'twist.labels.title': '라벨 플라스크',
+  'twist.labels.body': '<p>테두리에 색이 있는 플라스크는 그 색만 받아요:</p><p class="twistrow">{colors}</p><p>추가 공간이지만 맞는 액체 전용이에요. 사용하려면 먼저 그 색을 위로 올리세요.</p>',
+  'twist.precision.title': '정밀 붓기',
+  'twist.precision.body': '<p>이 물약을 <b>{n}번</b> 이하로 완성하세요.</p><p>완성 전에 다 쓰면 실패해요. 위쪽 카운터가 사용한 횟수를 보여줘요 - 시작 전에 경로를 계획하세요.</p>',
+  'twist.cauldron.title': '가마솥',
+  'twist.lock.title': '잠긴 병',
+  'twist.oneWay.title': '일방통행 플라스크',
+  'twist.murky.title': '탁한 물약',
+  'rules.title': '이 레벨의 규칙',
   'toast.locked.other': '잠김 - 열려면 병 {n}개를 더 봉인하세요',
   'toast.oneWay': '일방향 플라스크: 넣을 수만 있고 꺼낼 수 없어요 - 이기려면 가득 차야 해요',
   'intro.lock.other': '잠긴 병! 자물쇠를 열려면 다른 병 {n}개를 봉인하세요.',
@@ -418,6 +436,10 @@ const table: Record<string, string> = {
   'reset.body': '이 기기에서 얻은 모든 것이 지워집니다. 레벨, 별, 코인, 부스터, 병 외형, 업적, 데일리 연속 기록이 포함됩니다. 게임은 레벨 1부터 다시 시작합니다. 설정은 유지됩니다.',
   'reset.keep': '계속 플레이',
 
+  'howto.twists': `<div class="howto">
+    <h3>더 많은 변형</h3>
+    <p><b>레시피</b> 카드에는 먼저, 순서대로 봉인해야 할 색이 있어요. 끝나기 전엔 다른 병을 봉인할 수 없어요. <b>라벨 플라스크</b>는 테두리에 한 가지 색이 있고 그 색만 받아요. <b>정밀 붓기</b>는 붓는 횟수가 정해져 있어요. 완성 전에 다 쓰면 실패하니 시작 전에 전체 경로를 계획하세요.</p>
+  </div>`,
   'howto.title': '게임 방법',
   'howto.more': `<div class="howto">
     <h3>한도, 시계, 연승</h3>

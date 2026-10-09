@@ -35,6 +35,12 @@ export const PALETTE: readonly LiquidColor[] = [
   { name: 'Lime',    base: 0xc8e64a, light: 0xe6f79a, dark: 0x87a013, css: '#c8e64a', glyph: 'star' },
 ];
 
+/** The colourblind glyphs as text, for DOM chrome such as the recipe card. */
+export const GLYPH_CHARS: Readonly<Record<GlyphKind, string>> = {
+  circle: '●', triangle: '▲', square: '■', diamond: '◆',
+  cross: '✚', ring: '○', bar: '▬', star: '★',
+};
+
 export function colorOf(id: number): LiquidColor {
   return PALETTE[id % PALETTE.length] as LiquidColor;
 }

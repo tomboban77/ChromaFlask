@@ -5,8 +5,8 @@
  */
 import {
   DEFAULT_RULES, TUBE_CAPACITY, applyPour, canPour, canonicalKey, cloneBoard,
-  isDeadlocked, isSolved, legalMoves, lockActive, oneWayIndex, pourAmount, rulesFor, sealsRemaining,
-  topRun, undoPour, usefulMoves,
+  blockedBy, isDeadlocked, isSolved, labelAt, legalMoves, lockActive, nextRecipeColor, oneWayIndex,
+  pourAmount, recipeProgress, rulesFor, sealsRemaining, topRun, undoPour, usefulMoves,
 } from './board';
 import { ACHIEVEMENTS, unlockedAchievements } from './achievements';
 import { getCampaignLevel, isStoredOptimal, isStoredValid, storedLevelCount } from './campaign';
@@ -60,6 +60,36 @@ function bfsOptimal(board: Board, rules: BoardRules = DEFAULT_RULES, cap = 400_0
         if (seen.has(k)) continue;
         seen.add(k);
         if (++visited > cap) return null;
+        next.push(nb);
+      }
+    }
+    frontier = next;
+  }
+  return null;
+}
+
+/**
+ * Brute force with no canonicalisation at all (raw board as the key), so a
+ * bug in canonicalKey cannot hide in both the solver and its audit. Only for
+ * tiny boards.
+ */
+function rawBfsOptimal(board: Board, rules: BoardRules, cap = 600_000): number | null {
+  if (isSolved(board, rules)) return 0;
+  const seen = new Set<string>([JSON.stringify(board)]);
+  let frontier: Board[] = [cloneBoard(board)];
+  let depth = 0;
+  while (frontier.length) {
+    depth++;
+    const next: Board[] = [];
+    for (const b of frontier) {
+      for (const mv of legalMoves(b, rules)) {
+        const nb = cloneBoard(b);
+        applyPour(nb, mv.from, mv.to, rules);
+        if (isSolved(nb, rules)) return depth;
+        const k = JSON.stringify(nb);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        if (seen.size > cap) return null;
         next.push(nb);
       }
     }
@@ -145,22 +175,27 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
   check('coins: scaled replay improvement stays small on an opener',
     coinsFor(3, 1, 2, e) < e.starCoins[2] - e.starCoins[0]);
   // The time bonus scales with par and can always be beaten by a human pace.
-  check('time bonus: window grows with par', timeBonusSeconds(20) > timeBonusSeconds(4));
-  check('time bonus: level 1 window still fits a new player', timeBonusSeconds(4) >= 25);
-  check('time bonus: window is tight (4 s a move plus reading time)', timeBonusSeconds(25) === 110);
+  check('time bonus: window grows with par', timeBonusSeconds(20, 50) > timeBonusSeconds(4, 50));
+  check('time bonus: level 1 window still fits a new player', timeBonusSeconds(4, 1) >= 25);
+  check('time bonus: relaxed clock to level 3 (4 s a move)', timeBonusSeconds(16, 3) === 74);
+  check('time bonus: tight clock from level 4 (3 s a move)',
+    timeBonusSeconds(16, 4) === 58 && timeBonusSeconds(25, 300) === 85);
+  check('time bonus: daily and endless run on the tight clock',
+    timeBonusSeconds(22, dailyId(20_000)) === 76 && timeBonusSeconds(22, ENDLESS_START) === 76);
   // The bonus drains with the clock: full at the start, 5 in the last slice,
   // nothing once the window is spent, and never more for a slower finish.
-  for (const par of [4, 12, 22, 27]) {
-    const w = timeBonusSeconds(par);
+  for (const [par, lvl] of [[4, 1], [12, 3], [12, 40], [22, 150], [27, 300]] as const) {
+    const w = timeBonusSeconds(par, lvl);
     const max = scaledReward(e.timeBonusCoins, par);
-    check(`time bonus p${par}: full at the start`, timeBonusFor(0, par, e) === max);
-    check(`time bonus p${par}: 5 in the last second`, timeBonusFor(w - 1, par, e) === 5);
-    check(`time bonus p${par}: nothing once spent`, timeBonusFor(w, par, e) === 0 && timeBonusFor(w + 60, par, e) === 0);
+    check(`time bonus p${par}: full at the start`, timeBonusFor(0, par, lvl, e) === max);
+    check(`time bonus p${par}: 5 in the last second`, timeBonusFor(w - 1, par, lvl, e) === 5);
+    check(`time bonus p${par}: nothing once spent`,
+      timeBonusFor(w, par, lvl, e) === 0 && timeBonusFor(w + 60, par, lvl, e) === 0);
     let prev = Infinity;
     let monotonic = true;
     let steps = true;
     for (let t = 0; t <= w + 2; t++) {
-      const b = timeBonusFor(t, par, e);
+      const b = timeBonusFor(t, par, lvl, e);
       if (b > prev) monotonic = false;
       if (b % 5 !== 0 || b > max || b < 0) steps = false;
       prev = b;
@@ -169,7 +204,7 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
     check(`time bonus p${par}: friendly 5-coin steps within the max`, steps);
   }
   check('time bonus: an average finish earns part of it',
-    timeBonusFor(Math.floor(timeBonusSeconds(22) * 0.6), 22, e) < scaledReward(e.timeBonusCoins, 22));
+    timeBonusFor(Math.floor(timeBonusSeconds(22, 150) * 0.6), 22, 150, e) < scaledReward(e.timeBonusCoins, 22));
 
   // Free boosters: one undo everywhere, the free hint only in the first chapter.
   check('free uses: one undo per attempt', freeUsesFor(1, e).undo === 1 && freeUsesFor(150, e).undo === 1);
@@ -399,6 +434,104 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
     check(`oneway audit ${seed}: A* par is optimal`, gen.par === bfs, `A*=${gen.par} bfs=${bfs}`);
   }
   check('oneway optimality audit ran', audited >= 4, `audited=${audited}`);
+}
+
+// --------------------------------------------------------------- recipe
+{
+  const R = rulesFor({ colors: 3, empties: 1, recipe: [2, 0] });
+  check('recipe: first colour is next', nextRecipeColor([[0, 1], [1, 2], [2, 0], []], R) === 2);
+  // Sealing colour 0 first is out of order; sealing 2 first is fine.
+  const wrong: Board = [[0, 0, 0], [2, 2, 2], [1, 1, 1, 1], [2, 0]];
+  check('recipe: out-of-order seal refused', !canPour(wrong, 3, 0, R));
+  check('recipe: blockedBy names the recipe', blockedBy(wrong, 3, 0, R) === 'recipe');
+  const b: Board = [[0, 0, 0], [2, 2, 2], [1, 1, 1, 1], [0, 2]];
+  check('recipe: in-order seal allowed', canPour(b, 3, 1, R));
+  check('recipe: moving a sealed bottle is no new seal',
+    canPour([[2, 2, 2, 2], [0, 1], [1, 0], []], 0, 3, rulesFor({ colors: 3, empties: 1, recipe: [2, 0] })) &&
+    blockedBy([[2, 2, 2, 2], [0, 1], [1, 0], []], 0, 3, rulesFor({ colors: 3, empties: 1, recipe: [2, 0] })) === null);
+  check('recipe: non-sealing pour unaffected', canPour([[0, 0], [2, 2, 2], [1, 1, 1, 1], [0]], 3, 0, R));
+  const after = cloneBoard(b);
+  applyPour(after, 3, 1, R);
+  check('recipe: progress advances', recipeProgress(after, R) === 1 && nextRecipeColor(after, R) === 0);
+  check('recipe: second colour now allowed', canPour(after, 3, 0, R));
+  applyPour(after, 3, 0, R);
+  check('recipe: done once every colour sealed', nextRecipeColor(after, R) === null && recipeProgress(after, R) === 2);
+  check('recipe: undo re-opens it', (() => {
+    const u = cloneBoard(after);
+    undoPour(u, { from: 3, to: 0, count: 1, color: 0 });
+    return nextRecipeColor(u, R) === 0;
+  })());
+  // Recipe colours sealed in order on every winning line the solver finds.
+  let audited = 0;
+  for (let seed = 0; seed < 8; seed++) {
+    const spec = { id: 800 + seed, colors: 3, empties: 1, minPar: 1, name: 'audit', recipe: [2, 1] };
+    const rules = rulesFor(spec);
+    const gen = generateLevel(spec);
+    const work = cloneBoard(gen.board);
+    const order: number[] = [];
+    for (const m of gen.solution) {
+      applyPour(work, m.from, m.to, rules);
+      const done = recipeProgress(work, rules);
+      if (done > order.length) order.push(done);
+    }
+    check(`recipe audit ${seed}: solution wins`, isSolved(work, rules));
+    check(`recipe audit ${seed}: sealed in order`, order.join() === '1,2', order.join());
+    const bfs = rawBfsOptimal(gen.board, rules);
+    if (bfs === null) continue;
+    audited++;
+    check(`recipe audit ${seed}: A* par is optimal`, gen.par === bfs, `A*=${gen.par} bfs=${bfs}`);
+  }
+  check('recipe optimality audit ran', audited >= 5, `audited=${audited}`);
+}
+
+// ------------------------------------------------------- labelled flasks
+{
+  // Two colours, two empties; the last empty (index 3) is labelled colour 1.
+  const R = rulesFor({ colors: 2, empties: 2, labels: [1] });
+  check('labels: flask is the last empty', labelAt(R, 3) === 1 && labelAt(R, 2) === -1);
+  const b: Board = [[0, 1], [1, 0], [], []];
+  check('labels: own colour accepted', canPour(b, 0, 3, R));
+  check('labels: other colour refused', !canPour(b, 1, 3, R));
+  check('labels: blockedBy names the label', blockedBy(b, 1, 3, R) === 'label');
+  check('labels: plain empty unaffected', canPour(b, 1, 2, R));
+  check('labels: flask is not the interchangeable empty',
+    usefulMoves(b, R).some((m) => m.to === 3) && usefulMoves(b, R).some((m) => m.to === 2));
+  check('labels: flask is position-sensitive in the key',
+    canonicalKey([[0, 1], [1, 0], [], [1]], R) !== canonicalKey([[0, 1], [1, 0], [1], []], R));
+  check('labels: solved with the flask full', isSolved([[0, 0, 0, 0], [], [], [1, 1, 1, 1]], R));
+  check('labels: solved with the flask empty', isSolved([[0, 0, 0, 0], [1, 1, 1, 1], [], []], R));
+  const C = rulesFor({ colors: 2, empties: 2, labels: [1], cauldron: true });
+  check('labels: placed after the cauldron offset', labelAt(C, 4) === 1);
+  const W = rulesFor({ colors: 2, empties: 2, labels: [0], oneWay: true });
+  check('labels: one-way flask still last', oneWayIndex(W) === 4 && labelAt(W, 3) === 0);
+
+  let audited = 0;
+  for (let seed = 0; seed < 8; seed++) {
+    const spec = { id: 900 + seed, colors: 3, empties: 2, minPar: 1, name: 'audit', labels: [seed % 3] };
+    const rules = rulesFor(spec);
+    const gen = generateLevel(spec);
+    check(`labels audit ${seed}: solution wins`, isSolved(replay(gen.board, gen.solution, rules), rules));
+    const bfs = rawBfsOptimal(gen.board, rules);
+    if (bfs === null) continue;
+    audited++;
+    check(`labels audit ${seed}: A* par is optimal`, gen.par === bfs, `A*=${gen.par} bfs=${bfs}`);
+  }
+  check('labels optimality audit ran', audited >= 5, `audited=${audited}`);
+
+  // Both at once, on the combo shape the campaign uses.
+  let combo = 0;
+  for (let seed = 0; seed < 6; seed++) {
+    const spec = {
+      id: 950 + seed, colors: 3, empties: 2, minPar: 1, name: 'audit', labels: [0], recipe: [1, 2],
+    };
+    const rules = rulesFor(spec);
+    const gen = generateLevel(spec);
+    const bfs = rawBfsOptimal(gen.board, rules);
+    if (bfs === null) continue;
+    combo++;
+    check(`recipe+labels audit ${seed}: A* par is optimal`, gen.par === bfs, `A*=${gen.par} bfs=${bfs}`);
+  }
+  check('recipe+labels optimality audit ran', combo >= 4, `audited=${combo}`);
 }
 
 // --------------------------------------------------------------- solver

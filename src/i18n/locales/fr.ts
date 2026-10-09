@@ -220,6 +220,24 @@ const table: Record<string, string> = {
   'toast.padlockOpen': 'Cadenas ouvert !',
   'toast.stuckHint': 'Bloqué ? Essaie un indice.',
   'toast.noWin': "Impossible de gagner d'ici : utilise Annuler ou Recommencer",
+  'toast.noWinRestart': 'Cette potion ne peut plus être terminée : recommence et anticipe',
+  'toast.recipe': "Suis la recette : scelle d'abord sa couleur suivante",
+  'toast.label': "Ce flacon n'accepte que la couleur de son étiquette",
+  'hud.pourBudget': '{used}/{max} versements',
+  'hud.recipe': "Sceller dans l'ordre",
+  'precision.title': 'Plus de versements',
+  'precision.body': 'Cette potion devait être terminée en {n} versements. Annule pour trouver un chemin plus court, ou recommence.',
+  'twist.recipe.title': 'Recette',
+  'twist.recipe.body': "<p>Scelle d'abord ces couleurs, dans cet ordre :</p><p class=\"twistrow\">{colors}</p><p>Aucune autre bouteille ne peut être scellée avant, alors empêche les autres couleurs de remplir une bouteille trop tôt. La carte en haut suit ta progression - touche-la pour revoir ceci.</p>",
+  'twist.labels.title': 'Flacon étiqueté',
+  'twist.labels.body': "<p>Un flacon au bord coloré n'accepte que cette couleur :</p><p class=\"twistrow\">{colors}</p><p>C'est de la place en plus - mais seulement pour le bon liquide. Fais d'abord remonter cette couleur pour en profiter.</p>",
+  'twist.precision.title': 'Versement de précision',
+  'twist.precision.body': "<p>Termine cette potion en <b>{n} versements</b> ou moins.</p><p>S'ils s'épuisent avant la fin, l'essai échoue. Le compteur en haut montre tes versements - planifie ton chemin avant de commencer.</p>",
+  'twist.cauldron.title': 'Le chaudron',
+  'twist.lock.title': 'Bouteille verrouillée',
+  'twist.oneWay.title': 'Flacon à sens unique',
+  'twist.murky.title': 'Potion trouble',
+  'rules.title': 'Règles de ce niveau',
   'toast.locked.one': "Verrouillée : scelle encore une bouteille pour l'ouvrir",
   'toast.locked.other': "Verrouillée : scelle encore {n} bouteilles pour l'ouvrir",
   'toast.oneWay': "Fiole à sens unique : ce qui entre ne ressort pas, et elle doit être pleine pour gagner",
@@ -427,6 +445,10 @@ const table: Record<string, string> = {
   'reset.body': 'Cela efface tout ce que tu as gagné sur cet appareil : niveaux, étoiles, pièces, bonus, apparences de flacon, succès et ta série quotidienne. Le jeu repart au niveau 1. Tes réglages sont conservés.',
   'reset.keep': 'Continuer à jouer',
 
+  'howto.twists': `<div class="howto">
+    <h3>Autres astuces</h3>
+    <p>Une carte de <b>recette</b> liste des couleurs à sceller en premier, dans cet ordre : tant qu'elle n'est pas terminée, aucune autre bouteille ne peut être scellée. Un <b>flacon étiqueté</b> porte une couleur sur son bord et n'accepte que celle-ci. Un <b>versement de précision</b> te donne un nombre fixe de versements : s'ils s'épuisent avant la fin, l'essai échoue, alors planifie tout le chemin avant de commencer.</p>
+  </div>`,
   'howto.title': 'Comment jouer',
   'howto.more': `<div class="howto">
     <h3>Limites, chrono et séries</h3>

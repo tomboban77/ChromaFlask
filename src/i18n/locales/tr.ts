@@ -216,6 +216,24 @@ const table: Record<string, string> = {
   'toast.padlockOpen': 'Kilit açıldı!',
   'toast.stuckHint': 'Takıldın mı? Bir ipucu dene.',
   'toast.noWin': 'Buradan kazanmanın yolu yok; Geri al veya Yeniden başlat',
+  'toast.noWinRestart': 'Bu iksir artık tamamlanamaz; yeniden başla ve önceden planla',
+  'toast.recipe': 'Tarife uy: önce sıradaki rengini mühürle',
+  'toast.label': 'Bu şişe yalnızca etiketindeki rengi alır',
+  'hud.pourBudget': '{used}/{max} döküm',
+  'hud.recipe': 'Sırayla mühürle',
+  'precision.title': 'Döküm hakkı bitti',
+  'precision.body': 'Bu iksir {n} dökümde bitmeliydi. Daha kısa bir yol için geri al ya da yeniden başla.',
+  'twist.recipe.title': 'Tarif',
+  'twist.recipe.body': '<p>Önce bu renkleri bu sırayla mühürle:</p><p class="twistrow">{colors}</p><p>Bitene kadar başka şişe mühürlenemez, bu yüzden diğer renklerin bir şişeyi erken doldurmasına izin verme. Üstteki kart ilerlemeni gösterir - tekrar görmek için dokun.</p>',
+  'twist.labels.title': 'Etiketli şişe',
+  'twist.labels.body': '<p>Ağzı renkli olan şişe yalnızca o rengi alır:</p><p class="twistrow">{colors}</p><p>Fazladan yerdir - ama yalnızca doğru sıvı için. Kullanmak için önce o rengi üste çıkar.</p>',
+  'twist.precision.title': 'Hassas döküm',
+  'twist.precision.body': '<p>Bu iksiri <b>{n} döküm</b> veya daha azında bitir.</p><p>Bitmeden haklar biterse deneme başarısız olur. Üstteki sayaç dökümlerini gösterir - başlamadan önce yolunu planla.</p>',
+  'twist.cauldron.title': 'Kazan',
+  'twist.lock.title': 'Kilitli şişe',
+  'twist.oneWay.title': 'Tek yönlü şişe',
+  'twist.murky.title': 'Bulanık iksir',
+  'rules.title': 'Bu seviyenin kuralları',
   'toast.locked.other': 'Kilitli: açmak için {n} şişe daha mühürle',
   'toast.oneWay': 'Tek yönlü şişe: giren çıkmaz ve kazanmak için dolu olmalı',
   'intro.lock.other': 'Kilitli bir şişe! Kilidini açmak için {n} başka şişeyi mühürle.',
@@ -418,6 +436,10 @@ const table: Record<string, string> = {
   'reset.body': 'Bu, bu cihazda kazandığın her şeyi siler: bölümler, yıldızlar, altınlar, güçlendiriciler, şişe görünümleri, başarımlar ve günlük serin. Oyun 1. bölümden yeniden başlar. Ayarların korunur.',
   'reset.keep': 'Oynamaya devam',
 
+  'howto.twists': `<div class="howto">
+    <h3>Diğer sürprizler</h3>
+    <p><b>Tarif</b> kartı önce, bu sırayla mühürlenmesi gereken renkleri gösterir: tarif bitene kadar başka şişe mühürlenemez. <b>Etiketli şişe</b> ağzında tek bir renk taşır ve yalnızca o rengi alır. <b>Hassas döküm</b> sabit sayıda döküm hakkı verir - iksir bitmeden haklar biterse deneme başarısız olur, bu yüzden başlamadan önce tüm yolu planla.</p>
+  </div>`,
   'howto.title': 'Nasıl oynanır',
   'howto.more': `<div class="howto">
     <h3>Sınırlar, saat ve seriler</h3>

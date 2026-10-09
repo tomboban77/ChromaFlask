@@ -10,13 +10,14 @@
  * phone, at floors a step above the daily - this is the hard mode.
  */
 import { WEEKLY_BASE } from './daily';
+import { pickColors } from './rng';
 import type { LevelSpec } from './types';
 
 export const WEEKLY_BOARDS = 5;
 /**
- * Highest unlocked campaign level needed before the event opens. Past the
- * campaign's introductions of the locked bottle (45) and the one-way flask
- * (67), both of which the event's hardest boards use.
+ * Highest unlocked campaign level needed before the event opens - well past
+ * the introductions of every twist its boards use (recipe 8, labelled flask
+ * 10, locked bottle 15, one-way flask 27).
  */
 export const WEEKLY_UNLOCK_LEVEL = 70;
 
@@ -52,24 +53,33 @@ export function boardFromWeeklyId(id: number): number {
 
 /**
  * The five boards, in rising order of menace: a deep eight-colour board, a
- * seven-colour murky one, a murky squeeze, a locked eight-colour board, and
- * the one-way flask to finish. Murk alternates week to week on the boards
- * that do not always carry it.
+ * murky recipe, a murky labelled flask, a locked eight-colour board, and the
+ * one-way flask to finish. Murk alternates week to week on the boards that do
+ * not always carry it.
  */
 export function weeklySpec(id: number): LevelSpec {
   const week = weekFromWeeklyId(id);
   const murky = week % 2 === 1;
   const name = 'Weekly event';
+  const band = { min: 0, max: 0.1 };
   switch (boardFromWeeklyId(id)) {
     case 0:
-      return { id, colors: 8, empties: 2, minPar: 24, name, murky };
+      return { id, colors: 8, empties: 2, minPar: 24, forgiveness: band, name, murky };
     case 1:
-      return { id, colors: 7, empties: 2, minPar: 19, name, murky: true };
+      return {
+        id, colors: 8, empties: 2, minPar: 23, recipe: pickColors(id, 8, 3),
+        forgiveness: { min: 0.03, max: 0.12 }, name, murky: true,
+      };
     case 2:
-      return { id, colors: 6, empties: 1, minPar: 17, name, murky: true };
+      return {
+        id, colors: 8, empties: 2, minPar: 23, labels: pickColors(id, 8, 1),
+        forgiveness: { min: 0.03, max: 0.1 }, name, murky: true,
+      };
     case 3:
-      return { id, colors: 8, empties: 2, minPar: 24, lock: { seals: 1 }, name, murky };
+      return { id, colors: 8, empties: 2, minPar: 24, lock: { seals: 1 }, forgiveness: band, name, murky };
     default:
-      return { id, colors: 8, empties: 1, minPar: 22, oneWay: true, name, murky: !murky };
+      return {
+        id, colors: 8, empties: 1, minPar: 22, oneWay: true, forgiveness: band, name, murky: !murky,
+      };
   }
 }

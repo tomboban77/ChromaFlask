@@ -136,6 +136,25 @@ _Last updated: 2026-09-06_
   never leave); moving a whole uniform tube into the empty flask is allowed
   as a useful move because it is a real choice, not relabelling. Audited
   against brute force. Tapping it as a source explains why (throttled toast).
+- **Difficulty rebuild (2026-10-09, "too easy" reviews)** - levels are now
+  selected by *forgiveness* (`src/core/difficulty.ts`: the share of casual,
+  no-lookahead playouts that win), not par; every shape carries a band that
+  tightens through the campaign (`npm run levels:difficulty` prints the
+  curve). Short tutorial (8 colours from L7); cauldron levels have no other
+  empty tube; the no-win toast is instant only to L20, after that it waits
+  out the undo cap so it cannot be used as an oracle.
+- **The Recipe** (L8, then every 10th from L13) - a HUD card lists colours
+  that must be sealed first, in order; until done no other bottle can be
+  sealed. Pure function of the board (`nextRecipeColor`), so undo and the
+  solver need no extra state.
+- **Labelled flasks** (L10, then every 10th from L19; two of three empties
+  from L159) - an empty flask with a coloured rim and glyph watermark that
+  takes only that colour.
+- **Precision pour** (every 10th from L21) - a pour budget of par + 3 / 2 / 1;
+  spending it without a win fails the attempt ("Out of pours").
+- **Combo levels** (every 10th from L50) - recipe + labelled flask or recipe
+  + lock. Recipe and labels are audited against a raw-board BFS in test:core;
+  daily, weekly and endless rotate the new shapes too.
 - All four introduced by one-time toasts, staggered so players meet one idea
   at a time; all documented in "How to play".
 

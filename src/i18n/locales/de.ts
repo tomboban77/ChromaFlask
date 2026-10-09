@@ -220,6 +220,24 @@ const table: Record<string, string> = {
   'toast.padlockOpen': 'Schloss offen!',
   'toast.stuckHint': 'Festgefahren? Probier einen Tipp.',
   'toast.noWin': 'Von hier ist kein Sieg möglich – nutze Zurück oder Neustart',
+  'toast.noWinRestart': 'Dieser Trank ist nicht mehr zu schaffen – starte neu und plane voraus',
+  'toast.recipe': 'Folge dem Rezept: versiegle zuerst seine nächste Farbe',
+  'toast.label': 'Diese Flasche nimmt nur die Farbe auf ihrem Etikett',
+  'hud.pourBudget': '{used}/{max} Güsse',
+  'hud.recipe': 'Der Reihe nach',
+  'precision.title': 'Keine Güsse mehr',
+  'precision.body': 'Dieser Trank musste in {n} Güssen fertig sein. Nimm Züge zurück, um einen kürzeren Weg zu finden, oder starte neu.',
+  'twist.recipe.title': 'Rezept',
+  'twist.recipe.body': '<p>Versiegle zuerst diese Farben, in dieser Reihenfolge:</p><p class="twistrow">{colors}</p><p>Bis dahin lässt sich keine andere Flasche versiegeln – sorge also dafür, dass andere Farben keine Flasche zu früh füllen. Die Karte oben zeigt deinen Fortschritt – tippe darauf, um dies erneut zu sehen.</p>',
+  'twist.labels.title': 'Beschriftete Flasche',
+  'twist.labels.body': '<p>Eine Flasche mit farbigem Rand nimmt nur diese Farbe:</p><p class="twistrow">{colors}</p><p>Sie ist zusätzlicher Platz – aber nur für die richtige Flüssigkeit. Bring diese Farbe zuerst nach oben, um sie zu nutzen.</p>',
+  'twist.precision.title': 'Präzisionsguss',
+  'twist.precision.body': '<p>Schaffe diesen Trank in <b>{n} Güssen</b> oder weniger.</p><p>Gehen sie vorher aus, scheitert der Versuch. Der Zähler oben zeigt deine Güsse – plane deinen Weg, bevor du beginnst.</p>',
+  'twist.cauldron.title': 'Der Kessel',
+  'twist.lock.title': 'Verschlossene Flasche',
+  'twist.oneWay.title': 'Einwegflasche',
+  'twist.murky.title': 'Trüber Trank',
+  'rules.title': 'Regeln dieses Levels',
   'toast.locked.one': 'Gesperrt – versiegle noch eine Flasche, um sie zu öffnen',
   'toast.locked.other': 'Gesperrt – versiegle noch {n} Flaschen, um sie zu öffnen',
   'toast.oneWay': 'Einwegfläschchen: Was hineinfließt, bleibt – und es muss voll sein, um zu gewinnen',
@@ -427,6 +445,10 @@ const table: Record<string, string> = {
   'reset.body': 'Das löscht alles, was du auf diesem Gerät erspielt hast: Level, Sterne, Münzen, Booster, Flaschen-Looks, Erfolge und deine Tagesserie. Das Spiel startet wieder bei Level 1. Deine Einstellungen bleiben erhalten.',
   'reset.keep': 'Weiterspielen',
 
+  'howto.twists': `<div class="howto">
+    <h3>Weitere Kniffe</h3>
+    <p>Eine <b>Rezeptkarte</b> zeigt Farben, die zuerst und in dieser Reihenfolge versiegelt werden müssen: Bis dahin lässt sich keine andere Flasche versiegeln. Eine <b>beschriftete Flasche</b> trägt eine Farbe am Rand und nimmt nur diese Farbe. Ein <b>Präzisionsguss</b> gibt dir eine feste Zahl an Güssen – gehen sie aus, bevor der Trank fertig ist, scheitert der Versuch. Plane also den ganzen Weg, bevor du beginnst.</p>
+  </div>`,
   'howto.title': 'Spielanleitung',
   'howto.more': `<div class="howto">
     <h3>Limits, Uhr und Serien</h3>

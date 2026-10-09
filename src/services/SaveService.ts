@@ -125,6 +125,10 @@ export interface SaveData {
   lockSeen: boolean;
   /** Whether the one-way flask has been introduced with a toast. */
   oneWaySeen: boolean;
+  /** Whether the recipe, labelled flasks and precision pours have been introduced. */
+  recipeSeen: boolean;
+  labelSeen: boolean;
+  precisionSeen: boolean;
   /** Whether the "leaderboard unlocked" moment has been shown (level 45). */
   leaderboardSeen: boolean;
   /** Ids of achievements already awarded (their coins have been paid). */
@@ -225,6 +229,9 @@ export function defaultSave(startingCoins: number): SaveData {
     daily: { records: {}, streak: 0, lastDay: -1, bestStreak: 0, freezes: 0 },
     lockSeen: false,
     oneWaySeen: false,
+    recipeSeen: false,
+    labelSeen: false,
+    precisionSeen: false,
     leaderboardSeen: false,
     achievements: [],
     login: { streak: 0, lastDay: -1 },
@@ -411,6 +418,10 @@ export class SaveService {
       // v9 saves predate the locked bottle; v11 the one-way flask.
       lockSeen: parsed.lockSeen ?? false,
       oneWaySeen: parsed.oneWaySeen ?? false,
+      // Saves before 1.3 predate the recipe, labelled flasks and precision.
+      recipeSeen: parsed.recipeSeen ?? false,
+      labelSeen: parsed.labelSeen ?? false,
+      precisionSeen: parsed.precisionSeen ?? false,
       // v15 saves predate the leaderboard. A player already past level 45 on
       // an older save gets the unlock moment once, on their next visit home.
       leaderboardSeen: parsed.leaderboardSeen ?? false,

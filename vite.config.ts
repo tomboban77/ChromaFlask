@@ -59,7 +59,8 @@ function cspMeta(native: boolean): Plugin {
 export default defineConfig(({ mode }) => {
   // `npm run build:native` -> the bundle `npx cap sync` copies into the
   // Android and iOS projects. src/services/Platform.ts reads the same mode.
-  const native = mode === 'native';
+  // `native-debug` is the same bundle plus the test tools (emulator only).
+  const native = mode === 'native' || mode === 'native-debug';
   return {
     base: './',
     plugins: [cspMeta(native)],

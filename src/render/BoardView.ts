@@ -1,8 +1,8 @@
 import { Container, Point } from 'pixi.js';
 import gsap from 'gsap';
 import {
-  DEFAULT_RULES, TUBE_CAPACITY, applyPour, cloneBoard, isComplete, isDeadlocked,
-  isSolved, lockActive, pourAmount, rulesFor, sealsRemaining, undoPour,
+  DEFAULT_RULES, TUBE_CAPACITY, applyPour, blockedBy, cloneBoard, isComplete, isDeadlocked,
+  isSolved, labelAt, lockActive, pourAmount, recipeProgress, rulesFor, sealsRemaining, undoPour,
 } from '@/core/board';
 import { findHint } from '@/core/solver';
 import type { Board, BoardRules, ColorId, GeneratedLevel, Move } from '@/core/types';
@@ -46,6 +46,10 @@ export interface BoardCallbacks {
   onUnlocked?: () => void;
   /** The player tried to pour *out of* the one-way flask. */
   onOneWayTap?: () => void;
+  /** A pour the classic rules allow was refused by a labelled flask or the recipe. */
+  onRuleBlocked?: (rule: 'label' | 'recipe') => void;
+  /** Precision pour: the budget is spent and the board is not won. */
+  onOutOfPours?: () => void;
 }
 
 interface Slot {
@@ -95,6 +99,22 @@ export class BoardView {
   private rules: BoardRules = DEFAULT_RULES;
   /** One "no way to win" warning per trap; re-armed by undo and new space. */
   private noWinWarned = false;
+  /**
+   * Pours a dead board must absorb before the warning shows. 0 warns the
+   * moment a pour proves fatal - a teaching aid, but on every level it is an
+   * oracle: pour at random, wait for the warning, undo. Past the undo cap the
+   * warning can only ever say "restart", so planning ahead is the one way to
+   * avoid the trap. Set by the caller before mount.
+   */
+  noWinGrace = 0;
+  /** History length at which the board was first proven unwinnable, or null. */
+  private deadAt: number | null = null;
+  /**
+   * Precision pour: the most pours this attempt may make, or null for no
+   * limit. Counts net pours (history), so an undo hands one back. Set by the
+   * caller before mount.
+   */
+  moveBudget: number | null = null;
   private noWinTimer: number | null = null;
 
   private selected: number | null = null;
@@ -141,6 +161,7 @@ export class BoardView {
     this.selected = null;
     this.busy = false;
     this.noWinWarned = false;
+    this.deadAt = null;
 
     this.hidden = restore
       ? this.board.map((_, i) => restore.hidden[i] ?? 0)
@@ -179,6 +200,7 @@ export class BoardView {
       this.skin,
     );
     view.setColorblind(colorblind);
+    view.setLabel(labelAt(this.rules, index));
     view.on('pointertap', () => this.handleTap(index));
     this.layer.addChild(view);
     this.bottles[index] = view;
@@ -323,7 +345,18 @@ export class BoardView {
    * a live board that the player simply walks away from is not a failure.
    */
   get isLost(): boolean {
-    return !this.resolved && (this.noWinWarned || this.isDead);
+    return !this.resolved && (this.noWinWarned || this.isDead || this.isOverBudget);
+  }
+
+  /** Precision pour: every budgeted pour is spent without a win. */
+  get isOverBudget(): boolean {
+    return this.moveBudget !== null && !this.resolved && this.history.length >= this.moveBudget;
+  }
+
+  /** The recipe and how many of its colours are sealed, or null without one. */
+  get recipeStatus(): { readonly colors: readonly ColorId[]; readonly done: number } | null {
+    if (!this.rules.recipe) return null;
+    return { colors: this.rules.recipe, done: recipeProgress(this.board, this.rules) };
   }
 
   snapshot(): Board {
@@ -499,6 +532,13 @@ export class BoardView {
     const tube = this.board[index];
     if (!tube) return;
 
+    // The pour budget is spent: nothing more until an undo or a restart.
+    if (this.isOverBudget) {
+      this.rejectTap(index);
+      this.callbacks.onOutOfPours?.();
+      return;
+    }
+
     // A padlocked bottle is neither a source nor a target until the lock opens.
     if (this.isLockedTube(index)) {
       this.rejectTap(index);
@@ -515,6 +555,8 @@ export class BoardView {
       }
       if (tube.length === 0) {
         this.rejectTap(index);
+        // An empty labelled flask: say what it is for.
+        if (labelAt(this.rules, index) >= 0) this.callbacks.onRuleBlocked?.('label');
         return;
       }
       // A full uniform cauldron is NOT locked in - it still has to be emptied.
@@ -536,6 +578,15 @@ export class BoardView {
     const from = this.selected;
     if (pourAmount(this.board, from, index, this.rules) > 0) {
       void this.pour(from, index);
+      return;
+    }
+
+    // A pour that would work anywhere else, refused by a label or the recipe:
+    // say why, or it reads as a bug.
+    const blocked = blockedBy(this.board, from, index, this.rules);
+    if (blocked) {
+      this.rejectTap(index);
+      this.callbacks.onRuleBlocked?.(blocked);
       return;
     }
 
@@ -863,6 +914,10 @@ export class BoardView {
       this.callbacks.onWin?.();
       return;
     }
+    if (this.isOverBudget) {
+      this.callbacks.onOutOfPours?.();
+      return;
+    }
     if (isDeadlocked(this.board, this.rules)) {
       this.callbacks.onStuck?.();
       return;
@@ -882,6 +937,12 @@ export class BoardView {
    */
   private scheduleNoWinCheck(): void {
     if (this.noWinWarned || this.board.length > 10) return;
+    // Already proven dead: every later pour stays dead, so only the grace
+    // count is left to run out - no further solver work.
+    if (this.deadAt !== null) {
+      this.maybeWarnNoWin();
+      return;
+    }
     if (this.noWinTimer !== null) window.clearTimeout(this.noWinTimer);
 
     const gen = this.generation;
@@ -894,11 +955,18 @@ export class BoardView {
         .then((result) => {
           if (gen !== this.generation || moves !== this.history.length) return;
           if (result === 'unsolvable' && !this.noWinWarned) {
-            this.noWinWarned = true;
-            this.callbacks.onNoWin?.();
+            this.deadAt = moves;
+            this.maybeWarnNoWin();
           }
         });
     }, 150);
+  }
+
+  private maybeWarnNoWin(): void {
+    if (this.noWinWarned || this.deadAt === null) return;
+    if (this.history.length - this.deadAt < this.noWinGrace) return;
+    this.noWinWarned = true;
+    this.callbacks.onNoWin?.();
   }
 
   // -------------------------------------------------------------- powerups
@@ -910,7 +978,14 @@ export class BoardView {
 
     undoPour(this.board, move);
     this.resolved = false;
-    this.noWinWarned = false; // undoing may have escaped the trap; re-arm
+    // Undoing back past the first dead position may have escaped the trap, so
+    // re-arm. Undoing within the dead stretch cannot (every position after
+    // `deadAt` on this line is dead too): the board stays lost, or a restart
+    // there would turn free.
+    if (this.deadAt === null || this.history.length < this.deadAt) {
+      this.noWinWarned = false;
+      this.deadAt = null;
+    }
     this.settleHidden();
     this.select(null);
     // Unsealing a bottle re-engages the padlock, silently.
@@ -955,6 +1030,7 @@ export class BoardView {
     this.board.push([]);
     this.hidden.push(0);
     this.noWinWarned = false; // fresh space can reopen a winning line
+    this.deadAt = null;
     const view = this.addBottleView(this.board.length - 1, colorblind);
     view.alpha = 0;
     this.layout(this.viewW, this.viewH, true);

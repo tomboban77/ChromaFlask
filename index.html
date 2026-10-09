@@ -344,6 +344,7 @@
           <div class="topbar__spacer"></div>
           <div class="levelpill">
             <span id="game-level-label">Level 1</span>
+            <i class="levelpill__rules" id="game-rules" aria-hidden="true" hidden>i</i>
           </div>
           <div class="topbar__spacer"></div>
           <button class="iconbtn" id="btn-restart" aria-label="Restart level" data-i18n-aria="game.restartAria">
@@ -377,6 +378,13 @@
             <span class="hudtimer__time" id="game-clock-time">0:00</span>
             <span class="hudtimer__bonus" id="game-clock-bonus">+25</span>
           </div>
+        </div>
+
+        <!-- Recipe card (recipe levels only): the colours to seal first, in
+             order. Ticks fill in as they are sealed; it dims once done. -->
+        <div class="hudrecipe" id="hud-recipe" role="button" tabindex="0" hidden>
+          <span class="hudrecipe__label" data-i18n="hud.recipe">Recipe</span>
+          <span class="hudrecipe__dots" id="hud-recipe-dots"></span>
         </div>
 
         <!-- Pixi canvas mounts here -->

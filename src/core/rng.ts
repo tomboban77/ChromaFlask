@@ -17,6 +17,18 @@ export function mulberry32(seed: number): Rng {
   };
 }
 
+/**
+ * `count` distinct colours out of `colors`, deterministic per id: recipe
+ * orders and flask labels. `avoid` keeps a combo's label off its recipe.
+ */
+export function pickColors(
+  id: number, colors: number, count: number, avoid: readonly number[] = [],
+): number[] {
+  const pool = Array.from({ length: colors }, (_, i) => i).filter((c) => !avoid.includes(c));
+  shuffle(pool, mulberry32(id * 977 + 13));
+  return pool.slice(0, count);
+}
+
 /** In-place Fisher-Yates using the supplied Rng. */
 export function shuffle<T>(items: T[], rng: Rng): T[] {
   for (let i = items.length - 1; i > 0; i--) {

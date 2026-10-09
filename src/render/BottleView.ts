@@ -94,6 +94,15 @@ export class BottleView extends Container {
   private readonly lockPlate = new Graphics();
   private locked = false;
   private lockSeals = 0;
+  /**
+   * Labelled flask: the colour it accepts, or -1. Shown twice - the rim and
+   * collar in that colour above the glass, and that colour's glyph as a
+   * watermark behind the liquid, so the label survives colour blindness and
+   * disappears under the very liquid it asks for.
+   */
+  private flaskLabel: ColorId = -1;
+  private readonly labelBack = new Graphics();
+  private readonly labelRim = new Graphics();
   private capH = 0;
   /** Cap y when seated in the neck (cap is centred, so this is above the mouth). */
   private capRestY = 0;
@@ -126,7 +135,8 @@ export class BottleView extends Container {
     this.liquidLayer.mask = this.liquidMask;
 
     this.addChild(
-      this.glow, this.cavity, this.liquidLayer, this.glass, this.flash, this.lockPlate, this.cap,
+      this.glow, this.cavity, this.labelBack, this.liquidLayer, this.glass, this.labelRim,
+      this.flash, this.lockPlate, this.cap,
     );
 
     this.eventMode = 'static';
@@ -153,6 +163,37 @@ export class BottleView extends Container {
 
   get isLocked(): boolean {
     return this.locked;
+  }
+
+  /** Mark this vessel as a labelled flask for `color` (-1 clears it). */
+  setLabel(color: ColorId): void {
+    if (this.flaskLabel === color) return;
+    this.flaskLabel = color;
+    this.redrawLabel();
+  }
+
+  private redrawLabel(): void {
+    const back = this.labelBack;
+    const rim = this.labelRim;
+    back.clear();
+    rim.clear();
+    if (this.flaskLabel < 0) return;
+    const g = this.geo;
+    const col = colorOf(this.flaskLabel);
+
+    // Behind the liquid: a faint wash and the colour's glyph, large.
+    this.outline(back, GLASS.thickness * 0.6);
+    back.fill({ color: col.base, alpha: 0.12 });
+    const bodyH = g.yBottom - g.yBody;
+    this.drawGlyph(back, col.glyph, 0, g.yBody + bodyH * 0.55, g.iw * 0.62, col.base, 0.55);
+
+    // Above the glass: rim and collar in the label colour.
+    this.outline(rim, 0);
+    rim.stroke({ width: 3, color: col.base, alpha: 0.95, alignment: 0.5 });
+    rim.roundRect(
+      -g.collarW / 2, 0, g.collarW, g.yCollar,
+      Math.min(vesselSpec(this.variant).collarRadius * g.bodyW, g.yCollar / 2),
+    ).fill({ color: col.base, alpha: 0.95 });
   }
 
   /**
@@ -622,8 +663,9 @@ export class BottleView extends Container {
       .stroke({ width: 1.6, color: skin.corkEdge, alpha: 0.8 });
     if (this.capped) c.y = this.capRestY;
 
-    // --- padlock plate (geometry-dependent, so redrawn with the chrome)
+    // --- padlock plate and flask label (geometry-dependent, so redrawn with the chrome)
     this.redrawLockPlate();
+    this.redrawLabel();
 
     // --- selection glow: soft outer halo built from stacked strokes
     this.glow.clear();
@@ -847,34 +889,36 @@ export class BottleView extends Container {
   }
 
   /** Shape markers for the colourblind aid - one distinct glyph per colour. */
-  private drawGlyph(gfx: Graphics, kind: GlyphKind, cx: number, cy: number, size: number): void {
+  private drawGlyph(
+    gfx: Graphics, kind: GlyphKind, cx: number, cy: number, size: number,
+    color = 0xffffff, alpha = 0.4,
+  ): void {
     const r = size / 2;
-    const alpha = 0.4;
     switch (kind) {
       case 'circle':
-        gfx.circle(cx, cy, r * 0.8).fill({ color: 0xffffff, alpha });
+        gfx.circle(cx, cy, r * 0.8).fill({ color, alpha });
         break;
       case 'triangle':
         gfx.moveTo(cx, cy - r).lineTo(cx + r, cy + r * 0.8).lineTo(cx - r, cy + r * 0.8)
-          .closePath().fill({ color: 0xffffff, alpha });
+          .closePath().fill({ color, alpha });
         break;
       case 'square':
-        gfx.rect(cx - r * 0.75, cy - r * 0.75, r * 1.5, r * 1.5).fill({ color: 0xffffff, alpha });
+        gfx.rect(cx - r * 0.75, cy - r * 0.75, r * 1.5, r * 1.5).fill({ color, alpha });
         break;
       case 'diamond':
         gfx.moveTo(cx, cy - r).lineTo(cx + r, cy).lineTo(cx, cy + r).lineTo(cx - r, cy)
-          .closePath().fill({ color: 0xffffff, alpha });
+          .closePath().fill({ color, alpha });
         break;
       case 'cross':
-        gfx.rect(cx - r * 0.9, cy - r * 0.28, r * 1.8, r * 0.56).fill({ color: 0xffffff, alpha });
-        gfx.rect(cx - r * 0.28, cy - r * 0.9, r * 0.56, r * 1.8).fill({ color: 0xffffff, alpha });
+        gfx.rect(cx - r * 0.9, cy - r * 0.28, r * 1.8, r * 0.56).fill({ color, alpha });
+        gfx.rect(cx - r * 0.28, cy - r * 0.9, r * 0.56, r * 1.8).fill({ color, alpha });
         break;
       case 'ring':
         gfx.circle(cx, cy, r * 0.8)
-          .stroke({ width: Math.max(1.5, r * 0.34), color: 0xffffff, alpha });
+          .stroke({ width: Math.max(1.5, r * 0.34), color, alpha });
         break;
       case 'bar':
-        gfx.rect(cx - r, cy - r * 0.3, r * 2, r * 0.6).fill({ color: 0xffffff, alpha });
+        gfx.rect(cx - r, cy - r * 0.3, r * 2, r * 0.6).fill({ color, alpha });
         break;
       case 'star': {
         const spikes = 5;
@@ -886,7 +930,7 @@ export class BottleView extends Container {
           if (i === 0) gfx.moveTo(px, py);
           else gfx.lineTo(px, py);
         }
-        gfx.closePath().fill({ color: 0xffffff, alpha });
+        gfx.closePath().fill({ color, alpha });
         break;
       }
     }

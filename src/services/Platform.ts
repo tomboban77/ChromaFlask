@@ -38,4 +38,6 @@ export function isNativeApp(): boolean {
   return platform() !== 'web';
 }
 
-export const BUILD_TARGET: BuildTarget = import.meta.env.MODE === 'native' ? 'native' : 'web';
+export const BUILD_TARGET: BuildTarget = import.meta.env.MODE === 'native' || import.meta.env.MODE === 'native-debug'
+  ? 'native'
+  : 'web';

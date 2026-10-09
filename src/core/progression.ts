@@ -132,16 +132,21 @@ export function streakBonusFor(
 }
 
 // -------------------------------------------------------------- time bonus
+/** Opening levels on the relaxed clock while the rules are being learned. */
+export const RELAXED_CLOCK_LEVELS = 3;
+
 /**
  * The time-bonus window for a level, in seconds. Every level shows a clock;
  * beating it pays a bonus on the first clear, and missing it costs nothing -
  * time pressure in this genre must stay optional or it churns the relaxed
- * majority. Four seconds a move is a focused pace (a pour animates in well
- * under one), and the flat 10 covers reading the board. The old window (20 s
- * plus 6 a move) left most players with half the clock unused.
+ * majority. The flat 10 covers reading the board; then four seconds a move
+ * on the first three levels, and three from level 4 on (2026-10-09: four
+ * left a thinking player with time to spare - a pour animates in about one,
+ * so three leaves two for thought). Daily, weekly and endless ids sit far
+ * above the opening, so they run on the tight clock.
  */
-export function timeBonusSeconds(par: number): number {
-  return 10 + par * 4;
+export function timeBonusSeconds(par: number, levelId: number): number {
+  return 10 + par * (levelId <= RELAXED_CLOCK_LEVELS ? 4 : 3);
 }
 
 /**
@@ -154,9 +159,10 @@ export function timeBonusSeconds(par: number): number {
 export function timeBonusFor(
   elapsedSec: number,
   par: number,
+  levelId: number,
   cfg: EconomyConfig = DEFAULT_ECONOMY,
 ): number {
-  const window = timeBonusSeconds(par);
+  const window = timeBonusSeconds(par, levelId);
   const remaining = window - Math.max(0, elapsedSec);
   if (remaining <= 0) return 0;
   const steps = scaledReward(cfg.timeBonusCoins, par) / 5;

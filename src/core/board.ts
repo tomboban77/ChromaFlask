@@ -12,20 +12,73 @@ export const DEFAULT_RULES: BoardRules = { cauldron: false };
  * 0); the one-way flask is the last tube, after the ordinary empties.
  */
 export function rulesFor(
-  spec: Pick<LevelSpec, 'cauldron' | 'lock' | 'oneWay'> & Partial<Pick<LevelSpec, 'colors' | 'empties'>>,
+  spec: Pick<LevelSpec, 'cauldron' | 'lock' | 'oneWay'> &
+    Partial<Pick<LevelSpec, 'colors' | 'empties' | 'recipe' | 'labels'>>,
 ): BoardRules {
-  if (!spec.cauldron && !spec.lock && !spec.oneWay) return DEFAULT_RULES;
-  const rules: { cauldron: boolean; lock?: BoardRules['lock']; oneWay?: BoardRules['oneWay'] } = {
-    cauldron: !!spec.cauldron,
-  };
-  if (spec.lock) rules.lock = { index: spec.cauldron ? 1 : 0, seals: spec.lock.seals };
-  if (spec.oneWay) {
-    if (spec.colors === undefined || spec.empties === undefined) {
-      throw new Error('one-way flask rules need colors and empties to place the flask');
-    }
-    rules.oneWay = { index: spec.colors + spec.empties + (spec.cauldron ? 1 : 0) };
+  const labels = spec.labels ?? [];
+  const recipe = spec.recipe ?? [];
+  if (!spec.cauldron && !spec.lock && !spec.oneWay && labels.length === 0 && recipe.length === 0) {
+    return DEFAULT_RULES;
   }
+  const rules: {
+    cauldron: boolean;
+    lock?: BoardRules['lock'];
+    oneWay?: BoardRules['oneWay'];
+    recipe?: BoardRules['recipe'];
+    labels?: BoardRules['labels'];
+  } = { cauldron: !!spec.cauldron };
+  if (spec.lock) rules.lock = { index: spec.cauldron ? 1 : 0, seals: spec.lock.seals };
+  if ((spec.oneWay || labels.length > 0) && (spec.colors === undefined || spec.empties === undefined)) {
+    throw new Error('one-way and labelled flask rules need colors and empties to place them');
+  }
+  const afterEmpties = (spec.colors ?? 0) + (spec.empties ?? 0) + (spec.cauldron ? 1 : 0);
+  if (spec.oneWay) rules.oneWay = { index: afterEmpties };
+  if (labels.length > 0) {
+    if (labels.length > (spec.empties ?? 0)) throw new Error('more labels than empty tubes');
+    // The labelled flasks are the last of the ordinary empties.
+    const first = afterEmpties - labels.length;
+    rules.labels = labels.map((color, i) => ({ index: first + i, color }));
+  }
+  if (recipe.length > 0) rules.recipe = recipe;
   return rules;
+}
+
+/** The colour tube `index` is labelled with, or -1 when it carries no label. */
+export function labelAt(rules: BoardRules, index: number): ColorId {
+  if (!rules.labels) return -1;
+  for (const l of rules.labels) if (l.index === index) return l.color;
+  return -1;
+}
+
+/**
+ * The colour the recipe says must be sealed next, or null when there is no
+ * recipe or it is complete. A pure function of the board: while the recipe is
+ * open nothing else can be sealed, so the sealed bottles are always a prefix
+ * of it - and undo needs no extra state.
+ */
+export function nextRecipeColor(board: Board, rules: BoardRules): ColorId | null {
+  if (!rules.recipe) return null;
+  const ci = cauldronIndex(rules);
+  for (const color of rules.recipe) {
+    let sealed = false;
+    for (let i = 0; i < board.length; i++) {
+      if (i === ci) continue;
+      const tube = board[i] as Tube;
+      if (tube[0] === color && isComplete(tube)) {
+        sealed = true;
+        break;
+      }
+    }
+    if (!sealed) return color;
+  }
+  return null;
+}
+
+/** How many recipe colours are already sealed (0 with no recipe). */
+export function recipeProgress(board: Board, rules: BoardRules): number {
+  if (!rules.recipe) return 0;
+  const next = nextRecipeColor(board, rules);
+  return next === null ? rules.recipe.length : rules.recipe.indexOf(next);
 }
 
 /** Index of the cauldron under these rules, or -1 when there is none. */
@@ -127,9 +180,47 @@ export function canPour(
   if (rules.lock && (from === rules.lock.index || to === rules.lock.index) && lockActive(board, rules)) {
     return false;
   }
-  if (dst.length === 0) return true;
-  if (to === cauldronIndex(rules)) return true;
-  return src[src.length - 1] === dst[dst.length - 1];
+  const color = src[src.length - 1] as ColorId;
+  // A labelled flask takes its own colour and nothing else.
+  if (rules.labels) {
+    const label = labelAt(rules, to);
+    if (label >= 0 && label !== color) return false;
+  }
+  const ci = cauldronIndex(rules);
+  if (dst.length > 0 && to !== ci && color !== dst[dst.length - 1]) return false;
+  // The recipe: while it is open, only its next colour may be sealed.
+  if (rules.recipe && to !== ci && sealsOutOfOrder(board, from, to, color, rules)) return false;
+  return true;
+}
+
+/** Whether pouring `color` from `from` into `to` would seal a bottle out of recipe order. */
+function sealsOutOfOrder(
+  board: Board, from: number, to: number, color: ColorId, rules: BoardRules,
+): boolean {
+  const src = board[from] as Tube;
+  const dst = board[to] as Tube;
+  if (!isUniform(dst)) return false;
+  // Moving an already-sealed bottle on makes no new seal.
+  if (isComplete(src) && from !== cauldronIndex(rules)) return false;
+  let run = 1;
+  for (let i = src.length - 2; i >= 0 && src[i] === color; i--) run++;
+  if (dst.length + Math.min(run, TUBE_CAPACITY - dst.length) !== TUBE_CAPACITY) return false;
+  const next = nextRecipeColor(board, rules);
+  return next !== null && next !== color;
+}
+
+/**
+ * Why a pour the classic rules would allow is refused here, for the player:
+ * 'label' (wrong colour for a labelled flask) or 'recipe' (it would seal a
+ * colour out of recipe order). null when the pour is legal, or illegal for
+ * any other reason.
+ */
+export function blockedBy(
+  board: Board, from: number, to: number, rules: BoardRules,
+): 'label' | 'recipe' | null {
+  if (canPour(board, from, to, rules)) return null;
+  if (!canPour(board, from, to, { ...rules, labels: undefined, recipe: undefined })) return null;
+  return canPour(board, from, to, { ...rules, labels: undefined }) ? 'label' : 'recipe';
 }
 
 /** How many units would actually transfer. 0 when the pour is illegal. */
@@ -220,8 +311,9 @@ export function usefulMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Mo
   const moves: Move[] = [];
   let firstEmpty = -1;
   for (let i = 0; i < board.length; i++) {
-    // Neither the cauldron nor the one-way flask is an interchangeable empty.
-    if (i === ci || i === ow) continue;
+    // Neither the cauldron, the one-way flask nor a labelled flask is an
+    // interchangeable empty.
+    if (i === ci || i === ow || labelAt(rules, i) >= 0) continue;
     if ((board[i] as Tube).length === 0) {
       firstEmpty = i;
       break;
@@ -242,10 +334,12 @@ export function usefulMoves(board: Board, rules: BoardRules = DEFAULT_RULES): Mo
       const dst = board[to] as Tube;
       if (dst.length === 0) {
         // Moving a whole uniform tube into ordinary empty space is pure
-        // relabelling - but into the empty one-way flask it is a real choice
-        // (it commits that colour and frees an ordinary tube), so allow it.
-        if (srcUniform && from !== ci && to !== ow) continue;
-        if (to !== firstEmpty && to !== ci && to !== ow) continue;
+        // relabelling - but into the empty one-way flask or a labelled flask
+        // it is a real choice (it frees an ordinary tube), so allow it; and
+        // out of a labelled flask it is no relabelling either.
+        const special = to === ow || labelAt(rules, to) >= 0;
+        if (srcUniform && from !== ci && !special && labelAt(rules, from) < 0) continue;
+        if (to !== firstEmpty && to !== ci && !special) continue;
       }
       const count = pourAmount(board, from, to, rules);
       if (count > 0) moves.push({ from, to, count, color: run.color });
@@ -269,11 +363,16 @@ export function canonicalKey(board: Board, rules: BoardRules = DEFAULT_RULES): s
   const li = rules.lock && lockActive(board, rules) ? rules.lock.index : -1;
   const parts: string[] = [];
   for (let i = 0; i < board.length; i++) {
-    if (i === ci || i === li || i === ow) continue;
+    if (i === ci || i === li || i === ow || labelAt(rules, i) >= 0) continue;
     parts.push((board[i] as Tube).join(','));
   }
   parts.sort();
   let key = parts.join('|');
+  // A labelled flask only ever holds its own colour, so its fill level is
+  // all there is to say - but it is never interchangeable with a plain tube.
+  if (rules.labels) {
+    for (const l of rules.labels) key = `F${l.color}:${(board[l.index] as Tube).length}#${key}`;
+  }
   // The one-way flask is never interchangeable: its contents can never leave.
   if (ow >= 0) key = `W${(board[ow] as Tube).join(',')}#${key}`;
   if (li >= 0) key = `L${(board[li] as Tube).join(',')}#${key}`;

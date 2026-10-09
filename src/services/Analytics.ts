@@ -27,6 +27,7 @@ export type AnalyticsEvent =
   | { type: 'level_stuck'; level: number; moves: number }
   | { type: 'level_skip'; level: number; moves: number; price: number }
   | { type: 'level_no_win'; level: number; moves: number }
+  | { type: 'level_out_of_pours'; level: number; moves: number }
   | { type: 'powerup_used'; level: number; powerup: string; paid: boolean }
   | { type: 'tutorial_step'; step: number }
   | { type: 'tutorial_done' }

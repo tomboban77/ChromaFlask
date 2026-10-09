@@ -216,6 +216,24 @@ const table: Record<string, string> = {
   'toast.padlockOpen': '锁打开了！',
   'toast.stuckHint': '卡住了？试试提示。',
   'toast.noWin': '从这里无法获胜 - 使用撤销或重新开始',
+  'toast.noWinRestart': '这瓶药水已无法完成 - 重新开始并提前规划',
+  'toast.recipe': '按配方来:先封住它的下一个颜色',
+  'toast.label': '这个药瓶只接受标签上的颜色',
+  'hud.pourBudget': '{used}/{max} 次',
+  'hud.recipe': '按顺序封瓶',
+  'precision.title': '倒液次数用完',
+  'precision.body': '这瓶药水必须在 {n} 次倒液内完成。撤销以寻找更短的路线,或重新开始。',
+  'twist.recipe.title': '配方',
+  'twist.recipe.body': '<p>先按这个顺序封住这些颜色:</p><p class="twistrow">{colors}</p><p>完成前不能封住其他瓶子,所以别让其他颜色过早装满瓶子。顶部的卡片会显示进度 - 点击可再次查看。</p>',
+  'twist.labels.title': '标签药瓶',
+  'twist.labels.body': '<p>瓶口有颜色的药瓶只接受该颜色:</p><p class="twistrow">{colors}</p><p>这是额外的空间,但只给正确的液体。先把那个颜色移到顶部才能用上它。</p>',
+  'twist.precision.title': '精准倒液',
+  'twist.precision.body': '<p>在 <b>{n} 次倒液</b>以内完成这瓶药水。</p><p>完成前用完即失败。顶部计数器显示已用次数 - 开始前先规划好路线。</p>',
+  'twist.cauldron.title': '大锅',
+  'twist.lock.title': '上锁的瓶子',
+  'twist.oneWay.title': '单向药瓶',
+  'twist.murky.title': '浑浊药水',
+  'rules.title': '本关规则',
   'toast.locked.other': '已锁定 - 再封好 {n} 个瓶子即可打开',
   'toast.oneWay': '单向烧瓶：只进不出 - 且必须装满才能获胜',
   'intro.lock.other': '一个上锁的瓶子！再封好 {n} 个其他瓶子来打开它的锁。',
@@ -418,6 +436,10 @@ const table: Record<string, string> = {
   'reset.body': '这会清除你在此设备上获得的一切：关卡、星星、金币、道具、瓶子外观、成就和每日连续记录。游戏将从第 1 关重新开始。你的设置会保留。',
   'reset.keep': '继续游玩',
 
+  'howto.twists': `<div class="howto">
+    <h3>更多玩法</h3>
+    <p><b>配方</b>卡列出必须最先、按顺序封住的颜色:完成前不能封住其他瓶子。<b>标签药瓶</b>瓶口标有一种颜色,只接受该颜色。<b>精准倒液</b>只给你固定的倒液次数 - 药水完成前用完即失败,所以开始前先规划好整条路线。</p>
+  </div>`,
   'howto.title': '玩法说明',
   'howto.more': `<div class="howto">
     <h3>上限、时钟与连胜</h3>

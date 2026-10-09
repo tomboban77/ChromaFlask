@@ -1,4 +1,5 @@
 import { TUBE_CAPACITY, cloneBoard, isSolved, isUniform, rulesFor } from './board';
+import { forgivenessWithin } from './difficulty';
 import { mulberry32, shuffle } from './rng';
 import { solve } from './solver';
 import type { Board, ColorId, GeneratedLevel, LevelSpec } from './types';
@@ -43,14 +44,20 @@ function isTooEasy(board: Board, spec: LevelSpec): boolean {
  * the optimal move count wherever A* completes inside its budget.
  */
 export function generateLevel(spec: LevelSpec): GeneratedLevel {
-  const MAX_ATTEMPTS = 400;
+  const MAX_ATTEMPTS = 1500;
   const rules = rulesFor(spec);
+  const band = spec.forgiveness;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const board = deal(spec, attempt);
     if (isTooEasy(board, spec)) continue;
 
-    // Cheap solvability gate first - most rejections die here.
+    // Difficulty that players feel: reject deals that forgive careless play
+    // (or, early on, punish it too hard). A few ms of playouts, so it runs
+    // before any solve - most rejections die here.
+    if (band && !forgivenessWithin(board, rules, spec.id * 31 + attempt, band)) continue;
+
+    // Then a cheap solvability gate.
     const quick = solve(board, { weight: 3, maxNodes: 40_000, rules });
     if (!quick) continue;
 
