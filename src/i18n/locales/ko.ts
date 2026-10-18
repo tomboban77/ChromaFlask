@@ -229,6 +229,21 @@ const table: Record<string, string> = {
   'twist.labels.body': '<p>테두리에 색이 있는 플라스크는 그 색만 받아요:</p><p class="twistrow">{colors}</p><p>추가 공간이지만 맞는 액체 전용이에요. 사용하려면 먼저 그 색을 위로 올리세요.</p>',
   'twist.precision.title': '정밀 붓기',
   'twist.precision.body': '<p>이 물약을 <b>{n}번</b> 이하로 완성하세요.</p><p>완성 전에 다 쓰면 실패해요. 위쪽 카운터가 사용한 횟수를 보여줘요 - 시작 전에 경로를 계획하세요.</p>',
+  'twist.timed.title': '시간과의 싸움',
+  'twist.timed.body': '<p>이 물약을 <b>{limit}</b> 안에 완성하세요.</p><p>금색 시계가 도는 동안은 별 3개를 모두 받을 수 있어요. 시계가 끝나면 세 번째 별이 사라지고, 시계가 빨갛게 변해 제한 시간까지 카운트다운해요. 시간이 다 되면 도전 실패 - {n}초를 더 받지 않는다면요.</p>',
+  'stars.clockLost': '별 시계가 끝났어요: −1 ★',
+  'stars.bottleLost': '추가 병: −1 ★',
+  'timed.title': '시간 종료!',
+  'timed.body': '물약을 제시간에 완성하지 못했어요. {n}초를 더 받아 마무리하거나 다시 시작하세요.',
+  'timed.watch': '광고 보기 · +{n}초',
+  'timed.buy': '+{n}초 · {coins}코인',
+  'timed.extended': '+{n}초, 서둘러요!',
+  'offer.outBody': '지금 하나 사거나, 상점에서 더 싸게 준비하세요.',
+  'offer.buyOne': '{name} 1개 구매 · {n}코인',
+  'win.lostBottle': '추가 병 사용: −1 ★',
+  'win.lostClock': '별 시계 종료: −1 ★',
+  'win.double': '광고 보기 · 2배로 (+{n})',
+  'win.doubled': '코인 2배!',
   'twist.cauldron.title': '가마솥',
   'twist.lock.title': '잠긴 병',
   'twist.oneWay.title': '일방통행 플라스크',
@@ -444,7 +459,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>한도, 시계, 연승</h3>
     <p>한 번의 도전에서는 보유량과 상관없이 <b>되돌리기 {undo}번</b>, <b>힌트 {hint}번</b>, <b>추가 병 {bottle}개</b>까지만 쓸 수 있어요.</p>
-    <p><b>시계</b>는 보너스 시간을 보여줘요. 시간이 끝나기 전에 레벨을 <b>별 3개</b>로 처음 클리어하면 코인을 더 받아요. 빨리 끝낼수록 보너스가 커지고, 시계의 코인 표시는 시간이 지날수록 줄어들어요. 시간 때문에 실패하지는 않아요.</p>
+    <p><b>시계</b>는 별 시계예요. 끝나기 전에 완성하면 세 번째 별을 지키고, 시간 안에 처음 깨면 보너스 코인을 조금 받아요. <b>추가 병</b>도 하나마다 별 하나를 잃어요. <b>시간과의 싸움</b> 레벨에서는 그 뒤 시계가 빨갛게 변해 제한 시간을 세요 - 끝나면 도전 실패예요.</p>
     <p>다시 시작하거나 나가지 않고 새 레벨을 연속으로 클리어하면, 세 번째부터 매번 <b>연승 보너스</b>를 받아요.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -463,7 +478,7 @@ const table: Record<string, string> = {
   // ads
   'ads.watchHeart': '광고 보고 하트 받기',
   'ads.outTitle': '{name} 부족',
-  'ads.outBody': '짧은 광고를 보고 하나 더 받거나 상점에서 채우세요.',
+  'ads.outBody': '짧은 광고를 보고 하나 더 받거나, 지금 사거나, 상점에서 준비하세요.',
   'ads.watchPowerup': '광고 보기 · +1 {name}',
   'ads.shop': '상점으로',
   'ads.loading': '광고 불러오는 중…',

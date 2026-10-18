@@ -229,6 +229,21 @@ const table: Record<string, string> = {
   'twist.labels.body': '<p>Labu dengan bibir berwarna hanya menerima warna itu:</p><p class="twistrow">{colors}</p><p>Ini ruang tambahan - tapi hanya untuk cairan yang tepat. Bawa warna itu ke atas dulu untuk memakainya.</p>',
   'twist.precision.title': 'Tuang presisi',
   'twist.precision.body': '<p>Selesaikan ramuan ini dalam <b>{n} tuangan</b> atau kurang.</p><p>Habis sebelum selesai berarti gagal. Penghitung di atas menunjukkan tuanganmu - rencanakan langkahmu sebelum mulai.</p>',
+  'twist.timed.title': 'Melawan waktu',
+  'twist.timed.body': '<p>Selesaikan ramuan ini dalam <b>{limit}</b>.</p><p>Selama jam emas berjalan, tiga bintang masih bisa diraih; saat habis, bintang ketiga hilang dan jam berubah merah menghitung mundur ke batas. Waktu habis berarti percobaan gagal - kecuali kamu mengambil {n} detik lagi.</p>',
+  'stars.clockLost': 'Jam bintang habis: −1 ★',
+  'stars.bottleLost': 'Botol tambahan: −1 ★',
+  'timed.title': 'Waktu habis!',
+  'timed.body': 'Ramuan tidak selesai tepat waktu. Ambil {n} detik lagi untuk menyelesaikannya, atau mulai ulang.',
+  'timed.watch': 'Tonton iklan · +{n} dtk',
+  'timed.buy': '+{n} dtk · {coins} koin',
+  'timed.extended': '+{n} detik - ayo!',
+  'offer.outBody': 'Beli satu sekarang, atau stok di toko dengan harga lebih baik.',
+  'offer.buyOne': 'Beli 1 {name} · {n} koin',
+  'win.lostBottle': 'Botol tambahan dipakai: −1 ★',
+  'win.lostClock': 'Jam bintang habis: −1 ★',
+  'win.double': 'Tonton iklan · gandakan (+{n})',
+  'win.doubled': 'Koin digandakan!',
   'twist.cauldron.title': 'Kuali',
   'twist.lock.title': 'Botol terkunci',
   'twist.oneWay.title': 'Labu satu arah',
@@ -444,7 +459,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>Batas, jam, dan beruntun</h3>
     <p>Setiap percobaan paling banyak <b>{undo} urungkan</b>, <b>{hint} petunjuk</b>, dan <b>{bottle} botol tambahan</b>, berapa pun yang kamu punya.</p>
-    <p><b>Jam</b> menunjukkan jendela bonus: selesaikan level untuk pertama kali dengan <b>tiga bintang</b> sebelum habis untuk koin tambahan. Makin cepat selesai, makin besar bonusnya - label koin di jam berkurang seiring waktu. Jam tidak pernah membuatmu gagal.</p>
+    <p><b>Jam</b> adalah jam bintang: selesaikan sebelum habis untuk mempertahankan bintang ketiga, dan kemenangan pertama dalam waktu itu memberi sedikit koin bonus. Setiap <b>botol tambahan</b> juga memakan satu bintang. Di level <b>Melawan waktu</b>, jam lalu berubah merah dan menghitung batas tetap - habis berarti percobaan gagal.</p>
     <p>Selesaikan level baru berturut-turut tanpa mengulang atau keluar, dan mulai yang ketiga setiap kemenangan membayar <b>bonus beruntun</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -463,7 +478,7 @@ const table: Record<string, string> = {
   // ads
   'ads.watchHeart': 'Tonton iklan untuk satu hati',
   'ads.outTitle': '{name} habis',
-  'ads.outBody': 'Tonton iklan singkat untuk mendapatkan satu lagi, atau beli di toko.',
+  'ads.outBody': 'Tonton iklan singkat untuk satu lagi, beli satu sekarang, atau stok di toko.',
   'ads.watchPowerup': 'Tonton iklan · +1 {name}',
   'ads.shop': 'Ke toko',
   'ads.loading': 'Memuat iklan…',

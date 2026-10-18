@@ -133,7 +133,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.locator('.modal button', { hasText: 'Claim' }).click();
   await sleep(300);
   const coinsAfterClaim = await page.evaluate(() => window.__cf.state().coins);
-  if (coinsAfterClaim !== coinsBeforeClaim + 20) problems.push(`[${label}] day-1 login reward should pay 20 coins (${coinsBeforeClaim} -> ${coinsAfterClaim})`);
+  if (coinsAfterClaim !== coinsBeforeClaim + 10) problems.push(`[${label}] day-1 login reward should pay 10 coins (${coinsBeforeClaim} -> ${coinsAfterClaim})`);
   const playLabel = (await page.locator('#btn-play').textContent())?.trim();
   console.log(`  home screen     OK (play button: "${playLabel}")`);
   if (playLabel !== 'Level 1') problems.push(`[${label}] play button should read "Level 1", got "${playLabel}"`);
@@ -235,11 +235,10 @@ async function runViewport(browser, label, width, height, isMobile) {
     problems.push(`[${label}] onWin fired ${afterWin.winCount} times, expected exactly 1`);
   }
   // Achievements ("First Pour", "Precise") also pay on this win; count them separately.
-  // Level 1 (par 4) sits on the reward-scale floor of 0.3: base 50 -> 15,
-  // 3 stars 70 -> 20, plus a time bonus of at most 25 -> 10 that drains in
-  // 5-coin steps over the 26-second window (a slow machine may land in the
-  // second half, or miss it).
-  const expectedGains = [15 + 20, 15 + 20 + 5, 15 + 20 + 10];
+  // Level 1 (par 4) sits on the reward-scale floor of 0.3: base 20 -> 5,
+  // 3 stars 20 -> 5, plus a time bonus of 10 -> 5 inside the 39-second star
+  // clock (a slow machine may miss it).
+  const expectedGains = [5 + 5, 5 + 5 + 5];
   const achievementGain = afterWin.achievementCoins - initial.achievementCoins;
   // Daily missions rotate by real date, so whichever completed during this win
   // is counted separately, like achievements.
@@ -255,8 +254,8 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (!expectedGains.includes(winGain)) {
     problems.push(`[${label}] coin reward was ${winGain}, expected one of ${expectedGains.join('/')}`);
   }
-  if (achievementGain !== 50) {
-    problems.push(`[${label}] first perfect win should unlock First Pour + Precise (+50), got +${achievementGain}`);
+  if (achievementGain !== 30) {
+    problems.push(`[${label}] first perfect win should unlock First Pour + Precise (+30), got +${achievementGain}`);
   }
 
   await page.waitForSelector('.modal', { timeout: 8000 });
@@ -318,11 +317,22 @@ async function runViewport(browser, label, width, height, isMobile) {
     problems.push(`[${label}] undo during the return arc left a bottle off its slot (drift ${undoGeo.drift.toFixed(1)}px, tilt ${undoGeo.tilt.toFixed(3)})`);
   }
 
-  // ---- bottles are never free: the first tap opens the shop, nothing is charged
+  // ---- bottles are never free: the first tap offers one (no ads on the web:
+  // buy one now or go to the shop), and nothing is charged until chosen
   const tubesBefore = afterUndo.tubes;
-  await page.evaluate(() => window.__cf.addCoins(1000)); // fund the test account
+  await page.evaluate(() => window.__cf.addCoins(3000)); // fund the test account
   const coinsBeforeBottle = (await page.evaluate(() => window.__cf.state())).coins;
   await page.click('#btn-bottle');
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  const offerButtons = await page.locator('.modal button').allTextContents();
+  console.log(`  bottle offer    ${offerButtons.map((b) => `"${b.trim()}"`).join(' ')}`);
+  if (!offerButtons.some((b) => b.includes('Buy 1 Bottle · 350 coins'))) {
+    problems.push(`[${label}] out-of-bottles offer should include "Buy 1 Bottle · 350 coins"`);
+  }
+  if ((await page.evaluate(() => window.__cf.state())).coins !== coinsBeforeBottle) {
+    problems.push(`[${label}] the out-of-stock offer must not charge before a choice`);
+  }
+  await page.locator('.modal button', { hasText: 'Go to the shop' }).click();
   await page.waitForSelector('#screen-shop.screen--active', { timeout: 8000 });
   const coinsAtShop = (await page.evaluate(() => window.__cf.state())).coins;
   console.log(`  bottle (0 free) shop opened, coins ${coinsBeforeBottle} -> ${coinsAtShop}`);
@@ -333,8 +343,8 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.locator('.shopitem[data-item="bottle.x3"] .pricebtn').click();
   await sleep(400);
   const afterBottlePack = (await page.evaluate(() => window.__cf.state())).coins;
-  console.log(`  coin purchase   bottle x3 for 320 (coins ${coinsAtShop} -> ${afterBottlePack})`);
-  if (afterBottlePack !== coinsAtShop - 320) problems.push(`[${label}] bottle pack should cost 320 coins`);
+  console.log(`  coin purchase   bottle x3 for 900 (coins ${coinsAtShop} -> ${afterBottlePack})`);
+  if (afterBottlePack !== coinsAtShop - 900) problems.push(`[${label}] bottle pack should cost 900 coins`);
   await page.click('#btn-shop-close');
   await page.waitForSelector('#screen-game.screen--active', { timeout: 8000 });
   await page.click('#btn-bottle'); // consumes owned stock
@@ -346,10 +356,12 @@ async function runViewport(browser, label, width, height, isMobile) {
   }
   await shot('8-powerups');
 
-  // ---- out of a powerup -> the shop opens instead of charging coins
+  // ---- out of a powerup -> an offer, never a silent charge; on to the shop
   // (the single free hint was spent earlier in this level)
   const coinsBeforeEmpty = (await page.evaluate(() => window.__cf.state())).coins;
   await page.click('#btn-hint');
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  await page.locator('.modal button', { hasText: 'Go to the shop' }).click();
   await page.waitForSelector('#screen-shop.screen--active', { timeout: 8000 });
   const coinsAfterEmpty = (await page.evaluate(() => window.__cf.state())).coins;
   console.log(`  powerup empty   shop opened, coins ${coinsBeforeEmpty} -> ${coinsAfterEmpty}`);
@@ -362,9 +374,9 @@ async function runViewport(browser, label, width, height, isMobile) {
   await page.locator('.shopitem[data-item="hint.x3"] .pricebtn').click();
   await sleep(400);
   const afterPack = await page.evaluate(() => window.__cf.state());
-  console.log(`  coin purchase   hint x3 for 200 (coins ${coinsAfterEmpty} -> ${afterPack.coins})`);
-  if (afterPack.coins !== coinsAfterEmpty - 200) {
-    problems.push(`[${label}] hint pack should cost 200 coins`);
+  console.log(`  coin purchase   hint x3 for 600 (coins ${coinsAfterEmpty} -> ${afterPack.coins})`);
+  if (afterPack.coins !== coinsAfterEmpty - 600) {
+    problems.push(`[${label}] hint pack should cost 600 coins`);
   }
   // ---- bottle looks: buying a skin charges once and equips it; the board picks it up
   const skinCards = await page.locator('.skin').count();
@@ -396,7 +408,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   }
 
   // ---- the booster bundle: one coin purchase fills all three stocks
-  await page.evaluate(() => window.__cf.addCoins(500)); // fund the test account
+  await page.evaluate(() => window.__cf.addCoins(1000)); // fund the test account
   const beforeBundle = await page.evaluate(() => window.__cf.state());
   await page.click('#game-coins-chip');
   await page.waitForSelector('#screen-shop.screen--active', { timeout: 8000 });
@@ -405,7 +417,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   const afterBundle = await page.evaluate(() => window.__cf.state());
   const gained = (k) => afterBundle.inventory[k] - beforeBundle.inventory[k];
   console.log(`  booster bundle  coins ${beforeBundle.coins} -> ${afterBundle.coins}, +${gained('undo')} undo +${gained('hint')} hint +${gained('bottle')} bottle`);
-  if (afterBundle.coins !== beforeBundle.coins - 330) problems.push(`[${label}] booster bundle should cost 330 coins`);
+  if (afterBundle.coins !== beforeBundle.coins - 950) problems.push(`[${label}] booster bundle should cost 950 coins`);
   if (gained('undo') !== 3 || gained('hint') !== 3 || gained('bottle') !== 1) {
     problems.push(`[${label}] booster bundle should add 3 undos, 3 hints and 1 bottle`);
   }
@@ -472,7 +484,7 @@ async function runViewport(browser, label, width, height, isMobile) {
   if (afterLeave !== 'Level 2') problems.push(`[${label}] leaving should clear the saved attempt (got "${afterLeave}")`);
   if (livesAfterLeave !== '5') problems.push(`[${label}] leaving a live board must not cost a heart (hearts=${livesAfterLeave})`);
 
-  // ---- skip level: 150 coins, no heart, unlocks the next level, records no clear
+  // ---- skip level: 900 coins, no heart, unlocks the next level, records no clear
   await page.evaluate(() => window.__cf.start(2));
   await page.waitForSelector('#screen-game.screen--active', { timeout: 8000 });
   await sleep(900);
@@ -489,13 +501,48 @@ async function runViewport(browser, label, width, height, isMobile) {
   const afterSkip = await page.evaluate(() => window.__cf.state());
   const skipLabel = (await page.locator('#game-level-label').textContent())?.trim();
   console.log(`  skip level      level ${beforeSkip.level} -> ${afterSkip.level} "${skipLabel}", coins ${beforeSkip.coins} -> ${afterSkip.coins}, hearts ${afterSkip.lives}`);
-  if (afterSkip.coins !== beforeSkip.coins - 150) problems.push(`[${label}] skip should cost 150 coins (${beforeSkip.coins} -> ${afterSkip.coins})`);
+  if (afterSkip.coins !== beforeSkip.coins - 900) problems.push(`[${label}] skip should cost 900 coins (${beforeSkip.coins} -> ${afterSkip.coins})`);
   if (afterSkip.lives !== beforeSkip.lives) problems.push(`[${label}] skipping must not cost a heart`);
   if (skipLabel !== 'Level 3') problems.push(`[${label}] skip should land on level 3, HUD reads "${skipLabel}"`);
   await page.click('#btn-back'); // no moves on level 3: straight home
   await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
   const playAfterSkip = (await page.locator('#btn-play').textContent())?.trim();
   if (playAfterSkip !== 'Level 3') problems.push(`[${label}] after a skip the play button should offer level 3, got "${playAfterSkip}"`);
+
+  // ---- the clock has teeth: past the star clock the pill drops a star, and a
+  // timed level ("Against the clock", level 26) fails when its limit runs out
+  await page.evaluate(() => window.__cf.start(26));
+  await page.waitForSelector('#screen-game.screen--active', { timeout: 8000 });
+  await page.waitForSelector('.modal', { timeout: 5000 }); // first-time rules dialog
+  const timedRules = (await page.locator('.modal__title').textContent())?.trim();
+  if (timedRules !== 'Against the clock') problems.push(`[${label}] level 26 should introduce "Against the clock", saw "${timedRules}"`);
+  await page.locator('.modal button', { hasText: 'Got it' }).click();
+  await sleep(400);
+  const timedMove = await page.evaluate(() => window.__cf.move(0));
+  await page.evaluate((mv) => window.__cf.tap(mv.from), timedMove);
+  await page.evaluate((mv) => window.__cf.tap(mv.to), timedMove);
+  await sleep(1100);
+  const starsBefore = (await page.evaluate(() => window.__cf.state())).hudStars;
+  await page.evaluate(() => window.__cf.warp(150)); // past the star clock (15 + 5 * par)
+  await sleep(300);
+  const starsAfter = (await page.evaluate(() => window.__cf.state())).hudStars;
+  console.log(`  star clock      pill ${starsBefore} -> ${starsAfter} stars after the clock ran out`);
+  if (starsBefore !== 3 || starsAfter !== 2) problems.push(`[${label}] missing the star clock should drop the pill from 3 to 2 stars (${starsBefore} -> ${starsAfter})`);
+  await page.evaluate(() => window.__cf.warp(400)); // past the hard limit
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  const timeUpTitle = (await page.locator('.modal__title').textContent())?.trim();
+  const timeUp = await page.evaluate(() => window.__cf.state());
+  console.log(`  time limit      "${timeUpTitle}", timedOut=${timeUp.timedOut}`);
+  if (timeUpTitle !== "Time's up!" || !timeUp.timedOut) problems.push(`[${label}] running out of time on a timed level should fail the attempt ("${timeUpTitle}", timedOut=${timeUp.timedOut})`);
+  await page.locator('.modal button', { hasText: '+30s' }).click();
+  await sleep(400);
+  const extended = await page.evaluate(() => window.__cf.state());
+  console.log(`  extension       +30s for 250 coins (coins ${timeUp.coins} -> ${extended.coins}), timedOut=${extended.timedOut}`);
+  if (extended.timedOut || extended.coins !== timeUp.coins - 250) problems.push(`[${label}] a 250-coin extension should reopen the board`);
+  await page.click('#btn-back');
+  await page.waitForSelector('.modal', { timeout: 5000 });
+  await page.locator('.modal button').last().click(); // Leave
+  await page.waitForSelector('#screen-home.screen--active', { timeout: 8000 });
 
   // ---- endless mode: the first level past the campaign is generated in the worker on demand
   await page.evaluate((id) => window.__cf.start(id), LEVEL_COUNT + 1);

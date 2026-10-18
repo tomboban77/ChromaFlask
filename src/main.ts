@@ -16,8 +16,9 @@ import { TUBE_CAPACITY } from '@/core/board';
 import { solverClient } from '@/services/SolverClient';
 import {
   COIN_SHOP, LIVES_MAX, LOGIN_CYCLE, LOGIN_REWARDS, coinsFor, loginCycleDay, loginRewardFor,
-  freeUsesFor, scaledReward, starThresholds, starValue, starsFor, streakBonusFor,
-  timeBonusFor, timeBonusSeconds, type CoinShopItem, type PowerupId,
+  freeUsesFor, scaledReward, starThresholds, starValue, starsFor, starsForAttempt, streakBonusFor,
+  timeBonusFor, timeBonusSeconds, timeLimitSeconds, type CoinShopItem, type PowerupId,
+  type StarPenalties,
 } from '@/core/progression';
 import { MISSIONS_ALL_BONUS, missionsFor, type MissionKind } from '@/core/missions';
 import { ACHIEVEMENTS, achievementById, unlockedAchievements } from '@/core/achievements';
@@ -105,6 +106,12 @@ function renderAvatar(node: HTMLElement, avatar = AVATARS[0] as string): void {
 }
 
 const powerupLabel = (id: PowerupId): string => t(`powerup.${id}`);
+
+/** Whole seconds as m:ss. */
+const formatClock = (sec: number): string => {
+  const whole = Math.max(0, Math.floor(sec));
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+};
 /** Catalog titles live in the string table so the shop reads in the player's language. */
 const productTitle = (p: IapProduct): string => t(`product.${p.id}`);
 const itemTitle = (item: CoinShopItem): string => t(`item.${item.id}.title` as MessageKey);
@@ -254,12 +261,12 @@ function formatCountdown(ms: number): string {
 }
 
 /** The twists a level can carry, each explained in its own dialog. */
-type Twist = 'recipe' | 'labels' | 'precision' | 'cauldron' | 'lock' | 'oneWay' | 'murky';
+type Twist = 'recipe' | 'labels' | 'precision' | 'timed' | 'cauldron' | 'lock' | 'oneWay' | 'murky';
 
 /** The save flag recording that a twist has been introduced. */
 const TWIST_SEEN = {
-  recipe: 'recipeSeen', labels: 'labelSeen', precision: 'precisionSeen', cauldron: 'cauldronSeen',
-  lock: 'lockSeen', oneWay: 'oneWaySeen', murky: 'murkySeen',
+  recipe: 'recipeSeen', labels: 'labelSeen', precision: 'precisionSeen', timed: 'timedSeen',
+  cauldron: 'cauldronSeen', lock: 'lockSeen', oneWay: 'oneWaySeen', murky: 'murkySeen',
 } as const satisfies Record<Twist, string>;
 
 class App {
@@ -290,6 +297,13 @@ class App {
   /** Powerup uses spent this attempt; free allowance comes from the economy. */
   private uses: Record<PowerupId, number> = { undo: 0, hint: 0, bottle: 0 };
   private extraTubes = 0;
+  /** Timed levels: seconds of extension this attempt, and whether its ad extension is spent. */
+  private extendedSec = 0;
+  private adExtended = false;
+  /** Timed levels: the hard limit ran out and no extension has been taken yet. */
+  private timedOut = false;
+  /** The star clock's expiry has been announced on this attempt. */
+  private overtimeNoticed = false;
 
   private chosenAvatar = AVATARS[0] as string;
   private current: ScreenId = 'boot';
@@ -369,7 +383,10 @@ class App {
 
     this.toast = new ToastHost($('#toast-root'));
     this.modal = new ModalHost($('#modal-root'));
-    this.modal.onOpenChange = () => this.syncHistoryGuard();
+    this.modal.onOpenChange = () => {
+      this.syncHistoryGuard();
+      this.syncClockHold();
+    };
     this.confetti = new Confetti(
       $<HTMLCanvasElement>('#fx-confetti'),
       () =>
@@ -564,6 +581,11 @@ class App {
       move: (i: number) => this.level?.solution[i] ?? null,
       /** Test economy setup without depending on the live tuning. */
       addCoins: (n: number) => this.save.addCoins(n),
+      /** Moves the attempt clock forward, for testing the star clock and timed levels. */
+      warp: (sec: number) => {
+        this.attemptStartedAt -= sec * 1000;
+        this.updateClock();
+      },
       /** Live GSAP tweens with their targets, for chasing animation-after-destroy bugs. */
       tweens: () =>
         gsap.globalTimeline.getChildren(true, true, false).map((t) => ({
@@ -600,6 +622,8 @@ class App {
         par: this.level?.par ?? null,
         modalOpen: this.modal.isOpen,
         winCount: this.winCount,
+        hudStars: this.hudTier,
+        timedOut: this.timedOut,
       }),
       lastShare: () => this.lastShareText,
       boardGeometry: () => this.board.geometry(),
@@ -710,6 +734,7 @@ class App {
     // loop would be drawing starfield and bottles into a display:none host -
     // pure battery cost.
     this.stage.setPaused(id !== 'game' || document.hidden);
+    this.syncClockHold();
     this.updateTutorialHand();
     this.syncHistoryGuard();
     if (id === 'home') {
@@ -1689,6 +1714,8 @@ class App {
     // Coming back to a board with no legal moves: put the rescue dialog back up.
     if (target === 'game' && this.board.isDead && !this.modal.isOpen) {
       this.showStuckDialog();
+    } else if (target === 'game' && this.timedOut && !this.modal.isOpen) {
+      this.showTimeUpDialog();
     }
   }
 
@@ -2167,9 +2194,15 @@ class App {
       }
     }
 
-    this.attemptStartedAt = Date.now() - (restore?.elapsedMs ?? 0);
+    this.resetAttemptClock(restore?.elapsedMs ?? 0);
     this.uses = restore ? { ...restore.uses } : { undo: 0, hint: 0, bottle: 0 };
     this.extraTubes = restore?.extraTubes ?? 0;
+    this.extendedSec = restore?.extendedSec ?? 0;
+    this.adExtended = restore?.adExtended ?? false;
+    this.timedOut = false;
+    this.board.inputLocked = false;
+    // A resumed attempt that was already past the star clock says nothing new.
+    this.overtimeNoticed = this.overtime;
     // Older saves counted only free uses; the per-level caps count all of
     // them, so a restored attempt's bottle count is the tubes it added.
     this.uses.bottle = Math.max(this.uses.bottle, this.extraTubes);
@@ -2406,6 +2439,8 @@ class App {
       extraTubes: this.extraTubes,
       uses: { ...this.uses },
       elapsedMs: this.attemptElapsedMs(),
+      extendedSec: this.extendedSec,
+      adExtended: this.adExtended,
     });
   }
 
@@ -2427,9 +2462,14 @@ class App {
     this.save.setInProgress(null);
     this.uses = { undo: 0, hint: 0, bottle: 0 };
     this.extraTubes = 0;
+    this.extendedSec = 0;
+    this.adExtended = false;
+    this.timedOut = false;
+    this.overtimeNoticed = false;
+    this.board.inputLocked = false;
     this.nudged = false;
     this.hudTier = 3;
-    this.attemptStartedAt = Date.now();
+    this.resetAttemptClock(0);
     this.board.noWinGrace = this.noWinGrace;
     this.board.moveBudget = this.pourBudget;
     this.board.mount(this.level, this.save.snapshot.settings.colorblind);
@@ -2461,6 +2501,7 @@ class App {
     if (spec.recipe) out.push('recipe');
     if (spec.labels) out.push('labels');
     if (spec.precision) out.push('precision');
+    if (spec.timed) out.push('timed');
     if (spec.cauldron) out.push('cauldron');
     if (spec.lock) out.push('lock');
     if (spec.oneWay) out.push('oneWay');
@@ -2502,6 +2543,11 @@ class App {
         return t('twist.labels.body', { colors: (spec.labels ?? []).map(chip).join(' ') });
       case 'precision':
         return t('twist.precision.body', { n: this.pourBudget ?? 0 });
+      case 'timed':
+        return t('twist.timed.body', {
+          limit: formatClock(timeLimitSeconds(this.level?.par ?? 0, this.levelId)),
+          n: this.remote.current.economy.timeExtendSeconds,
+        });
       case 'cauldron':
         return para(t('intro.cauldron'));
       case 'lock':
@@ -2617,13 +2663,15 @@ class App {
 
   // ------------------------------------------------------------------ clock
   /**
-   * The level clock under the move budget. It counts down the time-bonus
-   * window (beat it on a first clear for bonus coins) and then simply counts
-   * up - a level can never be failed on time. One lazy interval serves the
-   * whole session; ticks outside an active board are no-ops.
+   * The level clock under the move budget. It counts down the star clock
+   * (finish after it and the clear loses a star; finish inside it on a first
+   * clear for a small coin bonus). On timed levels it then counts down the
+   * hard limit, which fails the attempt; elsewhere it simply counts up. One
+   * lazy interval serves the whole session; ticks outside an active board
+   * are no-ops.
    */
   private clockTimer = 0;
-  /** Open pause reasons (app hidden, an ad on screen) and when the first began. */
+  /** Open pause reasons (app hidden, an ad on screen, a dialog) and when the first began. */
   private clockPauses = 0;
   private clockPausedAt = 0;
 
@@ -2637,7 +2685,19 @@ class App {
   }
 
   /**
-   * Time the player cannot play in does not count against the bonus: a phone
+   * A fresh (or resumed) attempt's clock. If a pause is open right now - the
+   * attempt starts behind a dialog or off the game screen - it is treated as
+   * having begun this instant, so time from before the attempt existed is
+   * never credited to it.
+   */
+  private resetAttemptClock(elapsedMs: number): void {
+    const now = Date.now();
+    this.attemptStartedAt = now - elapsedMs;
+    if (this.clockPauses > 0) this.clockPausedAt = now;
+  }
+
+  /**
+   * Time the player cannot play in does not count against the clock: a phone
    * call, a backgrounded app, or a rewarded ad they chose to watch. Reasons
    * nest (a native ad can also hide the web view), so the clock resumes only
    * when the last one ends, and the paused span is taken off the attempt.
@@ -2656,12 +2716,53 @@ class App {
     }
   }
 
+  /**
+   * The clock also holds whenever the board is out of play: a dialog over it
+   * (rules, the quit question, an out-of-boosters offer) or another screen
+   * (the shop mid-level). Now that the clock costs stars and can fail a timed
+   * level, reading a dialog must never cost the player time.
+   */
+  private clockHeldByUi = false;
+  private syncClockHold(): void {
+    const hold = this.current !== 'game' || (this.modal?.isOpen ?? false);
+    if (hold && !this.clockHeldByUi) {
+      this.clockHeldByUi = true;
+      this.pauseClock();
+    } else if (!hold && this.clockHeldByUi) {
+      this.clockHeldByUi = false;
+      this.resumeClock();
+    }
+  }
+
   /** Elapsed attempt time, excluding any pause still open. */
   private attemptElapsedMs(): number {
     const now = this.clockPauses > 0 ? this.clockPausedAt : Date.now();
     return now - this.attemptStartedAt;
   }
 
+  /** Whether the star clock has run out on this attempt. The tutorial runs untimed. */
+  private get overtime(): boolean {
+    const par = this.level?.par;
+    if (par === undefined || this.tutorial?.active) return false;
+    return Math.floor(this.attemptElapsedMs() / 1000) >= timeBonusSeconds(par, this.levelId);
+  }
+
+  /** What this attempt has done that costs stars. */
+  private get penalties(): StarPenalties {
+    return { bottles: this.extraTubes, overtime: this.overtime };
+  }
+
+  /** Timed levels: the hard limit in seconds, extensions included; null elsewhere. */
+  private get timeLimit(): number | null {
+    const level = this.level;
+    if (!level?.spec.timed) return null;
+    return timeLimitSeconds(level.par, this.levelId) + this.extendedSec;
+  }
+
+  /** The attempt has failed: a dead or proven-unwinnable board, no pours left, or no time left. */
+  private get attemptLost(): boolean {
+    return this.board.isLost || (this.timedOut && !this.board.isResolved);
+  }
   /** Whether winning this attempt can still pay the time bonus (first clears only). */
   private timeBonusOnOffer(): boolean {
     if (isWeekly(this.levelId)) {
@@ -2694,32 +2795,138 @@ class App {
     const target = timeBonusSeconds(par, this.levelId);
     const elapsed = Math.floor(this.attemptElapsedMs() / 1000);
     const remaining = target - elapsed;
-    // A replay cannot earn the bonus, so it gets the plain clock throughout
-    // rather than a countdown promising coins that will not be paid. Nor can
-    // a finish off the three-star line: the tag goes the moment the third
-    // star slips (and comes back if an undo recovers it).
-    const threeStarPace = this.board.moveCount <= starThresholds(par).three;
-    const live = remaining > 0 && threeStarPace && this.timeBonusOnOffer();
+    const limit = this.timeLimit;
 
-    // Live: the ring drains through the bonus window with the +coins tag on
-    // show. Expired: the tag and ring go, and the chip dims into a plain
-    // elapsed-time clock - the bonus just quietly stops being on offer.
+    // The star clock just ran out: the pill drops a star with its pulse, and
+    // the player is told why, once.
+    if (remaining <= 0 && !this.overtimeNoticed) {
+      this.overtimeNoticed = true;
+      this.updateMoveBudget();
+      if (starsFor(this.board.moveCount, par) - this.extraTubes > 1) {
+        this.toast.show(t('stars.clockLost'), 'warn', 2400);
+      }
+    }
+    // A timed level's hard limit: the attempt fails unless extended.
+    if (limit !== null && elapsed >= limit && !this.timedOut && !this.board.isLost) {
+      this.onTimeUp();
+    }
+
+    // Phase one, every level: the star clock drains gold. The +coins tag shows
+    // only while a win this second would actually pay it (a first clear on
+    // the three-star line). Phase two on a timed level: the hard limit drains
+    // red. Elsewhere the chip dims into a plain elapsed-time clock.
+    const starLive = remaining > 0;
+    const hardLeft = limit !== null ? Math.max(0, limit - elapsed) : 0;
+    const hardLive = !starLive && limit !== null;
+    const coinTag = starLive &&
+      starsForAttempt(this.board.moveCount, par, this.penalties) === 3 && this.timeBonusOnOffer();
+
     chip.hidden = false;
-    chip.classList.toggle('hudtimer--live', live);
-    chip.classList.toggle('hudtimer--low', live && remaining <= 10);
-    const shown = live ? remaining : elapsed;
-    $('#game-clock-time').textContent =
-      `${Math.floor(shown / 60)}:${String(shown % 60).padStart(2, '0')}`;
+    chip.classList.toggle('hudtimer--live', starLive || hardLive);
+    chip.classList.toggle('hudtimer--hard', hardLive);
+    chip.classList.toggle('hudtimer--low', (starLive && remaining <= 10) || (hardLive && hardLeft <= 15));
+    $('#game-clock-time').textContent = formatClock(starLive ? remaining : hardLive ? hardLeft : elapsed);
     const bonus = $('#game-clock-bonus');
-    bonus.hidden = !live;
+    bonus.hidden = !coinTag;
     // Exactly what a win this second would pay: the tag steps down with the
     // clock, so finishing faster visibly earns more.
-    if (live) bonus.textContent = `+${timeBonusFor(elapsed, par, this.levelId, this.remote.current.economy)}`;
+    if (coinTag) bonus.textContent = `+${timeBonusFor(elapsed, par, this.levelId, this.remote.current.economy)}`;
     const ring = document.querySelector<SVGCircleElement>('#game-clock-ring');
     if (ring) {
-      const fraction = live ? remaining / target : 0;
+      const fraction = starLive
+        ? remaining / target
+        : hardLive && limit !== null ? hardLeft / Math.max(1, limit - target) : 0;
       ring.style.strokeDashoffset = String(App.CLOCK_RING * (1 - fraction));
     }
+  }
+
+  // ---------------------------------------------------------- timed levels
+  /** The hard limit ran out: the board locks and the player chooses what next. */
+  private onTimeUp(): void {
+    this.timedOut = true;
+    this.board.inputLocked = true;
+    audio.play('stuck');
+    haptic([30, 80, 30], 'error');
+    this.analytics.track({ type: 'level_time_up', level: this.levelId, moves: this.board.moveCount });
+    if (!this.modal.isOpen) this.showTimeUpDialog();
+  }
+
+  /**
+   * Out of time: more seconds for an ad (once an attempt) or for coins, or
+   * start over (a failed attempt, so it costs a heart), or skip.
+   */
+  private showTimeUpDialog(): void {
+    const eco = this.remote.current.economy;
+    const secs = eco.timeExtendSeconds;
+    this.modal.open({
+      title: t('timed.title'),
+      bodyHtml: escapeHtml(t('timed.body', { n: secs })),
+      inlineButtons: false,
+      buttons: [
+        ...(this.ads.available && !this.adExtended ? [{
+          label: t('timed.watch', { n: secs }),
+          kind: 'success' as const,
+          onClick: () => void this.rewardExtension(),
+        }] : []),
+        {
+          label: t('timed.buy', { n: secs, coins: eco.timeExtendPrice }),
+          kind: 'primary' as const,
+          onClick: () => {
+            // Short of coins: say so and keep the dialog up - the board is
+            // locked, so there is nowhere else to go but these choices.
+            if (!this.save.trySpend(eco.timeExtendPrice)) {
+              audio.play('invalid');
+              this.toast.show(t('shop.notEnough', { n: eco.timeExtendPrice }), 'warn');
+              return false;
+            }
+            this.analytics.track({ type: 'time_extend', level: this.levelId, paid: 'coins' });
+            this.extendTime();
+            return undefined;
+          },
+        },
+        {
+          label: this.heartCostLabel(t('stuck.restart')),
+          kind: 'ghost',
+          onClick: () => {
+            // Running out of time is a failed attempt, like a dead end.
+            this.loseLife('failed');
+            this.restartLevel();
+          },
+        },
+        ...(this.canSkip ? [this.skipButton()] : []),
+      ],
+      dismissable: false,
+    });
+  }
+
+  private extendTime(): void {
+    const secs = this.remote.current.economy.timeExtendSeconds;
+    // "+30s" means thirty seconds left from now, even if the clock ticked
+    // past the limit before the dialog went up.
+    const level = this.level;
+    const elapsed = Math.floor(this.attemptElapsedMs() / 1000);
+    const base = level ? timeLimitSeconds(level.par, this.levelId) : 0;
+    this.extendedSec = Math.max(this.extendedSec + secs, elapsed - base + secs);
+    this.timedOut = false;
+    this.board.inputLocked = false;
+    audio.play('powerup');
+    haptic(14);
+    this.toast.show(t('timed.extended', { n: secs }), 'info', 1800);
+    this.persistProgress();
+    this.updateHud();
+  }
+
+  private async rewardExtension(): Promise<void> {
+    const outcome = await this.ads.showRewarded('time');
+    this.analytics.track({ type: 'ad_rewarded', placement: 'time', outcome });
+    if (outcome === 'rewarded') {
+      this.adExtended = true;
+      this.analytics.track({ type: 'time_extend', level: this.levelId, paid: 'ad' });
+      this.extendTime();
+      return;
+    }
+    if (outcome !== 'dismissed') this.toast.show(t('ads.unavailable'), 'warn', 3000);
+    if (this.current === 'game' && this.timedOut && !this.modal.isOpen) this.showTimeUpDialog();
   }
 
   /**
@@ -2752,7 +2959,7 @@ class App {
       const left = budget - moves;
       pips.hidden = false;
       risk(left === 1 || left === 2, left <= 0);
-      const tier = starsFor(moves, par);
+      const tier = starsForAttempt(moves, par, this.penalties);
       pips.querySelectorAll('i').forEach((s, i) => s.classList.toggle('on', i < tier));
       label.textContent = t('hud.pourBudget', { used: moves, max: budget });
       this.hudTier = tier;
@@ -2769,9 +2976,17 @@ class App {
       return;
     }
 
+    // The pips show the stars this attempt would earn now - an extra bottle
+    // and a missed clock each cost one (see starsForAttempt). `spare` counts
+    // the pours before the next pour costs a *shown* star; when the pour
+    // tier can no longer move the result (penalties already hold it at one),
+    // there is nothing left to lose and the plain line shows.
     const th = starThresholds(par);
-    const tier = starsFor(moves, par);
-    const spare = tier === 3 ? th.three - moves : tier === 2 ? th.two - moves : -1;
+    const pen = this.penalties;
+    const moveTier = starsFor(moves, par);
+    const tier = starsForAttempt(moves, par, pen);
+    const edge = moveTier === 3 ? th.three : moveTier === 2 ? th.two : null;
+    const spare = edge !== null && starsForAttempt(edge + 1, par, pen) < tier ? edge - moves : -1;
 
     pips.hidden = false;
     // Colour follows the same thresholds as the wording, so the row warns at a
@@ -2844,6 +3059,11 @@ class App {
 
   private async usePowerup(id: PowerupId): Promise<void> {
     if (this.board.isBusy) return;
+    // Out of time on a timed level: nothing helps but more time or a restart.
+    if (this.timedOut) {
+      if (!this.modal.isOpen) this.showTimeUpDialog();
+      return;
+    }
     // Out of pours: only an undo hands one back. A hint or a bottle would be
     // spent on a board that cannot take another pour.
     if (id !== 'undo' && this.board.isOverBudget) {
@@ -2861,7 +3081,7 @@ class App {
       // Reached from the No-moves dialog, the tap has already closed it; a
       // dead board must never be left without a way out.
       window.setTimeout(() => {
-        if (this.current === 'game' && this.board.isLost && !this.modal.isOpen) this.showStuckDialog();
+        this.backToFailedBoard();
       }, 0);
       return;
     }
@@ -2905,7 +3125,10 @@ class App {
       }
       case 'bottle':
         applied = this.board.addTube(this.save.snapshot.settings.colorblind);
-        if (applied) this.extraTubes += 1;
+        if (applied) {
+          this.extraTubes += 1;
+          this.toast.show(t('stars.bottleLost'), 'warn', 2400);
+        }
         break;
     }
 
@@ -2930,37 +3153,54 @@ class App {
     this.updateHud();
   }
 
+  /** A failed board must never be left without a way out: put its dialog back up. */
+  private backToFailedBoard(): void {
+    if (this.current !== 'game' || this.modal.isOpen) return;
+    if (this.board.isLost) this.showStuckDialog();
+    else if (this.timedOut) this.showTimeUpDialog();
+  }
+
   /**
-   * Out of a powerup - free uses and stock both gone. Where ads exist the
-   * player may watch one for a single use, with the shop as the second
-   * choice; elsewhere the shop opens directly. On a dead-ended board the
-   * No-moves dialog returns if nothing was gained, so the player is never
-   * left staring at a lost board with no way out.
+   * Out of a powerup - free uses and stock both gone. The player chooses:
+   * watch an ad for one use (where ads exist), buy one on the spot for coins
+   * (dearer per use than any shop pack), or go to the shop. Nothing is ever
+   * charged without that tap. On a dead-ended board the No-moves dialog
+   * returns if nothing was gained.
    */
   private offerPowerup(id: PowerupId): void {
     const name = powerupLabel(id);
+    const price = this.remote.current.economy.singlePrice[id];
     audio.play('invalid');
-    if (!this.ads.available) {
-      this.toast.show(t('powerup.out', { name }), 'warn', 2400);
-      this.openShop('powerup');
-      return;
-    }
-    const backToBoard = () => {
-      if (this.current === 'game' && this.board.isLost && !this.modal.isOpen) this.showStuckDialog();
-    };
+    const backToBoard = () => this.backToFailedBoard();
     this.modal.open({
       title: t('ads.outTitle', { name }),
-      bodyHtml: escapeHtml(t('ads.outBody')),
+      bodyHtml: escapeHtml(t(this.ads.available ? 'ads.outBody' : 'offer.outBody')),
       inlineButtons: false,
       buttons: [
-        {
+        ...(this.ads.available ? [{
           label: t('ads.watchPowerup', { name }),
-          kind: 'success',
+          kind: 'success' as const,
           onClick: () => {
             void this.rewardPowerup(id).then(backToBoard);
           },
+        }] : []),
+        {
+          label: t('offer.buyOne', { name, n: price }),
+          kind: 'primary' as const,
+          onClick: () => {
+            if (!this.save.trySpend(price)) {
+              audio.play('invalid');
+              this.toast.show(t('shop.notEnough', { n: price }), 'warn');
+              this.openShop('powerup');
+              return;
+            }
+            this.analytics.track({ type: 'powerup_bought', powerup: id, price });
+            this.save.addInventory(id, 1);
+            this.updateHud();
+            void this.usePowerup(id).then(backToBoard);
+          },
         },
-        { label: t('ads.shop'), kind: 'primary', onClick: () => this.openShop('powerup') },
+        { label: t('ads.shop'), kind: 'ghost', onClick: () => this.openShop('powerup') },
         // The dialog is still closing when onClick runs; re-check after it is gone.
         { label: t('common.cancel'), kind: 'ghost', onClick: () => void window.setTimeout(backToBoard, 0) },
       ],
@@ -3045,7 +3285,10 @@ class App {
 
     const moves = this.board.moveCount;
     const seconds = Math.round(this.attemptElapsedMs() / 1000);
-    const stars = starsFor(moves, level.par);
+    // Pours, extra bottles and the star clock all grade the clear, exactly as
+    // the HUD pips showed them.
+    const penalties = this.penalties;
+    const stars = starsForAttempt(moves, level.par, penalties);
     const eco = this.remote.current.economy;
     const daily = isDaily(this.levelId);
     const weekly = isWeekly(this.levelId);
@@ -3095,7 +3338,7 @@ class App {
     // moment the third star slips). Whole seconds, floored exactly as the HUD
     // clock counts them, so the win pays the value the timer tag showed.
     const clockSeconds = Math.floor(this.attemptElapsedMs() / 1000);
-    const beatClock = stars === 3 && clockSeconds < timeBonusSeconds(level.par, level.spec.id);
+    const beatClock = stars === 3 && !penalties.overtime;
     const timeBonus = isFirstClear && stars === 3 ? timeBonusFor(clockSeconds, level.par, level.spec.id, eco) : 0;
     reward += timeBonus;
     this.save.recordWinForStreak();
@@ -3189,7 +3432,7 @@ class App {
     }
     window.setTimeout(
       () => this.showWinModal({
-        stars, moves, seconds, reward, isLast, prevStars, prevBest, streak,
+        stars, moves, seconds, reward, isLast, prevStars, prevBest, streak, penalties,
         par: level.par, eyebrow, chapterDone, chapterBonus, chestSilver, chestGold, mode,
         dailyBonus, dailyStreak, timeBonus, streakBonus, weeklyPrize, weeklyPrizeHints,
         weeklyPerfect, weeklyCleared, staleWeekly,
@@ -3412,7 +3655,7 @@ class App {
 
   private showWinModal(w: {
     stars: number; moves: number; seconds: number; reward: number; isLast: boolean;
-    prevStars: number | null; prevBest: number | null; streak: number;
+    prevStars: number | null; prevBest: number | null; streak: number; penalties: StarPenalties;
     par: number; eyebrow: string; chapterDone: Chapter | null; chapterBonus: number;
     chestSilver: number; chestGold: number;
     mode: WinMode; dailyBonus: number; dailyStreak: number; timeBonus: number;
@@ -3459,6 +3702,14 @@ class App {
       const perfect = el('div', 'perfect');
       perfect.appendChild(el('span', undefined, t('win.perfect')));
       content.appendChild(perfect);
+    } else if (w.penalties.bottles > 0 || w.penalties.overtime) {
+      // Stars docked for a bottle or the clock: name the cost, so the next
+      // attempt knows what to do differently. No near-miss push here - the
+      // pour count was not what fell short.
+      const why: string[] = [];
+      if (w.penalties.bottles > 0) why.push(t('win.lostBottle'));
+      if (w.penalties.overtime) why.push(t('win.lostClock'));
+      content.appendChild(el('div', 'win__verdict', why.join(' · ')));
     } else {
       const th = starThresholds(w.par);
       const need = w.stars === 2 ? th.three : th.two;
@@ -3506,6 +3757,40 @@ class App {
       card.appendChild(el('div', 'win__breakdown', parts.join(' · ')));
       content.appendChild(card);
       const counter = big.querySelector('b') as HTMLElement;
+      // Rewarded ad: double what the clear itself paid (never the one-time
+      // chests and prizes). Optional, offered once, and only where ads exist -
+      // with level payouts now modest, it is a fair trade, not a coin tap.
+      const clearPart = w.reward - w.chapterBonus - w.chestSilver - w.chestGold - w.dailyBonus -
+        w.weeklyPrize - w.weeklyPerfect;
+      if (this.ads.available && clearPart > 0 && !w.staleWeekly) {
+        const double = el('button', 'btn btn--success win__double', t('win.double', { n: clearPart }));
+        // Live once the count-up has landed, so the doubled total is never
+        // overwritten by the animation's last frame.
+        double.disabled = true;
+        window.setTimeout(() => {
+          double.disabled = false;
+        }, (reduced ? 0 : 180 + 3 * 260) + (reduced ? 0 : 750));
+        double.addEventListener('click', () => {
+          audio.play('button');
+          double.disabled = true;
+          void this.ads.showRewarded('double').then((outcome) => {
+            this.analytics.track({ type: 'ad_rewarded', placement: 'double', outcome });
+            if (outcome === 'rewarded') {
+              this.save.addCoins(clearPart);
+              this.analytics.track({ type: 'win_doubled', level: this.levelId, coins: clearPart });
+              counter.textContent = `+${w.reward + clearPart}`;
+              double.textContent = t('win.doubled');
+              audio.play('coin');
+              const r = card.getBoundingClientRect();
+              if (r.width > 0) this.confetti.coins(r.left + r.width / 2, r.top + r.height / 2);
+            } else {
+              double.disabled = false;
+              if (outcome !== 'dismissed') this.toast.show(t('ads.unavailable'), 'warn', 3000);
+            }
+          });
+        });
+        card.appendChild(double);
+      }
       const startAt = reduced ? 0 : 180 + 3 * 260;
       // When the count lands, coins fountain up out of the reward card.
       const shower = (): void => {
@@ -3759,7 +4044,7 @@ class App {
           },
         }]),
         ...(this.isCapped('bottle') || overBudget ? [] : [{
-          label: t('stuck.bottle'),
+          label: `${t('stuck.bottle')} · −1 ★`,
           kind: 'ghost' as const,
           onClick: () => {
             void this.usePowerup('bottle');
@@ -3782,7 +4067,7 @@ class App {
 
   /** Whether giving up on the current board right now would cost a heart. */
   private get heartAtStake(): boolean {
-    return this.board.isLost && !this.tutorial.active && !this.save.hasInfiniteLives;
+    return this.attemptLost && !this.tutorial.active && !this.save.hasInfiniteLives;
   }
 
   private heartCostLabel(label: string): string {
@@ -3798,7 +4083,7 @@ class App {
   private loseLife(cause: 'quit' | 'failed'): void {
     // Never punish a player who is still inside the level-1 tutorial.
     if (this.tutorial.active) return;
-    if (!this.board.isLost) return;
+    if (!this.attemptLost) return;
     this.save.loseLife();
     this.save.breakStreak();
     this.analytics.track({ type: 'life_lost', level: this.levelId, cause });

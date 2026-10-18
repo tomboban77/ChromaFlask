@@ -22,11 +22,11 @@ import {
   weeklySpec,
 } from './weekly';
 import { generateLevel } from './generator';
-import { ENDLESS_START, LEVELS, endlessSpec, getLevelSpec, isEndless } from './levels';
+import { ENDLESS_START, LEVELS, endlessSpec, getLevelSpec, isEndless, isTimedLevel } from './levels';
 import {
   COIN_SHOP, DEFAULT_ECONOMY, LOGIN_CYCLE, LOGIN_REWARDS, coinsFor, freeUsesFor, loginCycleDay,
-  loginRewardFor, rewardScale, scaledReward, starThresholds, starsFor, streakBonusFor,
-  timeBonusFor, timeBonusSeconds,
+  NO_PENALTIES, loginRewardFor, rewardScale, scaledReward, starThresholds, starsFor, starsForAttempt,
+  streakBonusFor, timeBonusFor, timeBonusSeconds, timeLimitSeconds,
 } from './progression';
 import { MISSIONS_PER_DAY, mergeMissions, missionsFor } from './missions';
 import { solvability, solve } from './solver';
@@ -177,11 +177,19 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
   // The time bonus scales with par and can always be beaten by a human pace.
   check('time bonus: window grows with par', timeBonusSeconds(20, 50) > timeBonusSeconds(4, 50));
   check('time bonus: level 1 window still fits a new player', timeBonusSeconds(4, 1) >= 25);
-  check('time bonus: relaxed clock to level 3 (4 s a move)', timeBonusSeconds(16, 3) === 74);
-  check('time bonus: tight clock from level 4 (3 s a move)',
-    timeBonusSeconds(16, 4) === 58 && timeBonusSeconds(25, 300) === 85);
-  check('time bonus: daily and endless run on the tight clock',
-    timeBonusSeconds(22, dailyId(20_000)) === 76 && timeBonusSeconds(22, ENDLESS_START) === 76);
+  check('time bonus: relaxed clock to level 3 (6 s a move)', timeBonusSeconds(16, 3) === 111);
+  check('time bonus: standard clock from level 4 (5 s a move)',
+    timeBonusSeconds(16, 4) === 95 && timeBonusSeconds(25, 300) === 140);
+  check('time bonus: daily and endless run on the standard clock',
+    timeBonusSeconds(22, dailyId(20_000)) === 125 && timeBonusSeconds(22, ENDLESS_START) === 125);
+  // Timed levels: a hard limit half again the star clock, in whole fives.
+  check('time limit: half again the star clock', timeLimitSeconds(24, 36) === 205);
+  check('time limit: always past the star clock and in fives',
+    [4, 12, 21, 26].every((par) => timeLimitSeconds(par, 50) > timeBonusSeconds(par, 50)
+      && timeLimitSeconds(par, 50) % 5 === 0));
+  check('timed levels: the sixth of every ten from 26',
+    isTimedLevel(26) && isTimedLevel(296) && !isTimedLevel(16) && !isTimedLevel(27) && !isTimedLevel(306)
+    && getLevelSpec(36).timed === true && getLevelSpec(35).timed === undefined);
   // The bonus drains with the clock: full at the start, 5 in the last slice,
   // nothing once the window is spent, and never more for a slower finish.
   for (const [par, lvl] of [[4, 1], [12, 3], [12, 40], [22, 150], [27, 300]] as const) {
@@ -235,10 +243,16 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
   const refill = COIN_SHOP.find((i) => i.grant.kind === 'refillLives');
   const oneHeart = COIN_SHOP.find((i) => i.grant.kind === 'addLives');
   check('shop: a full refill beats five single hearts', !!refill && !!oneHeart && refill.price < oneHeart.price * 5);
+  // Scarcity (2026-10-18): boosters must cost real play, not one level's change.
+  const fullClear = coinsFor(3, null, 22, e) + scaledReward(e.timeBonusCoins, 22);
+  check('shop: a hint pack costs ten perfect clears or more', perUse('hint.x3') * 3 >= fullClear * 10);
+  check('shop: a skip costs more than a hint pack', e.skipPrice > perUse('hint.x3') * 3);
+  check('shop: buying one on the spot costs more per use than any pack',
+    (['undo', 'hint', 'bottle'] as const).every((id) => e.singlePrice[id] > perUse(`${id}.x3`)));
 
   // Streak bonus: pays only from the threshold, never turns 0 into coins.
   check('streak: below threshold pays nothing', streakBonusFor(100, e.streakAfter - 1, e) === 0);
-  check('streak: at threshold pays the multiplier', streakBonusFor(100, e.streakAfter, e) === 50);
+  check('streak: at threshold pays the multiplier', streakBonusFor(100, e.streakAfter, e) === 25);
   check('streak: a zero reward stays zero', streakBonusFor(0, 99, e) === 0);
 
   // Missions: deterministic per day, distinct kinds, every def from the pool.
@@ -268,6 +282,12 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
     mergeMissions(null, paidThere) === paidThere && mergeMissions(paidHere, null) === paidHere);
 
   check('stars: par is 3 stars', starsFor(10, 10) === 3);
+  // Penalties: a bottle and a missed clock each cost a star, never below one.
+  check('stars: no penalties grade like starsFor', starsForAttempt(12, 10, NO_PENALTIES) === starsFor(12, 10));
+  check('stars: an extra bottle costs a star', starsForAttempt(10, 10, { bottles: 1, overtime: false }) === 2);
+  check('stars: the clock costs a star', starsForAttempt(10, 10, { bottles: 0, overtime: true }) === 2);
+  check('stars: both cost two', starsForAttempt(10, 10, { bottles: 1, overtime: true }) === 1);
+  check('stars: never below one', starsForAttempt(40, 10, { bottles: 2, overtime: true }) === 1);
   check('stars: within tolerance is 3 stars', starsFor(12, 10) === 3);
   check('stars: well past par is 1 star', starsFor(40, 10) === 1);
   // Tightened thresholds: three stars within ~10% of the ideal, two within ~30%.

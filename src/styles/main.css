@@ -878,10 +878,11 @@ body {
   .hudbudget__pips--drop { animation: none; }
 }
 
-/* Time-bonus chip: its own capsule so the clock never reads as part of the
-   move count. While the window is open the ring drains gold and the +coins
-   tag says exactly what beating it is worth; afterwards the whole chip dims
-   into a plain elapsed-time clock - reward framing, never fail framing. */
+/* Star clock chip: its own capsule so the clock never reads as part of the
+   move count. While the window is open the ring drains gold (finish inside it
+   to keep the third star) and the +coins tag says what a first clear inside it
+   is worth; afterwards the chip dims into a plain elapsed-time clock, or on a
+   timed level turns red and counts down the hard limit. */
 .hudtimer {
   display: inline-flex;
   align-items: center;
@@ -905,6 +906,14 @@ body {
   color: #ffe7b4;
   border-color: rgba(255, 176, 32, 0.45);
 }
+
+/* Timed level, past the star clock: the hard limit drains red. Fail framing
+   on purpose - this is the one clock in the game that can end an attempt. */
+.hudtimer--hard {
+  color: #ffd0d8;
+  border-color: rgba(245, 54, 92, 0.6);
+}
+.hudtimer--hard .hudtimer__fill { stroke: var(--danger); }
 
 .hudtimer__ring {
   width: 21px;
@@ -1965,6 +1974,15 @@ body {
   font-size: 11.5px;
   color: #f1e5c2;
   letter-spacing: 0.02em;
+}
+
+/* Rewarded "double the coins": inside the reward card, under the breakdown. */
+.win__double {
+  display: block;
+  width: 100%;
+  margin-top: 9px;
+  padding: 8px 12px;
+  font-size: 13px;
 }
 
 .win__note {

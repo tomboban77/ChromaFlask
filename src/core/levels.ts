@@ -21,6 +21,7 @@ import type { LevelSpec } from './types';
  *  - one-way:     commitment - a flask you can never pour back out of
  *  - precision:   efficiency - a pour budget a few over the proven minimum
  *  - murky:       planning under uncertainty - colours hidden until surfaced
+ *  - timed:       decisiveness - a hard clock (the sixth of every ten from 26)
  *
  * Each twist is taught once on a small, forgiving board and then tested for
  * real. From level 50 the last level of every ten combines two twists.
@@ -242,13 +243,24 @@ function isMurky(id: number): boolean {
   return id % 3 !== 1;
 }
 
+/**
+ * Against the clock: the sixth level of every ten from 26 runs on a hard time
+ * limit (see timeLimitSeconds) on top of whatever else it is. It changes no
+ * board, so the precomputed campaign is untouched; the game enforces it.
+ * Tests decisiveness - the one kind of thinking no other twist asks for.
+ */
+export function isTimedLevel(id: number): boolean {
+  return id >= 26 && id <= 300 && id % 10 === 6;
+}
+
 export const LEVEL_COUNT = 300;
 
 export const LEVELS: readonly LevelSpec[] = [
   ...OPENING,
-  ...Array.from({ length: LEVEL_COUNT - OPENING.length }, (_, i) =>
-    specFor(OPENING.length + 1 + i),
-  ),
+  ...Array.from({ length: LEVEL_COUNT - OPENING.length }, (_, i) => {
+    const spec = specFor(OPENING.length + 1 + i);
+    return isTimedLevel(spec.id) ? { ...spec, timed: true } : spec;
+  }),
 ];
 
 // ------------------------------------------------------------------ endless

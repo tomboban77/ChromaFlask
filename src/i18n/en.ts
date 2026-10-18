@@ -253,6 +253,21 @@ export const en = {
   'twist.labels.body': '<p>A flask with a coloured rim takes only that colour:</p><p class="twistrow">{colors}</p><p>It is extra room - but only for the right liquid. Bring that colour to the top first to make use of it.</p>',
   'twist.precision.title': 'Precision pour',
   'twist.precision.body': '<p>Finish this potion in <b>{n} pours</b> or fewer.</p><p>Run out before it is done and the attempt fails. The counter at the top shows the pours you have used - plan your line before you start.</p>',
+  'twist.timed.title': 'Against the clock',
+  'twist.timed.body': '<p>Finish this potion within <b>{limit}</b>.</p><p>While the gold clock runs you can still earn all three stars; when it runs out the third star goes and the clock turns red, counting down to the limit. Run out of time and the attempt fails - unless you take {n} more seconds.</p>',
+  'stars.clockLost': 'The star clock ran out: −1 ★',
+  'stars.bottleLost': 'Extra bottle: −1 ★',
+  'timed.title': 'Time\'s up!',
+  'timed.body': 'The potion was not finished in time. Take {n} more seconds to finish it, or start over.',
+  'timed.watch': 'Watch an ad · +{n}s',
+  'timed.buy': '+{n}s · {coins} coins',
+  'timed.extended': '+{n} seconds - go!',
+  'offer.outBody': 'Buy one now, or stock up in the shop for a better price.',
+  'offer.buyOne': 'Buy 1 {name} · {n} coins',
+  'win.lostBottle': 'Extra bottle used: −1 ★',
+  'win.lostClock': 'Star clock ran out: −1 ★',
+  'win.double': 'Watch an ad · double it (+{n})',
+  'win.doubled': 'Coins doubled!',
   'twist.cauldron.title': 'The Cauldron',
   'twist.lock.title': 'Locked bottle',
   'twist.oneWay.title': 'One-way flask',
@@ -279,7 +294,7 @@ export const en = {
   // ads (native builds only; a rewarded video is always the player's choice)
   'ads.watchHeart': 'Watch an ad for a heart',
   'ads.outTitle': 'Out of {name}',
-  'ads.outBody': 'Watch a short ad for one more, or stock up in the shop.',
+  'ads.outBody': 'Watch a short ad for one more, buy one now, or stock up in the shop.',
   'ads.watchPowerup': 'Watch an ad · +1 {name}',
   'ads.shop': 'Go to the shop',
   'ads.loading': 'Loading ad…',
@@ -520,7 +535,7 @@ export const en = {
   'howto.more': `<div class="howto">
     <h3>Limits, clock and streaks</h3>
     <p>Each attempt allows at most <b>Undo ×{undo}</b>, <b>Hint ×{hint}</b> and <b>extra Bottle ×{bottle}</b>, however many you own.</p>
-    <p>The <b>clock</b> shows a bonus window: clear a level for the first time with <b>three stars</b> before it runs out for bonus coins. The faster you finish, the bigger the bonus - the coin tag on the clock shrinks as time passes. It never fails a level.</p>
+    <p>The <b>clock</b> is the star clock: finish before it runs out to keep the third star, and a first clear inside it pays a few bonus coins. Each <b>extra bottle</b> also costs a star. On <b>Against the clock</b> levels it then turns red and counts down a hard limit - run out and the attempt fails.</p>
     <p>Clear new levels in a row without restarting or leaving them and, from the third, every win pays a <b>streak bonus</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">

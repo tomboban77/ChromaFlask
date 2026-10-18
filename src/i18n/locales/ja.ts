@@ -229,6 +229,21 @@ const table: Record<string, string> = {
   'twist.labels.body': '<p>縁に色のあるフラスコは、その色しか入りません:</p><p class="twistrow">{colors}</p><p>追加のスペースですが、正しい液体専用です。使うには先にその色を上に出そう。</p>',
   'twist.precision.title': '精密注ぎ',
   'twist.precision.body': '<p>このポーションを<b>{n}回</b>以内で完成させよう。</p><p>完成前に使い切ると失敗です。上のカウンターが注いだ回数を示します - 始める前に手順を考えよう。</p>',
+  'twist.timed.title': 'タイムアタック',
+  'twist.timed.body': '<p>このポーションを<b>{limit}</b>以内に完成させよう。</p><p>金色の時計が動いている間は星3つを狙えます。時計が切れると3つ目の星が消え、時計は赤くなって制限時間までカウントダウンします。時間切れで挑戦は失敗 - {n}秒の延長をしない限り。</p>',
+  'stars.clockLost': 'スター時計が切れました: −1 ★',
+  'stars.bottleLost': '追加ボトル: −1 ★',
+  'timed.title': '時間切れ!',
+  'timed.body': 'ポーションが時間内に完成しませんでした。あと{n}秒延長して仕上げるか、やり直しましょう。',
+  'timed.watch': '広告を見る · +{n}秒',
+  'timed.buy': '+{n}秒 · {coins}コイン',
+  'timed.extended': '+{n}秒、急いで!',
+  'offer.outBody': '今すぐ1つ買うか、ショップでお得にまとめ買いしましょう。',
+  'offer.buyOne': '{name}を1つ購入 · {n}コイン',
+  'win.lostBottle': '追加ボトルを使用: −1 ★',
+  'win.lostClock': 'スター時計が切れた: −1 ★',
+  'win.double': '広告を見る · 2倍にする (+{n})',
+  'win.doubled': 'コインが2倍に!',
   'twist.cauldron.title': '大釜',
   'twist.lock.title': '鍵付きボトル',
   'twist.oneWay.title': '一方通行フラスコ',
@@ -444,7 +459,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>上限・時計・連勝</h3>
     <p>1回の挑戦で使えるのは、持っている数に関係なく <b>アンドゥ{undo}回</b>、<b>ヒント{hint}回</b>、<b>追加ボトル{bottle}本</b> までです。</p>
-    <p><b>時計</b>はボーナス時間を表示します。時間内に<b>星3つ</b>で初めてクリアするとコインが追加されます。早くクリアするほどボーナスが大きくなり、時計のコイン表示は時間とともに減っていきます。時間切れで失敗になることはありません。</p>
+    <p><b>時計</b>はスター時計です。切れる前にクリアすれば3つ目の星を守れ、時間内の初クリアには少しボーナスコインが付きます。<b>追加ボトル</b>も1本ごとに星を1つ失います。<b>タイムアタック</b>のレベルでは、その後時計が赤くなり制限時間をカウントダウン - 切れると挑戦は失敗です。</p>
     <p>リスタートや途中退出なしで新しいレベルを連続クリアすると、3回目から毎回<b>連勝ボーナス</b>がもらえます。</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -463,7 +478,7 @@ const table: Record<string, string> = {
   // ads
   'ads.watchHeart': '広告を見てハートを1つ獲得',
   'ads.outTitle': '{name}がありません',
-  'ads.outBody': '短い広告を見てもう1つ手に入れるか、ショップで補充しましょう。',
+  'ads.outBody': '短い広告を見てもう1つ手に入れるか、今すぐ買うか、ショップで補充しましょう。',
   'ads.watchPowerup': '広告を見る · +1 {name}',
   'ads.shop': 'ショップへ',
   'ads.loading': '広告を読み込み中…',

@@ -525,8 +525,11 @@ export class BoardView {
   }
 
   // ----------------------------------------------------------------- input
+  /** Set by the game while the board must not take pours (a timed level's clock ran out). */
+  inputLocked = false;
+
   handleTap(index: number): void {
-    if (this.busy) return;
+    if (this.busy || this.inputLocked) return;
     this.clearHint();
 
     const tube = this.board[index];

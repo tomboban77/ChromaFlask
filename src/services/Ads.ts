@@ -29,7 +29,7 @@ const trackingPermission = registerPlugin<{
   showConsentForm(): Promise<{ canRequestAds: boolean }>;
 }>('TrackingPermission');
 
-export type RewardPlacement = 'lives' | 'undo' | 'hint' | 'bottle';
+export type RewardPlacement = 'lives' | 'undo' | 'hint' | 'bottle' | 'time' | 'double';
 export type RewardOutcome = 'rewarded' | 'dismissed' | 'unavailable' | 'failed';
 export type InterstitialOutcome = 'shown' | 'skipped' | 'failed';
 

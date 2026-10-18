@@ -233,6 +233,21 @@ const table: Record<string, string> = {
   'twist.labels.body': "<p>Un flacon au bord coloré n'accepte que cette couleur :</p><p class=\"twistrow\">{colors}</p><p>C'est de la place en plus - mais seulement pour le bon liquide. Fais d'abord remonter cette couleur pour en profiter.</p>",
   'twist.precision.title': 'Versement de précision',
   'twist.precision.body': "<p>Termine cette potion en <b>{n} versements</b> ou moins.</p><p>S'ils s'épuisent avant la fin, l'essai échoue. Le compteur en haut montre tes versements - planifie ton chemin avant de commencer.</p>",
+  'twist.timed.title': 'Contre la montre',
+  'twist.timed.body': '<p>Termine cette potion en <b>{limit}</b>.</p><p>Tant que l’horloge dorée tourne, les trois étoiles restent possibles ; quand elle s’arrête, la troisième étoile disparaît et l’horloge passe au rouge jusqu’à la limite. Temps écoulé : la tentative échoue, sauf si tu prends {n} secondes de plus.</p>',
+  'stars.clockLost': 'L’horloge des étoiles est écoulée : −1 ★',
+  'stars.bottleLost': 'Fiole en plus : −1 ★',
+  'timed.title': 'Temps écoulé !',
+  'timed.body': 'La potion n’a pas été terminée à temps. Prends {n} secondes de plus pour la finir, ou recommence.',
+  'timed.watch': 'Voir une pub · +{n} s',
+  'timed.buy': '+{n} s · {coins} pièces',
+  'timed.extended': '+{n} secondes, vas-y !',
+  'offer.outBody': 'Achètes-en un maintenant, ou fais le plein en boutique à meilleur prix.',
+  'offer.buyOne': 'Acheter 1 {name} · {n} pièces',
+  'win.lostBottle': 'Fiole en plus utilisée : −1 ★',
+  'win.lostClock': 'Horloge des étoiles écoulée : −1 ★',
+  'win.double': 'Voir une pub · doubler (+{n})',
+  'win.doubled': 'Pièces doublées !',
   'twist.cauldron.title': 'Le chaudron',
   'twist.lock.title': 'Bouteille verrouillée',
   'twist.oneWay.title': 'Flacon à sens unique',
@@ -453,7 +468,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>Limites, chrono et séries</h3>
     <p>Chaque essai permet au plus <b>Annuler ×{undo}</b>, <b>Indice ×{hint}</b> et <b>Flacon en plus ×{bottle}</b>, quel que soit ton stock.</p>
-    <p>Le <b>chrono</b> affiche une fenêtre de bonus : termine un niveau pour la première fois avec <b>trois étoiles</b> avant la fin pour gagner des pièces en plus. Plus tu es rapide, plus le bonus est gros : l'étiquette de pièces du chrono baisse avec le temps. Il ne fait jamais perdre un niveau.</p>
+    <p>L’<b>horloge</b> est l’horloge des étoiles : finis avant qu’elle ne s’écoule pour garder la troisième étoile, et une première réussite dans les temps rapporte quelques pièces bonus. Chaque <b>fiole en plus</b> coûte aussi une étoile. Dans les niveaux <b>Contre la montre</b>, elle passe ensuite au rouge et décompte une limite stricte : à zéro, la tentative échoue.</p>
     <p>Enchaîne de nouveaux niveaux sans recommencer ni quitter et, dès le troisième, chaque victoire rapporte un <b>bonus de série</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -472,7 +487,7 @@ const table: Record<string, string> = {
   // ads
   'ads.watchHeart': 'Regarder une pub pour un cœur',
   'ads.outTitle': 'Plus de {name}',
-  'ads.outBody': 'Regardez une courte publicité pour en obtenir un de plus, ou faites le plein dans la boutique.',
+  'ads.outBody': 'Regarde une courte pub pour en avoir un de plus, achètes-en un maintenant ou fais le plein en boutique.',
   'ads.watchPowerup': 'Regarder une pub · +1 {name}',
   'ads.shop': 'Aller à la boutique',
   'ads.loading': 'Chargement de la publicité…',

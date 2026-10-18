@@ -233,6 +233,21 @@ const table: Record<string, string> = {
   'twist.labels.body': '<p>Eine Flasche mit farbigem Rand nimmt nur diese Farbe:</p><p class="twistrow">{colors}</p><p>Sie ist zusätzlicher Platz – aber nur für die richtige Flüssigkeit. Bring diese Farbe zuerst nach oben, um sie zu nutzen.</p>',
   'twist.precision.title': 'Präzisionsguss',
   'twist.precision.body': '<p>Schaffe diesen Trank in <b>{n} Güssen</b> oder weniger.</p><p>Gehen sie vorher aus, scheitert der Versuch. Der Zähler oben zeigt deine Güsse – plane deinen Weg, bevor du beginnst.</p>',
+  'twist.timed.title': 'Gegen die Uhr',
+  'twist.timed.body': '<p>Schaffe diesen Trank in <b>{limit}</b>.</p><p>Solange die goldene Uhr läuft, sind noch alle drei Sterne drin; läuft sie ab, ist der dritte Stern weg und die Uhr wird rot und zählt bis zum Limit herunter. Läuft die Zeit ab, scheitert der Versuch – es sei denn, du nimmst dir {n} Sekunden mehr.</p>',
+  'stars.clockLost': 'Die Sternenuhr ist abgelaufen: −1 ★',
+  'stars.bottleLost': 'Extraflasche: −1 ★',
+  'timed.title': 'Zeit abgelaufen!',
+  'timed.body': 'Der Trank wurde nicht rechtzeitig fertig. Nimm dir {n} Sekunden mehr oder fang neu an.',
+  'timed.watch': 'Werbung ansehen · +{n} s',
+  'timed.buy': '+{n} s · {coins} Münzen',
+  'timed.extended': '+{n} Sekunden – los!',
+  'offer.outBody': 'Kauf jetzt eins, oder stock dich im Shop günstiger auf.',
+  'offer.buyOne': '1 {name} kaufen · {n} Münzen',
+  'win.lostBottle': 'Extraflasche benutzt: −1 ★',
+  'win.lostClock': 'Sternenuhr abgelaufen: −1 ★',
+  'win.double': 'Werbung ansehen · verdoppeln (+{n})',
+  'win.doubled': 'Münzen verdoppelt!',
   'twist.cauldron.title': 'Der Kessel',
   'twist.lock.title': 'Verschlossene Flasche',
   'twist.oneWay.title': 'Einwegflasche',
@@ -453,7 +468,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>Limits, Uhr und Serien</h3>
     <p>Jeder Versuch erlaubt höchstens <b>Rückgängig ×{undo}</b>, <b>Tipp ×{hint}</b> und <b>Extraflasche ×{bottle}</b>, egal wie viele du besitzt.</p>
-    <p>Die <b>Uhr</b> zeigt ein Bonusfenster: Schaffst du ein Level zum ersten Mal mit <b>drei Sternen</b>, bevor es abläuft, gibt es Extramünzen. Je schneller du bist, desto größer der Bonus – die Münzanzeige an der Uhr sinkt mit der Zeit. Sie lässt dich nie ein Level verlieren.</p>
+    <p>Die <b>Uhr</b> ist die Sternenuhr: Bist du fertig, bevor sie abläuft, behältst du den dritten Stern, und ein erster Abschluss in der Zeit bringt ein paar Bonusmünzen. Jede <b>Extraflasche</b> kostet ebenfalls einen Stern. In Leveln <b>Gegen die Uhr</b> wird sie danach rot und zählt ein festes Limit herunter – läuft es ab, scheitert der Versuch.</p>
     <p>Schaffe neue Level hintereinander, ohne neu zu starten oder sie zu verlassen – ab dem dritten zahlt jeder Sieg einen <b>Serienbonus</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -472,7 +487,7 @@ const table: Record<string, string> = {
   // ads
   'ads.watchHeart': 'Werbung ansehen für ein Herz',
   'ads.outTitle': 'Keine {name} mehr',
-  'ads.outBody': 'Sieh dir eine kurze Werbung an und erhalte eins dazu, oder stock dich im Shop auf.',
+  'ads.outBody': 'Sieh dir eine kurze Werbung an und erhalte eins dazu, kauf jetzt eins oder stock dich im Shop auf.',
   'ads.watchPowerup': 'Werbung ansehen · +1 {name}',
   'ads.shop': 'Zum Shop',
   'ads.loading': 'Werbung wird geladen…',

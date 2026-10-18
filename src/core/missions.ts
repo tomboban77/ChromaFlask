@@ -32,18 +32,18 @@ export interface MissionDef {
  * a detour without becoming the main income.
  */
 const POOL: readonly MissionDef[] = [
-  { kind: 'clears', target: 3, coins: 30 },
-  { kind: 'perfect', target: 1, coins: 40 },
-  { kind: 'noUndo', target: 1, coins: 40 },
-  { kind: 'noHint', target: 1, coins: 40 },
-  { kind: 'clock', target: 2, coins: 40 },
-  { kind: 'pours', target: 40, coins: 30 },
-  { kind: 'daily', target: 1, coins: 50 },
+  { kind: 'clears', target: 3, coins: 15 },
+  { kind: 'perfect', target: 1, coins: 25 },
+  { kind: 'noUndo', target: 1, coins: 20 },
+  { kind: 'noHint', target: 1, coins: 20 },
+  { kind: 'clock', target: 2, coins: 20 },
+  { kind: 'pours', target: 40, coins: 15 },
+  { kind: 'daily', target: 1, coins: 25 },
 ];
 
 export const MISSIONS_PER_DAY = 3;
 /** Paid once on top when all three missions land, the day's real carrot. */
-export const MISSIONS_ALL_BONUS = 60;
+export const MISSIONS_ALL_BONUS = 30;
 
 /** The day's three missions. Same day, same missions, on every device. */
 export function missionsFor(day: number): readonly MissionDef[] {

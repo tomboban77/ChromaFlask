@@ -52,69 +52,72 @@ export interface EconomyConfig {
   readonly streakMultiplier: number;
   /** Coins to skip the current level (unlocks the next; the skipped one earns nothing). */
   readonly skipPrice: number;
+  /**
+   * Coins for one use bought on the spot from the "out of X" dialog. Dearer
+   * per use than any shop pack: convenience costs, planning ahead saves.
+   */
+  readonly singlePrice: Readonly<Record<PowerupId, number>>;
+  /** Timed levels: seconds one extension adds, and what it costs in coins. */
+  readonly timeExtendSeconds: number;
+  readonly timeExtendPrice: number;
 }
 
 /**
- * Tuned for a free-to-play audience, not a demo:
+ * Rebalanced 2026-10-18 after player feedback: "level 37 and 5865 coins - why
+ * would I ever buy anything?". The old payouts (~190 coins a level against a
+ * 200-coin hint pack) meant nothing in the shop was ever scarce. Now:
  *
- *  - One free undo per attempt covers a mis-tap; planning mistakes cost
- *    stock. Three free undos an attempt (the old rule) let players pour
- *    carelessly and take it back, which players reported as "too easy".
- *  - One free hint per attempt through the first chapter teaches the
- *    booster; after that every hint is earned or bought.
- *  - Bottles are never free. A free extra tube turns every "squeeze" level
- *    into a breather and erases the difficulty curve.
- *  - A first clear pays 60/80/120 coins for 1/2/3 stars at full difficulty:
- *    a perfect is worth double a sloppy clear, so playing well - not just
- *    finishing - is what fills the wallet. Every payout is then scaled by the
- *    level's par (see rewardScale), so a 20-second opener pays pocket change
- *    and the full amounts arrive with the levels that earn them. Replays pay
- *    only the star-value difference for newly earned stars (see coinsFor).
- *  - 200 starting coins buy exactly one hint pack: enough to learn what the
- *    shop is for, not enough to never need it.
+ *  - A full-scale first clear pays 25/30/40 coins for 1/2/3 stars (was
+ *    120/140/180 with the time bonus), so a hint pack (600) is roughly fifteen
+ *    levels of careful play. Boosters are a decision again, not a reflex.
+ *  - One free undo per attempt covers a mis-tap; one free hint per attempt
+ *    through the first chapter teaches the booster. Bottles are never free.
+ *  - Out of stock, the player watches an ad for one use, buys one on the spot
+ *    at a premium (singlePrice), or goes to the shop.
+ *  - Stars are now also docked for an extra bottle and for missing the clock
+ *    (see starsForAttempt), so the clock and the bottle both carry a price
+ *    beyond coins.
+ *  - 300 starting coins buy one undo pack, or one hint on the spot: enough to
+ *    learn what the shop is for, not enough to never need it.
  *
  * All of this is meant to be retuned live through RemoteConfig once real
  * funnel data exists.
  */
 export const DEFAULT_ECONOMY: EconomyConfig = {
-  startingCoins: 200,
+  startingCoins: 300,
   freeUses: { undo: 1, hint: 1, bottle: 0 },
   freeHintLevels: 20,
-  starCoins: [10, 30, 70],
-  baseReward: 50,
+  starCoins: [5, 10, 20],
+  baseReward: 20,
   firstClearBonus: 0,
-  // Roughly one level's worth of coins every twenty levels: a moment, not a
-  // second income stream.
-  chapterBonus: 100,
-  // Silver and gold chests: the reason to go back for stars. A full set is
-  // worth five times the old flat chapter bonus, and gold now demands
-  // near-optimal play on twenty boards.
-  chestSilverCoins: 150,
-  chestGoldCoins: 250,
+  // A couple of levels' worth at the end of each twenty-level chapter.
+  chapterBonus: 60,
+  // Silver and gold chests: the reason to go back for stars. Gold demands
+  // three stars - inside the clock, without a bottle - on twenty boards.
+  chestSilverCoins: 120,
+  chestGoldCoins: 300,
   // The weekly event pays each board like a level (full difficulty scale),
   // plus these once-a-week prizes.
-  weeklyPrizeCoins: 250,
-  weeklyPrizeHints: 2,
-  weeklyPerfectCoins: 250,
-  // Half a level's worth on top of the normal reward: a reason to come back
-  // daily, not a reason to skip the campaign.
-  dailyBonus: 50,
+  weeklyPrizeCoins: 120,
+  weeklyPrizeHints: 1,
+  weeklyPerfectCoins: 150,
+  // A reason to come back daily, not a reason to skip the campaign.
+  dailyBonus: 25,
   // One extra bottle at most: the late campaign is built on one or two empty
   // tubes, and a second extra tube halved it again.
   maxUses: { undo: 3, hint: 2, bottle: 1 },
-  // Half a base clear at best, and only for a fast finish: the bonus drains
-  // with the clock (see timeBonusFor), so an average finish earns a fraction
-  // of it. First clears only - see the win flow.
-  timeBonusCoins: 25,
-  // From the third straight win, rewards pay half again: losing a board (the
-  // only thing that breaks the streak) now also costs momentum, which makes
-  // careful play the profitable style without punishing anyone.
+  // A little sweetener on top of the third star the clock already decides.
+  timeBonusCoins: 10,
+  // From the third straight fresh win, rewards pay a quarter again.
   streakAfter: 3,
-  streakMultiplier: 1.5,
-  // A skip is a safety valve against churn, not a shortcut: a little over
-  // one and a half perfect clears, dearer than a hint pack (200 buys three
-  // hints) so trying a hint first is always the cheaper route.
-  skipPrice: 150,
+  streakMultiplier: 1.25,
+  // A skip is a last resort, not a shortcut: about twenty-five levels of income,
+  // dearer than a hint pack so trying a hint first is always cheaper.
+  skipPrice: 900,
+  singlePrice: { undo: 100, hint: 250, bottle: 350 },
+  // Timed levels: thirty more seconds for about six levels of income (or an ad).
+  timeExtendSeconds: 30,
+  timeExtendPrice: 250,
 };
 
 /**
@@ -136,17 +139,28 @@ export function streakBonusFor(
 export const RELAXED_CLOCK_LEVELS = 3;
 
 /**
- * The time-bonus window for a level, in seconds. Every level shows a clock;
- * beating it pays a bonus on the first clear, and missing it costs nothing -
- * time pressure in this genre must stay optional or it churns the relaxed
- * majority. The flat 10 covers reading the board; then four seconds a move
- * on the first three levels, and three from level 4 on (2026-10-09: four
- * left a thinking player with time to spare - a pour animates in about one,
- * so three leaves two for thought). Daily, weekly and endless ids sit far
- * above the opening, so they run on the tight clock.
+ * The star clock for a level, in seconds. Every level shows it counting down,
+ * and finishing after it has run out costs a star (see starsForAttempt), so
+ * a perfect clear means efficient *and* decisive. A first clear inside it also
+ * pays the small time bonus. Until 2026-10-18 the clock only paid a bonus and
+ * players ignored it ("we have a timer but no use").
+ *
+ * The flat 15 covers reading the board; then six seconds a move on the first
+ * three levels and five from level 4 on - a pour animates in about one, so
+ * five leaves four for thought. Daily, weekly and endless ids sit far above
+ * the opening, so they run on the standard clock.
  */
 export function timeBonusSeconds(par: number, levelId: number): number {
-  return 10 + par * (levelId <= RELAXED_CLOCK_LEVELS ? 4 : 3);
+  return 15 + par * (levelId <= RELAXED_CLOCK_LEVELS ? 6 : 5);
+}
+
+/**
+ * Timed levels ("Against the clock"): the hard limit, in seconds. Half again
+ * the star clock, in whole fives. Running out fails the attempt unless the
+ * player buys (or watches an ad for) an extension.
+ */
+export function timeLimitSeconds(par: number, levelId: number): number {
+  return Math.round((timeBonusSeconds(par, levelId) * 1.5) / 5) * 5;
 }
 
 /**
@@ -187,7 +201,7 @@ export function freeUsesFor(
  * LOGIN_REWARDS[n-1]; day seven also refills hearts. A missed day restarts
  * the cycle; after day seven it repeats.
  */
-export const LOGIN_REWARDS: readonly number[] = [20, 30, 40, 50, 60, 80, 150];
+export const LOGIN_REWARDS: readonly number[] = [10, 15, 20, 25, 30, 40, 100];
 export const LOGIN_CYCLE = LOGIN_REWARDS.length;
 
 /** 1-based day within the cycle for a login streak of `streak` days. */
@@ -221,97 +235,99 @@ export interface CoinShopItem {
 }
 
 /**
- * The coin shop. Prices are anchored on the three-packs (undo 80, hint 200,
- * bottle 320 - about 27, 67 and 107 a use) and a full-hearts refill (500):
+ * The coin shop. Prices are anchored on the three-packs (undo 240, hint 600,
+ * bottle 900 - 80, 200 and 300 a use) and a full-hearts refill (1000). They
+ * were tripled on 2026-10-18 while level income fell to about a quarter:
+ * a hint pack is now about fifteen levels of income, not one.
  *
- *  - Ten-packs save a sixth on the three-pack rate: a reason to save up,
- *    not so steep that buying three-packs feels like a mistake.
- *  - The booster bundle (three undos, three hints, one bottle) is worth 387
- *    at three-pack rates and costs 330: the "one of everything" shelf.
- *  - A single heart costs a little more than a fifth of a refill, so
+ *  - Ten-packs save about a sixth on the three-pack rate: a reason to save
+ *    up, not so steep that buying three-packs feels like a mistake.
+ *  - The booster bundle (three undos, three hints, one bottle) is worth 1140
+ *    at three-pack rates and costs 950: the "one of everything" shelf.
+ *  - A single heart costs a little under a quarter of a refill, so
  *    refilling stays the better deal when the hearts are all gone.
- *  - An hour of unlimited hearts costs about two refills: for a long
+ *  - An hour of unlimited hearts costs under two refills: for a long
  *    session on hard boards, not a better refill.
- *  - A streak freeze costs about a day's daily-challenge bonus times five:
- *    cheap next to a long streak, dear enough not to be bought on reflex.
- *    At most MAX_STREAK_FREEZES (2) can be held.
+ *  - A streak freeze costs twenty days of the daily bonus: cheap next to a
+ *    long streak, dear enough not to be bought on reflex. At most
+ *    MAX_STREAK_FREEZES (2) can be held.
  */
 export const COIN_SHOP: readonly CoinShopItem[] = [
   {
     id: 'lives.refill',
     title: 'Refill hearts',
     desc: 'Back to full hearts instantly',
-    price: 500,
+    price: 1000,
     grant: { kind: 'refillLives' },
   },
   {
     id: 'lives.one',
     title: '+1 heart',
     desc: 'One more try, right now',
-    price: 120,
+    price: 240,
     grant: { kind: 'addLives', count: 1 },
   },
   {
     id: 'lives.hour',
     title: 'Unlimited hearts · 1h',
     desc: 'Play as much as you like for an hour',
-    price: 900,
+    price: 1800,
     grant: { kind: 'infiniteLives', hours: 1 },
   },
   {
     id: 'streak.freeze',
     title: 'Streak freeze',
     desc: 'Saves your daily streak if you miss a day',
-    price: 250,
+    price: 500,
     grant: { kind: 'streakFreeze', count: 1 },
   },
   {
     id: 'bundle.boost',
     title: 'Booster bundle',
     desc: '3 undos, 3 hints and 1 bottle',
-    price: 330,
+    price: 950,
     grant: { kind: 'bundle', powerups: { undo: 3, hint: 3, bottle: 1 } },
   },
   {
     id: 'undo.x3',
     title: 'Undo ×3',
     desc: 'Take back your last pours',
-    price: 80,
+    price: 240,
     grant: { kind: 'powerup', powerup: 'undo', count: 3 },
   },
   {
     id: 'undo.x10',
     title: 'Undo ×10',
     desc: 'A big stack of second chances',
-    price: 225,
+    price: 700,
     grant: { kind: 'powerup', powerup: 'undo', count: 10 },
   },
   {
     id: 'hint.x3',
     title: 'Hint ×3',
     desc: 'Reveals a winning move',
-    price: 200,
+    price: 600,
     grant: { kind: 'powerup', powerup: 'hint', count: 3 },
   },
   {
     id: 'hint.x10',
     title: 'Hint ×10',
     desc: 'Winning moves for the hardest boards',
-    price: 560,
+    price: 1700,
     grant: { kind: 'powerup', powerup: 'hint', count: 10 },
   },
   {
     id: 'bottle.x3',
     title: 'Bottle ×3',
     desc: 'Extra room when you need it',
-    price: 320,
+    price: 900,
     grant: { kind: 'powerup', powerup: 'bottle', count: 3 },
   },
   {
     id: 'bottle.x10',
     title: 'Bottle ×10',
     desc: 'Room to breathe on every squeeze',
-    price: 900,
+    price: 2600,
     grant: { kind: 'powerup', powerup: 'bottle', count: 10 },
   },
 ];
@@ -343,6 +359,27 @@ export function starsFor(moves: number, par: number): 1 | 2 | 3 {
   if (moves <= t.three) return 3;
   if (moves <= t.two) return 2;
   return 1;
+}
+
+/** What an attempt did beyond its pour count that costs stars. */
+export interface StarPenalties {
+  /** Extra bottles added this attempt: each one costs a star. */
+  readonly bottles: number;
+  /** Finished after the star clock ran out: costs a star. */
+  readonly overtime: boolean;
+}
+
+export const NO_PENALTIES: StarPenalties = { bottles: 0, overtime: false };
+
+/**
+ * The stars an attempt earns: the pour-count tier, less one per extra bottle
+ * and one for missing the clock, never below one (a clear is a clear). The
+ * HUD pips and the win screen both grade with this, so the pill can never
+ * promise a star the result then withholds.
+ */
+export function starsForAttempt(moves: number, par: number, pen: StarPenalties): 1 | 2 | 3 {
+  const docked = starsFor(moves, par) - pen.bottles - (pen.overtime ? 1 : 0);
+  return Math.max(1, Math.min(3, docked)) as 1 | 2 | 3;
 }
 
 // ---------------------------------------------------------- reward scaling

@@ -28,6 +28,13 @@ export type AnalyticsEvent =
   | { type: 'level_skip'; level: number; moves: number; price: number }
   | { type: 'level_no_win'; level: number; moves: number }
   | { type: 'level_out_of_pours'; level: number; moves: number }
+  /** A timed level's hard limit ran out. */
+  | { type: 'level_time_up'; level: number; moves: number }
+  | { type: 'time_extend'; level: number; paid: 'coins' | 'ad' }
+  /** One booster bought on the spot from the out-of-stock dialog. */
+  | { type: 'powerup_bought'; powerup: string; price: number }
+  /** Win-screen coins doubled by a rewarded ad. */
+  | { type: 'win_doubled'; level: number; coins: number }
   | { type: 'powerup_used'; level: number; powerup: string; paid: boolean }
   | { type: 'tutorial_step'; step: number }
   | { type: 'tutorial_done' }

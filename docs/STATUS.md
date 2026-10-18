@@ -155,6 +155,17 @@ _Last updated: 2026-09-06_
 - **Combo levels** (every 10th from L50) - recipe + labelled flask or recipe
   + lock. Recipe and labels are audited against a raw-board BFS in test:core;
   daily, weekly and endless rotate the new shapes too.
+- **Economy and clock overhaul (1.4.0, 2026-10-18, "I have 5865 coins at
+  L37, why buy anything")** - level income cut about 4x (full clear 25/30/40),
+  coin-shop prices about 3x (hint x3 600, bottle x3 900, refill 1000), skip
+  900. Out of a booster, a dialog offers an ad, one on the spot at a premium
+  (`singlePrice`), or the shop. Stars are graded by `starsForAttempt`: each
+  extra bottle and a missed star clock (15 + 5 s a pour) cost one, never
+  below one. Hints cost no star (decided). **Against the clock** (every 10th
+  from L26): a hard limit at 1.5x the star clock; running out fails the
+  attempt unless the player buys 30 s (250 coins) or watches one ad for it.
+  The clock holds while any dialog is open or off the game screen. Win
+  screen: a rewarded ad doubles the clear's coins. Existing balances kept.
 - All four introduced by one-time toasts, staggered so players meet one idea
   at a time; all documented in "How to play".
 

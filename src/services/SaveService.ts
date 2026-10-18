@@ -82,6 +82,10 @@ export interface InProgressState {
   uses: Record<PowerupId, number>;
   /** Play time so far, so the win screen's timer excludes the break. */
   elapsedMs: number;
+  /** Timed levels: seconds of extension bought or watched for this attempt. */
+  extendedSec?: number;
+  /** Timed levels: whether this attempt's one ad-paid extension is spent. */
+  adExtended?: boolean;
 }
 
 export interface SaveData {
@@ -129,6 +133,8 @@ export interface SaveData {
   recipeSeen: boolean;
   labelSeen: boolean;
   precisionSeen: boolean;
+  /** Whether the "against the clock" hard time limit has been introduced. */
+  timedSeen: boolean;
   /** Whether the "leaderboard unlocked" moment has been shown (level 45). */
   leaderboardSeen: boolean;
   /** Ids of achievements already awarded (their coins have been paid). */
@@ -232,6 +238,7 @@ export function defaultSave(startingCoins: number): SaveData {
     recipeSeen: false,
     labelSeen: false,
     precisionSeen: false,
+    timedSeen: false,
     leaderboardSeen: false,
     achievements: [],
     login: { streak: 0, lastDay: -1 },
@@ -422,6 +429,7 @@ export class SaveService {
       recipeSeen: parsed.recipeSeen ?? false,
       labelSeen: parsed.labelSeen ?? false,
       precisionSeen: parsed.precisionSeen ?? false,
+      timedSeen: parsed.timedSeen ?? false,
       // v15 saves predate the leaderboard. A player already past level 45 on
       // an older save gets the unlock moment once, on their next visit home.
       leaderboardSeen: parsed.leaderboardSeen ?? false,

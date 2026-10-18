@@ -229,6 +229,21 @@ const table: Record<string, string> = {
   'twist.labels.body': '<p>瓶口有颜色的药瓶只接受该颜色:</p><p class="twistrow">{colors}</p><p>这是额外的空间,但只给正确的液体。先把那个颜色移到顶部才能用上它。</p>',
   'twist.precision.title': '精准倒液',
   'twist.precision.body': '<p>在 <b>{n} 次倒液</b>以内完成这瓶药水。</p><p>完成前用完即失败。顶部计数器显示已用次数 - 开始前先规划好路线。</p>',
+  'twist.timed.title': '限时挑战',
+  'twist.timed.body': '<p>在 <b>{limit}</b> 内完成这瓶药水。</p><p>金色时钟走动时仍可拿满三颗星；时钟走完，第三颗星就没了，时钟变红并倒数到时限。时间用完则本次挑战失败——除非你再加 {n} 秒。</p>',
+  'stars.clockLost': '星星时钟已走完：−1 ★',
+  'stars.bottleLost': '额外瓶子：−1 ★',
+  'timed.title': '时间到！',
+  'timed.body': '药水没能按时完成。再加 {n} 秒把它完成，或者重新开始。',
+  'timed.watch': '看广告 · +{n} 秒',
+  'timed.buy': '+{n} 秒 · {coins} 金币',
+  'timed.extended': '+{n} 秒，加油！',
+  'offer.outBody': '现在买一个，或去商店以更优惠的价格囤货。',
+  'offer.buyOne': '购买 1 个{name} · {n} 金币',
+  'win.lostBottle': '使用了额外瓶子：−1 ★',
+  'win.lostClock': '星星时钟已走完：−1 ★',
+  'win.double': '看广告 · 翻倍 (+{n})',
+  'win.doubled': '金币已翻倍！',
   'twist.cauldron.title': '大锅',
   'twist.lock.title': '上锁的瓶子',
   'twist.oneWay.title': '单向药瓶',
@@ -444,7 +459,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>上限、时钟与连胜</h3>
     <p>无论你拥有多少，每次尝试最多只能使用 <b>{undo} 次撤销</b>、<b>{hint} 次提示</b>和 <b>{bottle} 个额外瓶子</b>。</p>
-    <p><b>时钟</b>显示奖励时间：在时间结束前以<b>三星</b>首次通关即可获得额外金币。完成得越快，奖励越多——时钟上的金币数会随时间减少。它永远不会让你闯关失败。</p>
+    <p><b>时钟</b>就是星星时钟：在它走完前完成即可保住第三颗星，首次在时限内通关还会多给一些金币。每个<b>额外瓶子</b>也会扣一颗星。在<b>限时挑战</b>关卡中，时钟随后变红并倒数一个硬性时限——时间用完则挑战失败。</p>
     <p>不重开、不退出地连续通关新关卡，从第三关起每次胜利都会获得<b>连胜奖励</b>。</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -463,7 +478,7 @@ const table: Record<string, string> = {
   // ads
   'ads.watchHeart': '观看广告获得一颗爱心',
   'ads.outTitle': '{name}用完了',
-  'ads.outBody': '观看一段短广告再得一个，或到商店补货。',
+  'ads.outBody': '看一段短广告再得一个，现在购买，或去商店补货。',
   'ads.watchPowerup': '观看广告 · +1 {name}',
   'ads.shop': '前往商店',
   'ads.loading': '正在加载广告…',

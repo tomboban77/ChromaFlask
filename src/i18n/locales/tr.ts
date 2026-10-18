@@ -229,6 +229,21 @@ const table: Record<string, string> = {
   'twist.labels.body': '<p>Ağzı renkli olan şişe yalnızca o rengi alır:</p><p class="twistrow">{colors}</p><p>Fazladan yerdir - ama yalnızca doğru sıvı için. Kullanmak için önce o rengi üste çıkar.</p>',
   'twist.precision.title': 'Hassas döküm',
   'twist.precision.body': '<p>Bu iksiri <b>{n} döküm</b> veya daha azında bitir.</p><p>Bitmeden haklar biterse deneme başarısız olur. Üstteki sayaç dökümlerini gösterir - başlamadan önce yolunu planla.</p>',
+  'twist.timed.title': 'Zamana karşı',
+  'twist.timed.body': '<p>Bu iksiri <b>{limit}</b> içinde bitir.</p><p>Altın saat işlerken üç yıldızın hepsi hâlâ mümkün; bittiğinde üçüncü yıldız gider ve saat kırmızıya dönüp sınıra kadar geri sayar. Süre biterse deneme başarısız olur - {n} saniye daha almazsan.</p>',
+  'stars.clockLost': 'Yıldız saati bitti: −1 ★',
+  'stars.bottleLost': 'Ekstra şişe: −1 ★',
+  'timed.title': 'Süre doldu!',
+  'timed.body': 'İksir zamanında bitmedi. Bitirmek için {n} saniye daha al ya da baştan başla.',
+  'timed.watch': 'Reklam izle · +{n} sn',
+  'timed.buy': '+{n} sn · {coins} jeton',
+  'timed.extended': '+{n} saniye, hadi!',
+  'offer.outBody': 'Şimdi bir tane al ya da mağazadan daha uygun fiyata stok yap.',
+  'offer.buyOne': '1 {name} al · {n} jeton',
+  'win.lostBottle': 'Ekstra şişe kullanıldı: −1 ★',
+  'win.lostClock': 'Yıldız saati bitti: −1 ★',
+  'win.double': 'Reklam izle · ikiye katla (+{n})',
+  'win.doubled': 'Jetonlar ikiye katlandı!',
   'twist.cauldron.title': 'Kazan',
   'twist.lock.title': 'Kilitli şişe',
   'twist.oneWay.title': 'Tek yönlü şişe',
@@ -444,7 +459,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>Sınırlar, saat ve seriler</h3>
     <p>Her denemede, sahip olduğun miktardan bağımsız olarak en fazla <b>{undo} geri alma</b>, <b>{hint} ipucu</b> ve <b>{bottle} ekstra şişe</b> kullanılabilir.</p>
-    <p><b>Saat</b> bir bonus süresi gösterir: bir bölümü süre bitmeden ilk kez <b>üç yıldızla</b> geçersen ekstra altın kazanırsın. Ne kadar hızlı bitirirsen bonus o kadar büyük olur - saatteki altın etiketi zamanla azalır. Seni asla bölümden düşürmez.</p>
+    <p><b>Saat</b> yıldız saatidir: bitmeden tamamlarsan üçüncü yıldızı korursun, süre içindeki ilk galibiyet de biraz bonus jeton verir. Her <b>ekstra şişe</b> de bir yıldıza mal olur. <b>Zamana karşı</b> bölümlerinde saat ardından kırmızıya döner ve kesin bir sınırı geri sayar - biterse deneme başarısız olur.</p>
     <p>Yeni bölümleri yeniden başlatmadan veya çıkmadan art arda geç; üçüncüden itibaren her galibiyet <b>seri bonusu</b> öder.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -463,7 +478,7 @@ const table: Record<string, string> = {
   // ads
   'ads.watchHeart': 'Bir kalp için reklam izle',
   'ads.outTitle': '{name} kalmadı',
-  'ads.outBody': 'Bir tane daha kazanmak için kısa bir reklam izle ya da mağazadan stokla.',
+  'ads.outBody': 'Bir tane daha için kısa bir reklam izle, şimdi bir tane al ya da mağazadan stok yap.',
   'ads.watchPowerup': 'Reklam izle · +1 {name}',
   'ads.shop': 'Mağazaya git',
   'ads.loading': 'Reklam yükleniyor…',

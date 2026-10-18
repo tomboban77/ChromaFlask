@@ -233,6 +233,21 @@ const table: Record<string, string> = {
   'twist.labels.body': '<p>Una fiala con il bordo colorato accetta solo quel colore:</p><p class="twistrow">{colors}</p><p>È spazio in più, ma solo per il liquido giusto. Porta prima in cima quel colore per sfruttarla.</p>',
   'twist.precision.title': 'Versata di precisione',
   'twist.precision.body': '<p>Finisci questa pozione in <b>{n} versate</b> o meno.</p><p>Se finiscono prima, il tentativo fallisce. Il contatore in alto mostra le versate usate: pianifica la strada prima di iniziare.</p>',
+  'twist.timed.title': 'Contro il tempo',
+  'twist.timed.body': '<p>Completa questa pozione entro <b>{limit}</b>.</p><p>Finché corre l’orologio dorato puoi ancora ottenere tre stelle; quando finisce, la terza stella se ne va e l’orologio diventa rosso e conta fino al limite. Tempo scaduto: il tentativo fallisce, a meno che tu non prenda {n} secondi in più.</p>',
+  'stars.clockLost': 'L’orologio delle stelle è scaduto: −1 ★',
+  'stars.bottleLost': 'Bottiglia extra: −1 ★',
+  'timed.title': 'Tempo scaduto!',
+  'timed.body': 'La pozione non è stata finita in tempo. Prendi {n} secondi in più per completarla, o ricomincia.',
+  'timed.watch': 'Guarda un video · +{n} s',
+  'timed.buy': '+{n} s · {coins} monete',
+  'timed.extended': '+{n} secondi, vai!',
+  'offer.outBody': 'Comprane uno ora, o fai scorta nel negozio a un prezzo migliore.',
+  'offer.buyOne': 'Compra 1 {name} · {n} monete',
+  'win.lostBottle': 'Bottiglia extra usata: −1 ★',
+  'win.lostClock': 'Orologio delle stelle scaduto: −1 ★',
+  'win.double': 'Guarda un video · raddoppia (+{n})',
+  'win.doubled': 'Monete raddoppiate!',
   'twist.cauldron.title': 'Il calderone',
   'twist.lock.title': 'Bottiglia bloccata',
   'twist.oneWay.title': 'Fiala a senso unico',
@@ -453,7 +468,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>Limiti, orologio e serie</h3>
     <p>Ogni tentativo consente al massimo <b>Annulla ×{undo}</b>, <b>Suggerimento ×{hint}</b> e <b>Bottiglia extra ×{bottle}</b>, qualunque sia la tua scorta.</p>
-    <p>L'<b>orologio</b> mostra una finestra bonus: supera un livello per la prima volta con <b>tre stelle</b> prima che scada per ottenere monete extra. Più sei veloce, più grande è il bonus: l'etichetta di monete sull'orologio cala col tempo. Non ti fa mai perdere un livello.</p>
+    <p>L’<b>orologio</b> è l’orologio delle stelle: finisci prima che scada per tenere la terza stella, e una prima vittoria in tempo dà qualche moneta bonus. Ogni <b>bottiglia extra</b> costa anche una stella. Nei livelli <b>Contro il tempo</b> poi diventa rosso e conta un limite rigido: se scade, il tentativo fallisce.</p>
     <p>Supera livelli nuovi di fila senza ricominciare né uscire e, dal terzo, ogni vittoria paga un <b>bonus serie</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -472,7 +487,7 @@ const table: Record<string, string> = {
   // ads
   'ads.watchHeart': 'Guarda un annuncio per un cuore',
   'ads.outTitle': '{name} esauriti',
-  'ads.outBody': 'Guarda un breve annuncio per averne uno in più, oppure fai scorta nel negozio.',
+  'ads.outBody': 'Guarda un breve video per averne un altro, comprane uno ora o fai scorta nel negozio.',
   'ads.watchPowerup': 'Guarda un annuncio · +1 {name}',
   'ads.shop': 'Vai al negozio',
   'ads.loading': 'Caricamento annuncio…',

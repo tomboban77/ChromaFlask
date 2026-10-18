@@ -233,6 +233,21 @@ const table: Record<string, string> = {
   'twist.labels.body': '<p>Um frasco com borda colorida só aceita essa cor:</p><p class="twistrow">{colors}</p><p>É espaço extra - mas só para o líquido certo. Traga essa cor para o topo primeiro para aproveitá-lo.</p>',
   'twist.precision.title': 'Despejo de precisão',
   'twist.precision.body': '<p>Termine esta poção em <b>{n} despejos</b> ou menos.</p><p>Se acabarem antes, a tentativa falha. O contador no topo mostra os despejos usados - planeje seu caminho antes de começar.</p>',
+  'twist.timed.title': 'Contra o relógio',
+  'twist.timed.body': '<p>Termine esta poção em <b>{limit}</b>.</p><p>Enquanto o relógio dourado corre, as três estrelas ainda são possíveis; quando acaba, a terceira estrela vai embora e o relógio fica vermelho, contando até o limite. Se o tempo acabar, a tentativa falha - a menos que você pegue mais {n} segundos.</p>',
+  'stars.clockLost': 'O relógio das estrelas acabou: −1 ★',
+  'stars.bottleLost': 'Garrafa extra: −1 ★',
+  'timed.title': 'Acabou o tempo!',
+  'timed.body': 'A poção não ficou pronta a tempo. Pegue mais {n} segundos para terminar ou comece de novo.',
+  'timed.watch': 'Ver um anúncio · +{n} s',
+  'timed.buy': '+{n} s · {coins} moedas',
+  'timed.extended': '+{n} segundos, vai!',
+  'offer.outBody': 'Compre um agora ou abasteça-se na loja por um preço melhor.',
+  'offer.buyOne': 'Comprar 1 {name} · {n} moedas',
+  'win.lostBottle': 'Garrafa extra usada: −1 ★',
+  'win.lostClock': 'Relógio das estrelas acabou: −1 ★',
+  'win.double': 'Ver um anúncio · dobrar (+{n})',
+  'win.doubled': 'Moedas dobradas!',
   'twist.cauldron.title': 'O caldeirão',
   'twist.lock.title': 'Garrafa trancada',
   'twist.oneWay.title': 'Frasco de mão única',
@@ -453,7 +468,7 @@ const table: Record<string, string> = {
   'howto.more': `<div class="howto">
     <h3>Limites, relógio e sequências</h3>
     <p>Cada tentativa permite no máximo <b>Desfazer ×{undo}</b>, <b>Dica ×{hint}</b> e <b>Garrafa extra ×{bottle}</b>, não importa quantas você tenha.</p>
-    <p>O <b>relógio</b> mostra uma janela de bônus: vença um nível pela primeira vez com <b>três estrelas</b> antes que ela acabe e ganhe moedas extras. Quanto mais rápido você terminar, maior o bônus - a etiqueta de moedas do relógio diminui com o tempo. Ele nunca faz você perder um nível.</p>
+    <p>O <b>relógio</b> é o relógio das estrelas: termine antes que ele acabe para manter a terceira estrela, e uma primeira vitória dentro dele paga algumas moedas de bônus. Cada <b>garrafa extra</b> também custa uma estrela. Nos níveis <b>Contra o relógio</b> ele depois fica vermelho e conta um limite rígido - se acabar, a tentativa falha.</p>
     <p>Vença níveis novos em sequência sem reiniciar nem sair e, a partir do terceiro, cada vitória paga um <b>bônus de sequência</b>.</p>
   </div>`,
   'howto.body': `<div class="howto">
@@ -472,7 +487,7 @@ const table: Record<string, string> = {
   // ads
   'ads.watchHeart': 'Ver um anúncio por um coração',
   'ads.outTitle': 'Sem {name}',
-  'ads.outBody': 'Veja um anúncio curto para ganhar mais um, ou abasteça-se na loja.',
+  'ads.outBody': 'Veja um anúncio curto para ganhar mais um, compre um agora ou abasteça-se na loja.',
   'ads.watchPowerup': 'Ver um anúncio · +1 {name}',
   'ads.shop': 'Ir para a loja',
   'ads.loading': 'Carregando anúncio…',

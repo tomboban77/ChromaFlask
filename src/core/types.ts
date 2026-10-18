@@ -88,6 +88,12 @@ export interface LevelSpec {
    * par are unaffected; the budget is enforced by the game.
    */
   readonly precision?: { readonly slack: number };
+  /**
+   * Against the clock: the attempt fails when the hard time limit runs out
+   * (an extension can be bought or watched for). Board, solver and par are
+   * unaffected; the limit is enforced by the game.
+   */
+  readonly timed?: boolean;
 }
 
 /** Rule variations that change what the engine considers legal or solved. */
