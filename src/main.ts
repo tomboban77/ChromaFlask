@@ -2212,7 +2212,6 @@ class App {
     // The equipped look is read from the save at every mount, so a skin bought
     // between levels (or restored from an old save) is never missed.
     this.board.setSkin(skinById(this.save.snapshot.cosmetics.skin));
-    this.board.noWinGrace = this.noWinGrace;
     this.board.moveBudget = this.pourBudget;
     this.board.mount(
       this.level,
@@ -2470,7 +2469,6 @@ class App {
     this.nudged = false;
     this.hudTier = 3;
     this.resetAttemptClock(0);
-    this.board.noWinGrace = this.noWinGrace;
     this.board.moveBudget = this.pourBudget;
     this.board.mount(this.level, this.save.snapshot.settings.colorblind);
     this.updateHud();
@@ -3113,14 +3111,19 @@ class App {
         const button = $<HTMLButtonElement>('#btn-hint');
         this.hintPending = true;
         button.classList.add('power--busy');
+        let outcome: Awaited<ReturnType<BoardView['showHint']>>;
         try {
-          applied = await this.board.showHint();
+          outcome = await this.board.showHint();
         } finally {
           this.hintPending = false;
           button.classList.remove('power--busy');
         }
+        applied = outcome === 'shown';
         if (applied) this.save.bumpStat('hintsUsed');
-        else this.toast.show(t('powerup.noHint'), 'warn', 3000);
+        // A proven dead end: the same warning the board raises by itself
+        // (the hint is refunded below - it found nothing to show).
+        else if (outcome === 'dead') this.onNoWin();
+        else if (outcome === 'unknown') this.toast.show(t('powerup.noHint'), 'warn', 3000);
         break;
       }
       case 'bottle':
@@ -3983,19 +3986,6 @@ class App {
   }
 
   // ---------------------------------------------------------------- stuck
-  /**
-   * Pours between a fatal move and the "no way to win" warning. Through the
-   * first chapter it is instant, so new players learn what a trap is and can
-   * undo out of it. After that it outlasts the undo cap: an instant warning
-   * let players pour without thinking and undo whatever it flagged (a random
-   * pourer cleared ~75% of standard boards that way), so the warning now
-   * says when to restart, never which pour to take back.
-   */
-  private get noWinGrace(): number {
-    const eco = this.remote.current.economy;
-    return this.levelId <= eco.freeHintLevels ? 0 : eco.maxUses.undo + 1;
-  }
-
   /** The solver proved no winning line remains, though legal moves do. */
   private onNoWin(): void {
     audio.play('stuck');
@@ -4003,7 +3993,7 @@ class App {
     this.analytics.track({
       type: 'level_no_win', level: this.levelId, moves: this.board.moveCount,
     });
-    this.toast.show(t(this.noWinGrace > 0 ? 'toast.noWinRestart' : 'toast.noWin'), 'warn', 3400);
+    this.toast.show(t('toast.noWin'), 'warn', 3400);
   }
 
   /** Precision pour: the budget is spent without a win. */

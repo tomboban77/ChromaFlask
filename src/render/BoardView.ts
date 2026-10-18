@@ -4,7 +4,7 @@ import {
   DEFAULT_RULES, TUBE_CAPACITY, applyPour, blockedBy, cloneBoard, isComplete, isDeadlocked,
   isSolved, labelAt, lockActive, pourAmount, recipeProgress, rulesFor, sealsRemaining, undoPour,
 } from '@/core/board';
-import { findHint } from '@/core/solver';
+import { findHint, type Analysis } from '@/core/solver';
 import type { Board, BoardRules, ColorId, GeneratedLevel, Move } from '@/core/types';
 import { solverClient } from '@/services/SolverClient';
 import { audio } from '@/audio/AudioEngine';
@@ -99,16 +99,14 @@ export class BoardView {
   private rules: BoardRules = DEFAULT_RULES;
   /** One "no way to win" warning per trap; re-armed by undo and new space. */
   private noWinWarned = false;
-  /**
-   * Pours a dead board must absorb before the warning shows. 0 warns the
-   * moment a pour proves fatal - a teaching aid, but on every level it is an
-   * oracle: pour at random, wait for the warning, undo. Past the undo cap the
-   * warning can only ever say "restart", so planning ahead is the one way to
-   * avoid the trap. Set by the caller before mount.
-   */
-  noWinGrace = 0;
   /** History length at which the board was first proven unwinnable, or null. */
   private deadAt: number | null = null;
+  /**
+   * The solver's verdict on one position, shared by the automatic warning and
+   * the Hint so the two can never disagree. Keyed by the exact position (and
+   * mount), so an undo followed by a different pour is never mistaken for it.
+   */
+  private analysis: { key: string; result: Promise<Analysis> } | null = null;
   /**
    * Precision pour: the most pours this attempt may make, or null for no
    * limit. Counts net pours (history), so an undo hands one back. Set by the
@@ -162,6 +160,7 @@ export class BoardView {
     this.busy = false;
     this.noWinWarned = false;
     this.deadAt = null;
+    this.analysis = null;
 
     this.hidden = restore
       ? this.board.map((_, i) => restore.hidden[i] ?? 0)
@@ -181,6 +180,8 @@ export class BoardView {
     // measures 0x0. Defer the intro until a layout with real dimensions lands.
     this.pendingIntro = true;
     this.layout(this.viewW, this.viewH, false);
+    // A resumed attempt may already be past the point of no return.
+    if (restore && this.history.length > 0) this.scheduleNoWinCheck();
   }
 
   /** The cauldron, when present, is always tube 0. */
@@ -928,46 +929,56 @@ export class BoardView {
     this.scheduleNoWinCheck();
   }
 
+  /** The exact position on this mount, for matching a verdict to the board it was made on. */
+  private positionKey(): string {
+    return `${this.generation}|${JSON.stringify(this.board)}`;
+  }
+
+  /** The solver's verdict on the current position, computed once and shared. */
+  private analyzeHere(): Promise<Analysis> {
+    const key = this.positionKey();
+    if (this.analysis?.key !== key) {
+      this.analysis = { key, result: solverClient.analyze(cloneBoard(this.board), this.rules) };
+    }
+    return this.analysis.result;
+  }
+
   /**
    * A player can pour themselves into a position that still has legal moves
-   * but provably no winning line. Silently letting them flounder reads as
-   * "this level is impossible", so prove it and say so - once per trap.
+   * but provably no winning line. Say so the moment it happens - after every
+   * pour, undo and added bottle - so they can undo out of it while that still
+   * helps. (Until 2026-10-18 the warning waited out several pours after level
+   * 20 as an anti-oracle measure; players read the delay as the game being
+   * inconsistent with the Hint, which knew at once.)
    *
-   * The proof runs in the solver worker (exhausting the budget on a cauldron
-   * board is ~0.5 s of CPU on a desktop, far more on a phone), budget-capped,
-   * and only on boards up to ten tubes; anything inconclusive stays silent.
-   * The result is discarded if the board moved on while it was computing.
+   * The proof runs in the solver worker, budget-capped (see ANALYZE_NODES);
+   * an inconclusive answer stays silent. A verdict is applied only if the
+   * board is still in the position it was made on.
    */
   private scheduleNoWinCheck(): void {
-    if (this.noWinWarned || this.board.length > 10) return;
-    // Already proven dead: every later pour stays dead, so only the grace
-    // count is left to run out - no further solver work.
+    if (this.noWinWarned || this.resolved) return;
     if (this.deadAt !== null) {
       this.maybeWarnNoWin();
       return;
     }
     if (this.noWinTimer !== null) window.clearTimeout(this.noWinTimer);
-
-    const gen = this.generation;
-    const moves = this.history.length;
+    // A short beat so a quick run of pours asks once, for where it settles.
     this.noWinTimer = window.setTimeout(() => {
       this.noWinTimer = null;
-      if (gen !== this.generation || moves !== this.history.length || this.busy) return;
-      void solverClient
-        .solvability(cloneBoard(this.board), this.rules, 30_000)
-        .then((result) => {
-          if (gen !== this.generation || moves !== this.history.length) return;
-          if (result === 'unsolvable' && !this.noWinWarned) {
-            this.deadAt = moves;
-            this.maybeWarnNoWin();
-          }
-        });
-    }, 150);
+      const key = this.positionKey();
+      const moves = this.history.length;
+      void this.analyzeHere().then((a) => {
+        if (key !== this.positionKey() || this.resolved) return;
+        if (a.verdict === 'unsolvable' && !this.noWinWarned) {
+          this.deadAt = moves;
+          this.maybeWarnNoWin();
+        }
+      });
+    }, 120);
   }
 
   private maybeWarnNoWin(): void {
     if (this.noWinWarned || this.deadAt === null) return;
-    if (this.history.length - this.deadAt < this.noWinGrace) return;
     this.noWinWarned = true;
     this.callbacks.onNoWin?.();
   }
@@ -993,6 +1004,8 @@ export class BoardView {
     this.select(null);
     // Unsealing a bottle re-engages the padlock, silently.
     this.syncLock(false);
+    // Say at once whether the position undone to can still be won.
+    this.scheduleNoWinCheck();
 
     for (const idx of [move.from, move.to]) {
       const b = this.bottles[idx];
@@ -1045,6 +1058,8 @@ export class BoardView {
       { y: slot.y, alpha: 1, duration: 0.45, ease: 'back.out(1.7)' },
     );
     audio.play('powerup');
+    // The new space may reopen a line - or may not; either way, say so now.
+    this.scheduleNoWinCheck();
     return true;
   }
 
@@ -1053,14 +1068,26 @@ export class BoardView {
    * exists, or if the board changed while the worker was thinking (the
    * caller then refunds the powerup).
    */
-  async showHint(): Promise<boolean> {
-    if (this.busy) return false;
+  /**
+   * Hint powerup. Reads the same verdict as the automatic warning: on a
+   * proven-dead board it marks the trap (so the board counts as lost) and
+   * reports 'dead' rather than inventing a move. 'stale' means the board
+   * moved on while the solver worked; 'unknown' that the budget ran out.
+   */
+  async showHint(): Promise<'shown' | 'dead' | 'unknown' | 'stale'> {
+    if (this.busy) return 'stale';
     this.clearHint();
-    const gen = this.generation;
+    const key = this.positionKey();
     const moves = this.history.length;
-    const move = await solverClient.hint(cloneBoard(this.board), this.rules);
-    if (gen !== this.generation || moves !== this.history.length || this.busy) return false;
-    if (!move) return false;
+    const a = await this.analyzeHere();
+    if (key !== this.positionKey() || this.busy || this.resolved) return 'stale';
+    if (a.verdict === 'unsolvable') {
+      if (this.deadAt === null) this.deadAt = moves;
+      this.noWinWarned = true;
+      return 'dead';
+    }
+    const move = a.move;
+    if (!move) return a.verdict === 'unknown' ? 'unknown' : 'stale';
 
     this.hintPair = { from: move.from, to: move.to };
     for (const idx of [move.from, move.to]) {
@@ -1076,7 +1103,7 @@ export class BoardView {
     }
     audio.play('powerup');
     this.hintTimer = window.setTimeout(() => this.clearHint(), 3800);
-    return true;
+    return 'shown';
   }
 
   private clearHint(): void {

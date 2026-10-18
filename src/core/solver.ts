@@ -216,15 +216,43 @@ export function solvability(
 }
 
 /**
- * Best next move from an arbitrary position, for the Hint powerup.
- * Falls back to a fast weighted search if the optimal one is too expensive.
+ * Node budget for in-game analysis. Measured 2026-10-18 on 1,110 mid-game
+ * positions from random play across the campaign (extra bottles included):
+ * every one settled well inside 30k nodes, worst ~130 ms on a desktop, so
+ * this leaves a wide margin before anything comes back 'unknown'.
  */
+export const ANALYZE_NODES = 250_000;
+
+/** One position's verdict, plus the first move of a winning line when there is one. */
+export interface Analysis {
+  readonly verdict: Solvability;
+  readonly move: Move | null;
+}
+
+/**
+ * The single in-game answer to "can this still be won, and how?". The
+ * automatic "no way to win" warning and the Hint powerup both read it, so they
+ * can never disagree: if the warning stays quiet the hint has a move, and if
+ * the hint has none the warning fires. 'unsolvable' is a proof (the whole
+ * reachable space was explored); 'unknown' means the budget ran out first and
+ * nothing may be claimed either way.
+ */
+export function analyze(
+  board: Board, rules: BoardRules = DEFAULT_RULES, maxNodes = ANALYZE_NODES,
+): Analysis {
+  const { result, exhausted } = search(board, { weight: 2, maxNodes, rules });
+  if (result) return { verdict: 'solvable', move: result.solution[0] ?? null };
+  if (!exhausted) return { verdict: 'unsolvable', move: null };
+  // The weighted search can miss a line inside its budget that an exact one
+  // finds; try before admitting we do not know.
+  const exact = search(board, { weight: 1, maxNodes, rules });
+  if (exact.result) return { verdict: 'solvable', move: exact.result.solution[0] ?? null };
+  return { verdict: exact.exhausted ? 'unknown' : 'unsolvable', move: null };
+}
+
+/** Best next move from an arbitrary position (tutorial hand, sync checks). Same search as analyze. */
 export function findHint(board: Board, rules: BoardRules = DEFAULT_RULES): Move | null {
-  const fast = solve(board, { weight: 2, maxNodes: 60_000, rules });
-  if (fast && fast.solution.length > 0) return fast.solution[0] as Move;
-  const exact = solve(board, { weight: 1, maxNodes: 150_000, rules });
-  if (exact && exact.solution.length > 0) return exact.solution[0] as Move;
-  return null;
+  return analyze(board, rules).move;
 }
 
 /** Whether a winning line exists from here (used to warn before a dead end). */

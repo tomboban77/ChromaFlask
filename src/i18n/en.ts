@@ -202,7 +202,7 @@ export const en = {
   'powerup.bottleAria': 'Add an empty bottle',
   'powerup.out': 'Out of {name} - grab more in the shop',
   'powerup.nothingToUndo': 'Nothing to undo',
-  'powerup.noHint': 'No winning move from here - try undo or restart',
+  'powerup.noHint': "Couldn't work out a move this time - try again",
   'powerup.capped': 'Level limit reached for this one',
 
   'missions.title': 'Daily missions',
@@ -240,7 +240,6 @@ export const en = {
   'toast.padlockOpen': 'Padlock open!',
   'toast.stuckHint': 'Stuck? Try a hint.',
   'toast.noWin': 'No way to win from here - use Undo or Restart',
-  'toast.noWinRestart': "This potion can't be finished any more - restart and plan ahead",
   'toast.recipe': 'Follow the recipe: seal its next colour before any other',
   'toast.label': 'This flask only takes the colour on its label',
   'hud.pourBudget': '{used}/{max} pours',

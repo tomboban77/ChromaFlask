@@ -3,9 +3,9 @@
  * workers are unavailable (or the worker dies), so callers never have to care
  * where the search actually ran.
  */
-import type { Solvability } from '@/core/solver';
+import type { Analysis } from '@/core/solver';
 import { runRequest, type SolverEnvelope, type SolverReply, type SolverRequest } from '@/core/solver.worker';
-import type { Board, BoardRules, GeneratedLevel, LevelSpec, Move } from '@/core/types';
+import type { Board, BoardRules, GeneratedLevel, LevelSpec } from '@/core/types';
 
 interface Pending {
   req: SolverRequest;
@@ -75,14 +75,12 @@ export class SolverClient {
     });
   }
 
-  /** Three-way solvability; 'unsolvable' is a proof (see core/solver.ts). */
-  solvability(board: Board, rules: BoardRules, maxNodes: number): Promise<Solvability> {
-    return this.post<Solvability>({ kind: 'solvability', board, rules, maxNodes });
-  }
-
-  /** First move of a winning line from this position, or null if none exists. */
-  hint(board: Board, rules: BoardRules): Promise<Move | null> {
-    return this.post<Move | null>({ kind: 'hint', board, rules });
+  /**
+   * Whether this position can still be won, and the first move of a line if
+   * so. The no-win warning and the Hint both use it (see core/solver.ts).
+   */
+  analyze(board: Board, rules: BoardRules): Promise<Analysis> {
+    return this.post<Analysis>({ kind: 'analyze', board, rules });
   }
 
   /** Deal and prove a level for a spec (endless mode). Rejects if no deal met the floor. */

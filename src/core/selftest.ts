@@ -29,7 +29,7 @@ import {
   streakBonusFor, timeBonusFor, timeBonusSeconds, timeLimitSeconds,
 } from './progression';
 import { MISSIONS_PER_DAY, mergeMissions, missionsFor } from './missions';
-import { solvability, solve } from './solver';
+import { ANALYZE_NODES, analyze, findHint, solvability, solve } from './solver';
 import type { Board, BoardRules, Move } from './types';
 
 let passed = 0;
@@ -1027,6 +1027,55 @@ function replay(board: Board, moves: readonly Move[], rules: BoardRules = DEFAUL
   sup.unlockThroughLevel(45);
   check('save: support unlock marks finished chapters bronze', sup.chestTier(1) === 1 && sup.chestTier(2) === 1 &&
     sup.chestTier(3) === 0);
+}
+
+// --------------------------------------------- one verdict, hint and warning
+// The automatic "no way to win" warning and the Hint read the same analysis
+// (2026-10-18: players saw the hint say "can't win" where the board had said
+// nothing). On real mid-game positions from random play - extra bottle
+// included - the verdict must be definite, agree with a full solvability
+// proof and with findHint, and a 'solvable' verdict must come with a move
+// that keeps the board winnable.
+{
+  let seed = 12345;
+  const rand = (): number => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32);
+  let positions = 0;
+  let dead = 0;
+  let disagree = 0;
+  let hintDisagree = 0;
+  let unknown = 0;
+  let badMove = 0;
+  for (const id of [26, 47, 66, 89, 133, 171, 236, 283, 12, 152]) {
+    const level = getCampaignLevel(id);
+    const rules = rulesFor(getLevelSpec(id));
+    for (let run = 0; run < 3; run++) {
+      const board = cloneBoard(level.board);
+      if (run === 2) board.push([]);
+      for (let step = 0; step < 30 && !isSolved(board, rules); step++) {
+        const moves = usefulMoves(board, rules);
+        if (moves.length === 0) break;
+        const m = moves[Math.floor(rand() * moves.length)] as Move;
+        applyPour(board, m.from, m.to, rules);
+        if (step % 4 !== 3 || isSolved(board, rules)) continue;
+        positions++;
+        const a = analyze(cloneBoard(board), rules);
+        if (a.verdict === 'unknown') unknown++;
+        if (a.verdict === 'unsolvable') dead++;
+        const proof = solvability(cloneBoard(board), rules, ANALYZE_NODES);
+        if (proof !== a.verdict && proof !== 'unknown') disagree++;
+        if ((findHint(cloneBoard(board), rules) === null) !== (a.verdict !== 'solvable')) hintDisagree++;
+        if (a.verdict === 'solvable') {
+          const next = cloneBoard(board);
+          if (!a.move || !applyPour(next, a.move.from, a.move.to, rules) ||
+            analyze(next, rules).verdict !== 'solvable') badMove++;
+        }
+      }
+    }
+  }
+  check(`no-win: ${positions} positions (${dead} dead) all get a definite verdict`, unknown === 0 && dead > 0);
+  check('no-win: the verdict agrees with a full proof', disagree === 0);
+  check('no-win: the hint has a move exactly when the verdict says winnable', hintDisagree === 0);
+  check('no-win: every hinted move keeps the board winnable', badMove === 0);
 }
 
 console.log(`\n  ${passed} checks passed, ${failures.length} failed`);

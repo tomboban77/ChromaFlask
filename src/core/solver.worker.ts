@@ -11,12 +11,11 @@
  * cloning is cheap. See services/SolverClient.ts for the request shapes.
  */
 import { generateLevel } from './generator';
-import { findHint, solvability } from './solver';
+import { analyze } from './solver';
 import type { Board, BoardRules, LevelSpec } from './types';
 
 export type SolverRequest =
-  | { kind: 'solvability'; board: Board; rules: BoardRules; maxNodes: number }
-  | { kind: 'hint'; board: Board; rules: BoardRules }
+  | { kind: 'analyze'; board: Board; rules: BoardRules }
   | { kind: 'generate'; spec: LevelSpec };
 
 export interface SolverEnvelope {
@@ -30,10 +29,8 @@ export type SolverReply =
 
 export function runRequest(req: SolverRequest): unknown {
   switch (req.kind) {
-    case 'hint':
-      return findHint(req.board, req.rules);
-    case 'solvability':
-      return solvability(req.board, req.rules, req.maxNodes);
+    case 'analyze':
+      return analyze(req.board, req.rules);
     case 'generate':
       return generateLevel(req.spec);
   }
